@@ -1,10 +1,15 @@
 html, body {
+	background:#FFFFFF;
 	color:#000000;
 	font-family:OpenSans,Helvetica,Arial,sans-serif;
 	height:100%;
 	margin:0;
 	padding:0;
 	width:100%;
+	}
+body.dark {
+	background:#000000;
+	color:#EEEEEE;
 	}
 
 #page {
@@ -90,13 +95,14 @@ html, body {
 	}
 .toolboxCategory.collapsed {
 	height:6%;
+	overflow-y:hidden;
 	}
 .toolboxCategoryHeading {
 	background:linear-gradient(
 		to bottom
 		,rgba(244,244,244,0.1) 0%
 		,rgba(137,137,137,0.1) 50%
-		,rgba(22,22,22,0.1) 100%
+		,rgba( 22, 22, 22,0.1) 100%
 		);
 	cursor:pointer;
 	font-size:18px;
@@ -106,16 +112,27 @@ html, body {
 	min-height:24px;
 	padding-left:10px;
 	}
+.dark .toolboxCategoryHeading {
+	background:linear-gradient(
+		to bottom
+		,rgba(244,244,244,0.4) 0%
+		,rgba(137,137,137,0.7) 50%
+		,rgba( 22, 22, 22,1.0) 100%
+		);
+	}
 .toolboxItem {
 	cursor:pointer;
 	height:50px;
 	width:100%;
 	}
-.toolboxItem.active {
-	background:#5FD7FF;
+.toolboxItem.active,
+.toolboxItem.active:hover {
+	background:#7FFF00;
+	color:#000000;
 	}
 .toolboxItem:hover {
-	background:#A6CDFF;
+	background:#5FD7FF;
+	color:#000000;
 	}
 .toolboxItemIcon {
 	background:url('../img/tools.png');
@@ -124,8 +141,9 @@ html, body {
 	margin:5px 10px;
 	width:40px;
 	}
-.iconActionDef		{ background-position:0 0; }
+.iconActionDef		{ background-position:  0px 0; }
 .iconActionCall		{ background-position:-40px 0; }
+.iconGroupSerial	{ background-position:-80px 0; }
 .toolboxItemText {
 	float:left;
 	line-height:50px;

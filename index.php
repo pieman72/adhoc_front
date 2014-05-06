@@ -29,13 +29,15 @@
 
 				<div class="toolboxCategory">
 					<div class="toolboxCategoryHeading">Action</div>
-					<div class="toolboxItem">
+					<div class="clear"></div>
+
+					<div class="toolboxItem" data-type="1" data-which="1">
 						<div class="toolboxItemIcon iconActionDef"></div>
 						<div class="toolboxItemText">Define Action</div>
 					</div>
 					<div class="clear"></div>
 
-					<div class="toolboxItem">
+					<div class="toolboxItem" data-type="1" data-which="2">
 						<div class="toolboxItemIcon iconActionCall"></div>
 						<div class="toolboxItemText">Call Action</div>
 					</div>
@@ -44,6 +46,13 @@
 
 				<div class="toolboxCategory collapsed">
 					<div class="toolboxCategoryHeading">Group</div>
+					<div class="clear"></div>
+
+					<div class="toolboxItem" data-type="2" data-which="3">
+						<div class="toolboxItemIcon iconGroupSerial"></div>
+						<div class="toolboxItemText">Serial Group</div>
+					</div>
+					<div class="clear"></div>
 				</div>
 
 				<div class="toolboxCategory collapsed">
