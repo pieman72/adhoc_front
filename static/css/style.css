@@ -1,0 +1,143 @@
+html, body {
+	color:#000000;
+	font-family:OpenSans,Helvetica,Arial,sans-serif;
+	height:100%;
+	margin:0;
+	padding:0;
+	width:100%;
+	}
+
+#page {
+	height:100%;
+	position:relative;
+	width:100%;
+	}
+
+#adhoc_lightbox .nxj_lightbox {
+	padding:40px 0;
+	text-align:center;
+	}
+#adhoc_lightbox .nxj_lightboxContent {
+	text-align:center;
+	}
+
+#controls {
+	background:#EEEEEE;
+	border-bottom:1px solid #BBBBBB;
+	height:150px;
+	left:0;
+	overflow:visible;
+	position:absolute;
+	top:0;
+	transition:top 0.85s;
+	width:100%;
+	z-index:1;
+	}
+#controls.collapsed {
+	top:-150px;
+	}
+#controls .controlsLeft,
+#controls .controlsRight {
+	height:100%;
+	position:relative;
+	width:50%;
+	}
+#controlsToggle {
+	background:#EEEEEE;
+	border:1px solid #BBBBBB;
+	border-radius:0 0 10px 10px;
+	border-top:none;
+	bottom:-40px;
+	cursor:pointer;
+	height:30px;
+	padding:10px 5px 5px;
+	position:absolute;
+	right:30px;
+	width:20px;
+	}
+#controls #controlsToggle div {
+	background:url('../img/controlsToggle.png') no-repeat -20px 0;
+	height:100%;
+	width:100%;
+	}
+#controls.collapsed #controlsToggle div {
+	background-position:0 0;
+	}
+
+#workspace {
+	height:100%;
+	width:100%;
+	}
+
+#toolbox {
+	box-shadow:inset -3px 0px 4px 0px #BBBBBB;
+	height:100%;
+	overflow-x:visible;
+	overflow-y:auto;
+	width:20%;
+	}
+.toolboxTitle {
+	font-size:32px;
+	height:8%;
+	text-align:center;
+	width:100%;
+	}
+.toolboxCategory {
+	height:62%;
+	min-height:24px;
+	overflow-y:auto;
+	transition:height 0.4s;
+	}
+.toolboxCategory.collapsed {
+	height:6%;
+	}
+.toolboxCategoryHeading {
+	background:linear-gradient(
+		to bottom
+		,rgba(244,244,244,0.1) 0%
+		,rgba(137,137,137,0.1) 50%
+		,rgba(22,22,22,0.1) 100%
+		);
+	cursor:pointer;
+	font-size:18px;
+	height:8%;
+	height:40px;
+	max-height:100%;
+	min-height:24px;
+	padding-left:10px;
+	}
+.toolboxItem {
+	cursor:pointer;
+	height:50px;
+	width:100%;
+	}
+.toolboxItem.active {
+	background:#5FD7FF;
+	}
+.toolboxItem:hover {
+	background:#A6CDFF;
+	}
+.toolboxItemIcon {
+	background:url('../img/tools.png');
+	float:left;
+	height:40px;
+	margin:5px 10px;
+	width:40px;
+	}
+.iconActionDef		{ background-position:0 0; }
+.iconActionCall		{ background-position:-40px 0; }
+.toolboxItemText {
+	float:left;
+	line-height:50px;
+	}
+
+#canvas {
+	}
+
+#output {
+	height:100%;
+	position:absolute;
+	right:0;
+	top:0;
+	z-index:2;
+	}

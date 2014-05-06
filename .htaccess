@@ -1,0 +1,21 @@
+# Deflate plain-text files using gzip
+AddOutputFilterByType DEFLATE text/plain text/html text/xml text/javascript application/javascript text/css
+
+# Use entity tags based on mod time and filesize
+FileETag -INode +MTime +Size
+
+# Expiration header module
+<IfModule mod_expires.c>
+	ExpiresActive On
+
+	# Add far-future expiration to images
+	ExpiresByType image/png "access plus 10 years"
+	ExpiresByType image/gif "access plus 10 years"
+	ExpiresByType image/jpg "access plus 10 years"
+	ExpiresByType image/jpeg "access plus 10 years"
+
+	# Add far-future expiration to scripts and styles
+	ExpiresByType text/css "access plus 10 years"
+	ExpiresByType text/javascript "access plus 10 years"
+	ExpiresByType application/javascript "access plus 10 years"
+</IfModule>
