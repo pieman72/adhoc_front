@@ -142,10 +142,11 @@ Event.observe(window, 'load', function(){
 
 			// If a node was clicked, figure out what to do with it
 			if(clickedNode){
-// TODO: nothing
+				// nothing?
+
 			// Otherwise, we're trying to move the canvas
 			}else{
-// TODO: set the canvas as moving
+				adhoc.canvas.addClassName('moving');
 			}
 		};
 		var upFunc = function(e){
@@ -159,10 +160,22 @@ Event.observe(window, 'load', function(){
 
 			// If a node was clicked, figure out what to do with it
 			if(clickedNode){
-// TODO: if there is a tool active, add a new child to the clicked node
+				var activeTools = $$('.toolboxItem.active');
+				if(activeTools.length){
+					var type = parseInt(activeTools[0].getAttribute('data-type'));
+					var which = parseInt(activeTools[0].getAttribute('data-which'));
+					var newNode = adhoc.createNode(type, which);
+// TODO
+newNode.name='foo';
+					newNode.parent = clickedNode;
+					clickedNode.children.push(newNode);
+					adhoc.refreshRender();
+				}else{
+				}
+
 			// Otherwise, we're trying to move the canvas
 			}else{
-// TODO: set the canvas as not moving
+				adhoc.canvas.removeClassName('moving');
 			}
 		};
 		var moveFunc = function(e){
@@ -176,9 +189,8 @@ Event.observe(window, 'load', function(){
 		adhoc.canvas.observe('touchmove', moveFunc);
 
 		// Open an existing project or start a new one
+// TODO
 var test = adhoc.createNode(adhoc.nodeTypes.ACTION, adhoc.nodeWhich.ACTION_DEFIN);
-test.x = 200;
-test.y = 200;
 test.name = 'Print 99 Bottles';
 adhoc.rootNode = test;
 
@@ -198,6 +210,7 @@ adhoc.rootNode = test;
 	adhoc.refreshRender = function(){
 		if(!adhoc.rootNode) return;
 		var ctx = adhoc.canvas.getContext('2d');
+		ctx.clearRect(0, 0, adhoc.canvas.width, adhoc.canvas.height);
 		ctx.lineWidth = 6;
 		ctx.font = "20px Arial";
 		adhoc.subTreeHeightNode(adhoc.rootNode);
@@ -214,7 +227,6 @@ adhoc.rootNode = test;
 	adhoc.createNode = function(t, w){
 		return {
 			id: adhoc.nextId()
-			,parentId: null
 			,parent: null
 			,scope: null
 			,nodeType: t
@@ -246,9 +258,9 @@ adhoc.rootNode = test;
 
 	// Recursively determine each node's display position
 	adhoc.positionNode = function(n, d){
+		var passed = d ? n.y : 0;
 		n.x = d*200 + 100;
-		n.y = n.subTreeHeight/2 + (d ? n.y : 0);
-		var passed = 0;
+		n.y = n.subTreeHeight/2 + passed;
 		for(var i=0; i<n.children.length; ++i){
 			n.children[i].y = passed;
 			passed += n.children[i].subTreeHeight;
@@ -259,11 +271,15 @@ adhoc.rootNode = test;
 	// Recursively draw each node
 	adhoc.renderNode = function(n){
 		var ctx = adhoc.canvas.getContext('2d');
+		var nodeColor;
 
 		switch(n.nodeType){
 		case adhoc.nodeTypes.TYPE_NULL:
 			break;
 		case adhoc.nodeTypes.ACTION:
+			// Determine the right color
+			nodeColor = (n.which == adhoc.nodeWhich.ACTION_DEFIN ? '#87FF00' : '#5FD7FF');
+
 			// Get label text size
 			var title = n.name;
 			if(title.length > 20) title = title.substr(0, 18)+'...';
@@ -280,7 +296,7 @@ adhoc.rootNode = test;
 			); 
 
 			// Draw box border
-			ctx.strokeStyle = '#87FF00'
+			ctx.strokeStyle = nodeColor;
 			ctx.strokeRect(
 				(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
 				,(n.y-(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
@@ -304,9 +320,23 @@ adhoc.rootNode = test;
 
 		// Proceed recursively
 		for(var i=0; i<n.children.length; ++i){
-			// TODO: draw a connecting arrow
+			var c = n.children[i];
+
+			// Draw a connecting arrow
+			ctx.strokeStyle = nodeColor;
+			ctx.beginPath();
+			ctx.moveTo(
+				(n.x+(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+				,n.y * adhoc.display_scale - adhoc.display_y
+			);
+			ctx.lineTo(
+				(c.x-(c.width/2.0)) * adhoc.display_scale - adhoc.display_x
+				,c.y * adhoc.display_scale - adhoc.display_y
+			);
+			ctx.stroke();
+
 			// Render one child
-			adhoc.renderNode(n.children[i]);
+			adhoc.renderNode(c);
 		}
 	}
 
