@@ -90,6 +90,102 @@ Event.observe(window, 'load', function(){
 		,PARENT:		8
 		,CHILD:			9
 	};
+	// AST node type names
+	adhoc.nodeTypeNames = [
+		'Null'
+		,'Action'
+		,'Group'
+		,'Control'
+		,'Operator'
+		,'Assignment'
+		,'Variable'
+		,'Literal'
+	];
+	// AST node sub-type names
+	adhoc.nodeWhichNames = [
+		[
+			'Null'
+		]
+		,[
+			'Define Action'
+			,'Call Action'
+		]
+		,[
+			'Serial Group'
+		]
+		,[
+			'If'
+			,'Loop'
+			,'Switch'
+			,'Case'
+			,'Fork'
+			,'Continue'
+			,'Break'
+			,'Return'
+		]
+		,[
+			'+ Plus'
+			,'- Minus'
+			,'* Times'
+			,'/ Divided By'
+			,'% Modulo'
+			,'^ Raised To'
+			,'|| Or'
+			,'&& And'
+			,'! Not'
+			,'== Equivalent To'
+			,'> Greater Than'
+			,'< Less Than'
+			,'>= Greater Or Equal To'
+			,'<= Less Or Equal To'
+			,'!= Not Equal To'
+			,'[] Array Index'
+			,'?: Ternary If'
+			,'++ Increment'
+			,'++ Increment'
+			,'-- Decrement'
+			,'-- Decrement'
+			,'!! Invert'
+			,'!! Invert'
+		]
+		,[
+			'= Assign'
+			,'+= Add'
+			,'-= Subtract'
+			,'*= Multiply By'
+			,'/= Divide By'
+			,'%= Modulo By'
+			,'^= Raise To'
+			,'||= Disjoin With'
+			,'&&= Conjoin With'
+		]
+		,[
+			'x Variable'
+			,'x Variable'
+		]
+		,[
+			'Boolean'
+			,'Integer'
+			,'Float'
+			,'String'
+			,'Array'
+			,'Hash'
+			,'Struct'
+		]
+	];
+	// AST node child connection type names
+	adhoc.nodeChildTypeNames = [
+		'Null'
+		,'Statement'
+		,'Expression'
+		,'Initialization'
+		,'Condition'
+		,'Case'
+		,'Parameter'
+		,'Argument'
+		,'Parent'
+		,'Child'
+	];
 
 	// Sisplay errors to the user
 	adhoc.error = function(s){
@@ -112,23 +208,79 @@ Event.observe(window, 'load', function(){
 		ctx.font = "20px Arial";
 		ctx.fillStyle = adhoc.textColor;
 
-		// Ready the toolbox items
-		$$('.toolboxCategoryHeading').each(function(heading){
-			heading.observe('click', function(){
-				$$('.toolboxCategory').each(function(category){
-					category.addClassName('collapsed');
+		// Ready the toolbox categories
+		var cat, head, body, item, icon, text, clear, passed=0, toolbox=$('toolbox');
+		for(var i=0,leni=adhoc.nodeTypeNames.length; i<leni; ++i){
+			// Print section headings (except null and assignment)
+			if(i!=0 && i!=5){
+				// Category
+				cat = $(document.createElement('div'));
+				cat.addClassName('toolboxCategory');
+				if(i!=1) cat.addClassName('collapsed');
+
+				// Heading
+				head = $(document.createElement('div'));
+				head.addClassName('toolboxCategoryHeading').update(adhoc.nodeTypeNames[i]);
+				head.observe('click', function(){
+					$$('.toolboxCategory').each(function(category){
+						category.addClassName('collapsed');
+					});
+					this.up().removeClassName('collapsed');
 				});
-				this.up().removeClassName('collapsed');
-			});
-		});
-		$$('.toolboxItem').each(function(item){
-			item.observe('click', function(){
-				$$('.toolboxItem.active').each(function(active){
-					active.removeClassName('active');
+				cat.appendChild(head);
+
+				// Body
+				body = $(document.createElement('div'));
+				body.addClassName('toolboxCategoryBody');
+				cat.appendChild(body);
+
+				// Spacers
+				clear = $(document.createElement('div'));
+				clear.addClassName('clear').setStyle({height:'40px'});
+				body.appendChild(clear);
+				clear = $(document.createElement('div'));
+				clear.addClassName('clear');
+				cat.appendChild(clear);
+
+				// Add
+				toolbox.appendChild(cat);
+			}
+
+			// Print toolbox items
+			for(var j=0,lenj=adhoc.nodeWhichNames[i].length; j<lenj; ++j){
+				if(j+passed == 0) continue;
+				// Item
+				item = $(document.createElement('div'));
+				item.addClassName('toolboxItem');
+				item.setAttribute('data-type', i);
+				item.setAttribute('data-which', j+passed);
+				item.observe('click', function(){
+					$$('.toolboxItem.active').each(function(active){
+						active.removeClassName('active');
+					});
+					this.addClassName('active');
 				});
-				this.addClassName('active');
-			});
-		});
+
+				// Icon
+				icon = $(document.createElement('div'));
+				icon.addClassName('toolboxItemIcon').addClassName('toolIcon_'+i+'_'+(j+passed));
+				item.appendChild(icon);
+
+				// Text
+				text = $(document.createElement('div'));
+				text.addClassName('toolboxItemText').update(adhoc.nodeWhichNames[i][j]);
+				item.appendChild(text);
+
+				// Add
+				body.appendChild(item);
+
+				// Spacer
+				clear = $(document.createElement('div'));
+				clear.addClassName('clear');
+				body.appendChild(clear);
+			}
+			passed += lenj;
+		}
 
 		// Ready the canvas
 		var downFunc = function(e){
@@ -147,6 +299,10 @@ Event.observe(window, 'load', function(){
 			// Otherwise, we're trying to move the canvas
 			}else{
 				adhoc.canvas.addClassName('moving');
+				adhoc.canvas.setAttribute('data-startx', adhoc.display_x);
+				adhoc.canvas.setAttribute('data-starty', adhoc.display_y);
+				adhoc.canvas.setAttribute('data-startpx', Event.pointerX(e));
+				adhoc.canvas.setAttribute('data-startpy', Event.pointerY(e));
 			}
 		};
 		var upFunc = function(e){
@@ -172,14 +328,32 @@ newNode.name='foo';
 					adhoc.refreshRender();
 				}else{
 				}
-
-			// Otherwise, we're trying to move the canvas
-			}else{
-				adhoc.canvas.removeClassName('moving');
 			}
+
+			// Regardless, we're done moving the canvas
+			adhoc.canvas.removeClassName('moving');
 		};
 		var moveFunc = function(e){
-// TODO: if the canvas is not set to moving, return, otherwise move the canvas
+			// If the canvas isn't moving, just return
+			if(!adhoc.canvas.hasClassName('moving')) return;
+
+			// Get the scaled location of the cursor
+			var offset = adhoc.canvas.positionedOffset();
+			var click = {
+				x: (Event.pointerX(e)-offset.left) / adhoc.display_scale + adhoc.display_x
+				,y: (Event.pointerY(e)-offset.top) / adhoc.display_scale + adhoc.display_y
+			};
+
+			// Get the canvas' move coordinates
+			var startx = parseFloat(adhoc.canvas.getAttribute('data-startx'));
+			var starty = parseFloat(adhoc.canvas.getAttribute('data-starty'));
+			var startpx = parseFloat(adhoc.canvas.getAttribute('data-startpx'));
+			var startpy = parseFloat(adhoc.canvas.getAttribute('data-startpy'));
+
+			// Set the new coordinates and redraw
+			adhoc.display_x = startx - ((Event.pointerX(e) - startpx) / adhoc.display_scale);
+			adhoc.display_y = starty - ((Event.pointerY(e) - startpy) / adhoc.display_scale);
+			adhoc.refreshRender();
 		};
 		adhoc.canvas.observe('mousedown', downFunc);
 		adhoc.canvas.observe('touchstart', downFunc);

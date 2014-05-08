@@ -18,11 +18,11 @@ body.dark {
 	width:100%;
 	}
 
-#adhoc_lightbox .nxj_lightbox {
+#theLightbox .nxj_lightbox {
 	padding:40px 0;
 	text-align:center;
 	}
-#adhoc_lightbox .nxj_lightboxContent {
+#theLightbox .nxj_lightboxContent {
 	text-align:center;
 	}
 
@@ -89,36 +89,42 @@ body.dark {
 	}
 .toolboxCategory {
 	height:62%;
+	max-height:62%;
 	min-height:24px;
-	overflow-y:auto;
-	transition:height 0.4s;
+	overflow:hidden;
+	position:relative;
+	transition:height 0.4s, max-height 0.4s;
 	}
 .toolboxCategory.collapsed {
 	height:6%;
-	overflow-y:hidden;
+	max-height:40px;
 	}
 .toolboxCategoryHeading {
-	background:linear-gradient(
-		to bottom
-		,rgba(244,244,244,0.1) 0%
-		,rgba(137,137,137,0.1) 50%
-		,rgba( 22, 22, 22,0.1) 100%
-		);
+	background:#EEEEEE;
+	box-shadow:inset 0px 0px 4px 3px #BBBBBB;
 	cursor:pointer;
 	font-size:18px;
-	height:8%;
 	height:40px;
-	max-height:100%;
+	left:0;
+	line-height:40px;
 	min-height:24px;
-	padding-left:10px;
+	position:absolute;
+	top:0;
+	width:100%;
+	z-index:1;
+	}
+.toolboxCategoryHeading:before {
+	content:"\00A0\00A0";
 	}
 .dark .toolboxCategoryHeading {
-	background:linear-gradient(
-		to bottom
-		,rgba(244,244,244,0.4) 0%
-		,rgba(137,137,137,0.7) 50%
-		,rgba( 22, 22, 22,1.0) 100%
-		);
+	background:#333333;
+	}
+.toolboxCategoryBody {
+	height:100%;
+	overflow-y:auto;
+	}
+.toolboxCategory.collapsed .toolboxCategoryBody {
+	overflow-y:hidden;
 	}
 .toolboxItem {
 	cursor:pointer;
@@ -141,9 +147,58 @@ body.dark {
 	margin:5px 10px;
 	width:40px;
 	}
-.iconActionDef		{ background-position:  0px 0; }
-.iconActionCall		{ background-position:-40px 0; }
-.iconGroupSerial	{ background-position:-80px 0; }
+.toolIcon_1_1	{ background-position:  0px 0; }
+.toolIcon_1_2	{ background-position:-40px 0; }
+.toolIcon_2_3	{ background-position:-80px 0; }
+.toolIcon_3_4	{ background-position:-120px 0; }
+.toolIcon_3_5	{ background-position:-160px 0; }
+.toolIcon_3_6	{ background-position:-200px 0; }
+.toolIcon_3_7	{ background-position:-240px 0; }
+.toolIcon_3_8	{ background-position:-280px 0; }
+.toolIcon_3_9	{ background-position:-320px 0; }
+.toolIcon_3_10	{ background-position:-360px 0; }
+.toolIcon_3_11	{ background-position:-400px 0; }
+.toolIcon_4_12	{ background-position:-440px 0; }
+.toolIcon_4_13	{ background-position:-480px 0; }
+.toolIcon_4_14	{ background-position:-520px 0; }
+.toolIcon_4_15	{ background-position:-560px 0; }
+.toolIcon_4_16	{ background-position:-600px 0; }
+.toolIcon_4_17	{ background-position:-640px 0; }
+.toolIcon_4_18	{ background-position:-680px 0; }
+.toolIcon_4_19	{ background-position:-720px 0; }
+.toolIcon_4_20	{ background-position:-760px 0; }
+.toolIcon_4_21	{ background-position:-800px 0; }
+.toolIcon_4_22	{ background-position:-840px 0; }
+.toolIcon_4_23	{ background-position:-880px 0; }
+.toolIcon_4_24	{ background-position:-920px 0; }
+.toolIcon_4_25	{ background-position:-960px 0; }
+.toolIcon_4_26	{ background-position:-1000px 0; }
+.toolIcon_4_27	{ background-position:-1040px 0; }
+.toolIcon_4_28	{ background-position:-1080px 0; }
+.toolIcon_4_29	{ background-position:-1120px 0; }
+.toolIcon_4_30	{ background-position:-1160px 0; }
+.toolIcon_4_31	{ background-position:-1200px 0; }
+.toolIcon_4_32	{ background-position:-1240px 0; }
+.toolIcon_4_33	{ background-position:-1280px 0; }
+.toolIcon_4_34	{ background-position:-1320px 0; }
+.toolIcon_5_35	{ background-position:-1360px 0; }
+.toolIcon_5_36	{ background-position:-1400px 0; }
+.toolIcon_5_37	{ background-position:-1440px 0; }
+.toolIcon_5_38	{ background-position:-1480px 0; }
+.toolIcon_5_39	{ background-position:-1520px 0; }
+.toolIcon_5_40	{ background-position:-1560px 0; }
+.toolIcon_5_41	{ background-position:-1600px 0; }
+.toolIcon_5_42	{ background-position:-1640px 0; }
+.toolIcon_5_43	{ background-position:-1680px 0; }
+.toolIcon_6_44	{ background-position:-1720px 0; }
+.toolIcon_6_45	{ background-position:-1760px 0; }
+.toolIcon_7_46	{ background-position:-1800px 0; }
+.toolIcon_7_47	{ background-position:-1840px 0; }
+.toolIcon_7_48	{ background-position:-1880px 0; }
+.toolIcon_7_49	{ background-position:-1920px 0; }
+.toolIcon_7_50	{ background-position:-1960px 0; }
+.toolIcon_7_51	{ background-position:-2000px 0; }
+.toolIcon_7_52	{ background-position:-2040px 0; }
 .toolboxItemText {
 	float:left;
 	line-height:50px;

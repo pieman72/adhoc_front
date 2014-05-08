@@ -11,7 +11,7 @@
 <body>
 	<div id="page">
 		<?php echo Nxj_UI::lightbox(array(
-			'id'            => 'adhoc_lightbox'
+			'id'            => 'thenLightbox'
 			,'content'      => 'This is a test'
 		));?>
 
@@ -26,50 +26,6 @@
 		<div id="workspace">
 			<div id="toolbox" class="floatLeft">
 				<div class="toolboxTitle">ToolBox</div>
-
-				<div class="toolboxCategory">
-					<div class="toolboxCategoryHeading">Action</div>
-					<div class="clear"></div>
-
-					<div class="toolboxItem" data-type="1" data-which="1">
-						<div class="toolboxItemIcon iconActionDef"></div>
-						<div class="toolboxItemText">Define Action</div>
-					</div>
-					<div class="clear"></div>
-
-					<div class="toolboxItem" data-type="1" data-which="2">
-						<div class="toolboxItemIcon iconActionCall"></div>
-						<div class="toolboxItemText">Call Action</div>
-					</div>
-					<div class="clear"></div>
-				</div>
-
-				<div class="toolboxCategory collapsed">
-					<div class="toolboxCategoryHeading">Group</div>
-					<div class="clear"></div>
-
-					<div class="toolboxItem" data-type="2" data-which="3">
-						<div class="toolboxItemIcon iconGroupSerial"></div>
-						<div class="toolboxItemText">Serial Group</div>
-					</div>
-					<div class="clear"></div>
-				</div>
-
-				<div class="toolboxCategory collapsed">
-					<div class="toolboxCategoryHeading">Control</div>
-				</div>
-
-				<div class="toolboxCategory collapsed">
-					<div class="toolboxCategoryHeading">Operator</div>
-				</div>
-
-				<div class="toolboxCategory collapsed">
-					<div class="toolboxCategoryHeading">Variable</div>
-				</div>
-
-				<div class="toolboxCategory collapsed">
-					<div class="toolboxCategoryHeading">Literal</div>
-				</div>
 			</div>
 
 			<canvas id="canvas" class="floatLeft"></canvas>
