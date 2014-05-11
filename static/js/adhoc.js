@@ -104,73 +104,73 @@ Event.observe(window, 'load', function(){
 	// AST node sub-type names
 	adhoc.nodeWhichNames = [
 		[
-			'Null'
+			['Null', '']
 		]
 		,[
-			'Define Action'
-			,'Call Action'
+			['Define Action', '']
+			,['Call Action', '']
 		]
 		,[
-			'Serial Group'
+			['Serial Group', '']
 		]
 		,[
-			'If'
-			,'Loop'
-			,'Switch'
-			,'Case'
-			,'Fork'
-			,'Continue'
-			,'Break'
-			,'Return'
+			['If', '']
+			,['Loop', '']
+			,['Switch', '']
+			,['Case', '']
+			,['Fork', '']
+			,['Continue', '']
+			,['Break', '']
+			,['Return', '']
 		]
 		,[
-			'+ Plus'
-			,'- Minus'
-			,'* Times'
-			,'/ Divided By'
-			,'% Modulo'
-			,'^ Raised To'
-			,'|| Or'
-			,'&& And'
-			,'! Not'
-			,'== Equivalent To'
-			,'> Greater Than'
-			,'< Less Than'
-			,'>= Greater Or Equal To'
-			,'<= Less Or Equal To'
-			,'!= Not Equal To'
-			,'[] Array Index'
-			,'?: Ternary If'
-			,'++ Increment'
-			,'++ Increment'
-			,'-- Decrement'
-			,'-- Decrement'
-			,'!! Invert'
-			,'!! Invert'
+			['Plus', '+']
+			,['Minus', '-']
+			,['Times', '*']
+			,['Divided By', '&#247;']
+			,['Modulo', '%']
+			,['Raised To', '^']
+			,['Or', '||']
+			,['And', '&&']
+			,['Not', '!']
+			,['Equivalent To', '==']
+			,['Greater Than', '>']
+			,['Less Than', '<']
+			,['Greater Or Equal To', '>=']
+			,['Less Or Equal To', '<=']
+			,['Not Equal To', '!=']
+			,['Array Index', '[]']
+			,['Ternary If', '? :']
+			,['Increment', '++']
+			,['Increment', '++']
+			,['Decrement', '--']
+			,['Decrement', '--']
+			,['Invert', '!!']
+			,['Invert', '!!']
 		]
 		,[
-			'= Assign'
-			,'+= Add'
-			,'-= Subtract'
-			,'*= Multiply By'
-			,'/= Divide By'
-			,'%= Modulo By'
-			,'^= Raise To'
-			,'||= Disjoin With'
-			,'&&= Conjoin With'
+			['Assign', '=']
+			,['Add', '+=']
+			,['Subtract', '-=']
+			,['Multiply By', '*=']
+			,['Divide By', '&#247;=']
+			,['Modulo By', '%=']
+			,['Raise To', '^=']
+			,['Disjoin With', '||=']
+			,['Conjoin With', '&&=']
 		]
 		,[
-			'x Variable'
-			,'x Variable'
+			['Variable', '']
+			,['Variable', '']
 		]
 		,[
-			'Boolean'
-			,'Integer'
-			,'Float'
-			,'String'
-			,'Array'
-			,'Hash'
-			,'Struct'
+			['Boolean', '']
+			,['Integer', '']
+			,['Float', '']
+			,['String', '']
+			,['Array', '']
+			,['Hash', '']
+			,['Struct', '']
 		]
 	];
 	// AST node child connection type names
@@ -222,10 +222,11 @@ Event.observe(window, 'load', function(){
 				head = $(document.createElement('div'));
 				head.addClassName('toolboxCategoryHeading').update(adhoc.nodeTypeNames[i]);
 				head.observe('click', function(){
+					var alreadyOpen = !this.up().hasClassName('collapsed');
 					$$('.toolboxCategory').each(function(category){
 						category.addClassName('collapsed');
 					});
-					this.up().removeClassName('collapsed');
+					if(!alreadyOpen) this.up().removeClassName('collapsed');
 				});
 				cat.appendChild(head);
 
@@ -249,16 +250,22 @@ Event.observe(window, 'load', function(){
 			// Print toolbox items
 			for(var j=0,lenj=adhoc.nodeWhichNames[i].length; j<lenj; ++j){
 				if(j+passed == 0) continue;
+				if(j+passed == 30) continue;
+				if(j+passed == 32) continue;
+				if(j+passed == 34) continue;
+				if(j+passed == 45) continue;
+				
 				// Item
 				item = $(document.createElement('div'));
 				item.addClassName('toolboxItem');
 				item.setAttribute('data-type', i);
 				item.setAttribute('data-which', j+passed);
 				item.observe('click', function(){
+					var wasActive = this.hasClassName('active');
 					$$('.toolboxItem.active').each(function(active){
 						active.removeClassName('active');
 					});
-					this.addClassName('active');
+					if(!wasActive) this.addClassName('active');
 				});
 
 				// Icon
@@ -268,7 +275,7 @@ Event.observe(window, 'load', function(){
 
 				// Text
 				text = $(document.createElement('div'));
-				text.addClassName('toolboxItemText').update(adhoc.nodeWhichNames[i][j]);
+				text.addClassName('toolboxItemText').update(adhoc.nodeWhichNames[i][j][0]);
 				item.appendChild(text);
 
 				// Add
@@ -317,16 +324,44 @@ Event.observe(window, 'load', function(){
 			// If a node was clicked, figure out what to do with it
 			if(clickedNode){
 				var activeTools = $$('.toolboxItem.active');
+				// If a tool is active
 				if(activeTools.length){
+					// Create a new node of the tool's type
 					var type = parseInt(activeTools[0].getAttribute('data-type'));
 					var which = parseInt(activeTools[0].getAttribute('data-which'));
 					var newNode = adhoc.createNode(type, which);
-// TODO
-newNode.name='foo';
+
+					// Add the new node to its parent
 					newNode.parent = clickedNode;
 					clickedNode.children.push(newNode);
-					adhoc.refreshRender();
-				}else{
+
+					// Ask for node info based on which
+					switch(which){
+						case adhoc.nodeWhich.ACTION_DEFIN:
+						case adhoc.nodeWhich.ACTION_CALL:
+// TODO: Prompt for action package/name
+newNode.name='foo';
+adhoc.refreshRender();
+							break;
+						case adhoc.nodeWhich.VARIABLE_ASIGN:
+						case adhoc.nodeWhich.VARIABLE_EVAL:
+// TODO: Prompt for variable name
+newNode.name='bar';
+adhoc.refreshRender();
+							break;
+						case adhoc.nodeWhich.LITERAL_BOOL:
+						case adhoc.nodeWhich.LITERAL_INT:
+						case adhoc.nodeWhich.LITERAL_FLOAT:
+						case adhoc.nodeWhich.LITERAL_STRNG:
+						case adhoc.nodeWhich.LITERAL_ARRAY:
+						case adhoc.nodeWhich.LITERAL_HASH:
+						case adhoc.nodeWhich.LITERAL_STRCT:
+// TODO: Prompt for literal value
+adhoc.refreshRender();
+							break;
+						default:
+							adhoc.refreshRender();
+					}
 				}
 			}
 
@@ -363,33 +398,12 @@ newNode.name='foo';
 		adhoc.canvas.observe('touchmove', moveFunc);
 
 		// Open an existing project or start a new one
-// TODO
-var test = adhoc.createNode(adhoc.nodeTypes.ACTION, adhoc.nodeWhich.ACTION_DEFIN);
-test.name = 'Print 99 Bottles';
-adhoc.rootNode = test;
+// TODO: Load an old project or initialize a new one with it's root action
+adhoc.rootNode = adhoc.createNode(adhoc.nodeTypes.ACTION, adhoc.nodeWhich.ACTION_DEFIN);
+adhoc.rootNode.name = 'Print 99 Bottles';
 
 		// Render the initial tree
 		adhoc.refreshRender();
-	}
-
-	// When the screen size changes, we have to resize the canvas too
-	adhoc.sizeCanvas = function(){
-		var workspace = $('workspace');
-		adhoc.canvas.setAttribute('width', workspace.getWidth()*0.8);
-		adhoc.canvas.setAttribute('height', workspace.getHeight());
-		adhoc.refreshRender();
-	}
-
-	// Re-compute all the node locations and redraw those that are on-screen
-	adhoc.refreshRender = function(){
-		if(!adhoc.rootNode) return;
-		var ctx = adhoc.canvas.getContext('2d');
-		ctx.clearRect(0, 0, adhoc.canvas.width, adhoc.canvas.height);
-		ctx.lineWidth = 6;
-		ctx.font = "20px Arial";
-		adhoc.subTreeHeightNode(adhoc.rootNode);
-		adhoc.positionNode(adhoc.rootNode, 0);
-		adhoc.renderNode(adhoc.rootNode);
 	}
 
 	// Generate the next available node ID
@@ -420,6 +434,26 @@ adhoc.rootNode = test;
 		};
 	}
 
+	// When the screen size changes, we have to resize the canvas too
+	adhoc.sizeCanvas = function(){
+		var workspace = $('workspace');
+		adhoc.canvas.setAttribute('width', workspace.getWidth()*0.8);
+		adhoc.canvas.setAttribute('height', workspace.getHeight());
+		adhoc.refreshRender();
+	}
+
+	// Re-compute all the node locations and redraw those that are on-screen
+	adhoc.refreshRender = function(){
+		if(!adhoc.rootNode) return;
+		var ctx = adhoc.canvas.getContext('2d');
+		ctx.clearRect(0, 0, adhoc.canvas.width, adhoc.canvas.height);
+		ctx.lineWidth = 6;
+		ctx.font = "20px Arial";
+		adhoc.subTreeHeightNode(adhoc.rootNode);
+		adhoc.positionNode(adhoc.rootNode, 0);
+		adhoc.renderNode(adhoc.rootNode);
+	}
+
 	// Recursively determine the display heights of each subtree
 	adhoc.subTreeHeightNode = function(n){
 		if(!n.children.length) return (n.subTreeHeight = 100);
@@ -446,15 +480,18 @@ adhoc.rootNode = test;
 	adhoc.renderNode = function(n){
 		var ctx = adhoc.canvas.getContext('2d');
 		var nodeColor;
+		ctx.font = "20px Arial";
+		ctx.fillStyle = adhoc.textColor;
 
 		switch(n.nodeType){
 		case adhoc.nodeTypes.TYPE_NULL:
 			break;
+
 		case adhoc.nodeTypes.ACTION:
 			// Determine the right color
 			nodeColor = (n.which == adhoc.nodeWhich.ACTION_DEFIN ? '#87FF00' : '#5FD7FF');
 
-			// Get label text size
+			// Get label text and its size
 			var title = n.name;
 			if(title.length > 20) title = title.substr(0, 18)+'...';
 			var size = ctx.measureText(title);
@@ -478,23 +515,118 @@ adhoc.rootNode = test;
 				,n.height * adhoc.display_scale
 			);
 			break;
+
 		case adhoc.nodeTypes.GROUP:
+// TODO: Render a group
 			break;
+
 		case adhoc.nodeTypes.CONTROL:
+			// Determine the right color
+			nodeColor = '#D7005F';
+
+			// Get label text and its size
+			var title = adhoc.nodeWhichNames[adhoc.nodeTypes.CONTROL][n.which - adhoc.nodeWhich.CONTROL_IF][0];
+			var size, textSize = 20;
+			n.width = 87;
+			n.height = 100;
+			do{
+				size = ctx.measureText(title);
+				if(size.width+15 < n.width) break;
+				ctx.font = "" + (--textSize) + "px Arial";
+			}while(true);
+			size.height = 20;
+
+			// Print label text
+			ctx.fillText(
+				title
+				,(n.x-(size.width/2.0)-5) * adhoc.display_scale - adhoc.display_x
+				,(n.y+(size.height/2.0)-3) * adhoc.display_scale - adhoc.display_y
+			);
+
+			// Draw triangle border
+			ctx.strokeStyle = nodeColor;
+			ctx.beginPath();
+			ctx.moveTo(
+				(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+				,(n.y-(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
+			);
+			ctx.lineTo(
+				(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+				,(n.y+(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
+			);
+			ctx.lineTo(
+				(n.x+(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+				,n.y * adhoc.display_scale - adhoc.display_y
+			);
+			ctx.lineTo(
+				(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+				,(n.y-(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
+			);
+			ctx.stroke();
 			break;
+
 		case adhoc.nodeTypes.OPERATOR:
-			break;
 		case adhoc.nodeTypes.ASSIGNMENT:
+			// Determine the right color
+			nodeColor = '#AF5FFF';
+			ctx.font = "32px Arial";
+
+			// Get label text and its size
+			var title = adhoc.nodeWhichNames[n.type][n.which - adhoc.nodeWhich.OPERATOR_PLUS][1];
+			var size = ctx.measureText(title);
+			size.height = 20;
+			n.width = 80;
+			n.height = 80;
+
+			// Print label text
+			ctx.fillText(
+				title
+				,(n.x-(size.width/2.0)) * adhoc.display_scale - adhoc.display_x
+				,(n.y+(size.height/2.0)) * adhoc.display_scale - adhoc.display_y
+			); 
+
+			// Draw box border
+			ctx.strokeStyle = nodeColor;
+			ctx.beginPath();
+			ctx.arc(
+				n.x * adhoc.display_scale - adhoc.display_x
+				,n.y * adhoc.display_scale - adhoc.display_y
+				,(n.width/2.0) * adhoc.display_scale
+				,0
+				,Math.PI*2
+			);
+			ctx.stroke();
 			break;
+
 		case adhoc.nodeTypes.VARIABLE:
+			// Get label text and its size
+			var title = n.name;
+			if(title.length > 20) title = title.substr(0, 18)+'...';
+			var size = ctx.measureText(title);
+			size.height = 20;
+			n.width = size.width + 30;
+			n.height = size.height + 50;
+
+			// Print label text
+			ctx.fillText(
+				title
+				,(n.x-(size.width/2.0)) * adhoc.display_scale - adhoc.display_x
+				,(n.y+(size.height/2.0)-3) * adhoc.display_scale - adhoc.display_y
+			); 
 			break;
+
 		case adhoc.nodeTypes.LITERAL:
+			ctx.fillStyle = '#FF8700';
+// TODO: Render a literal
 			break;
 		}
 
 		// Proceed recursively
 		for(var i=0; i<n.children.length; ++i){
 			var c = n.children[i];
+
+			// Render one child
+			adhoc.renderNode(c);
 
 			// Draw a connecting arrow
 			ctx.strokeStyle = nodeColor;
@@ -508,9 +640,6 @@ adhoc.rootNode = test;
 				,c.y * adhoc.display_scale - adhoc.display_y
 			);
 			ctx.stroke();
-
-			// Render one child
-			adhoc.renderNode(c);
 		}
 	}
 
@@ -533,5 +662,6 @@ adhoc.rootNode = test;
 		return null;
 	}
 
+	// Initialize the application
 	adhoc.init();
 });
