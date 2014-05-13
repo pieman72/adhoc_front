@@ -89,6 +89,7 @@ Event.observe(window, 'load', function(){
 		,ARGUMENT:		7
 		,PARENT:		8
 		,CHILD:			9
+		,MEMBER:		10
 	};
 	// AST node type names
 	adhoc.nodeTypeNames = [
@@ -141,15 +142,15 @@ Event.observe(window, 'load', function(){
 			,['Not Equal To', '!=']
 			,['Array Index', '[]']
 			,['Ternary If', '? :']
-			,['Increment', '++']
-			,['Increment', '++']
-			,['Decrement', '--']
-			,['Decrement', '--']
-			,['Invert', '!!']
-			,['Invert', '!!']
 		]
 		,[
-			['Assign', '=']
+			['Increment', '++']
+			,['Increment', '++']
+			,['Decrement', '--']
+			,['Decrement', '--']
+			,['Invert', '!!']
+			,['Invert', '!!']
+			,['Assign', '=']
 			,['Add', '+=']
 			,['Subtract', '-=']
 			,['Multiply By', '*=']
@@ -185,6 +186,7 @@ Event.observe(window, 'load', function(){
 		,'Argument'
 		,'Parent'
 		,'Child'
+		,'Member'
 	];
 
 	// Sisplay errors to the user
@@ -294,8 +296,8 @@ Event.observe(window, 'load', function(){
 			// Get the scaled location of the click
 			var offset = adhoc.canvas.positionedOffset();
 			var click = {
-				x: (Event.pointerX(e)-offset.left) / adhoc.display_scale + adhoc.display_x
-				,y: (Event.pointerY(e)-offset.top) / adhoc.display_scale + adhoc.display_y
+				x: (Event.pointerX(e) - offset.left + adhoc.display_x) / adhoc.display_scale
+				,y: (Event.pointerY(e) - offset.top + adhoc.display_y) / adhoc.display_scale
 			};
 			var clickedNode = adhoc.getClickedNode(adhoc.rootNode, click);
 
@@ -316,8 +318,8 @@ Event.observe(window, 'load', function(){
 			// Get the scaled location of the click
 			var offset = adhoc.canvas.positionedOffset();
 			var click = {
-				x: (Event.pointerX(e)-offset.left) / adhoc.display_scale + adhoc.display_x
-				,y: (Event.pointerY(e)-offset.top) / adhoc.display_scale + adhoc.display_y
+				x: (Event.pointerX(e) - offset.left + adhoc.display_x) / adhoc.display_scale
+				,y: (Event.pointerY(e) - offset.top + adhoc.display_y) / adhoc.display_scale
 			};
 			var clickedNode = adhoc.getClickedNode(adhoc.rootNode, click);
 
@@ -337,30 +339,33 @@ Event.observe(window, 'load', function(){
 
 					// Ask for node info based on which
 					switch(which){
-						case adhoc.nodeWhich.ACTION_DEFIN:
-						case adhoc.nodeWhich.ACTION_CALL:
+					case adhoc.nodeWhich.ACTION_DEFIN:
+					case adhoc.nodeWhich.ACTION_CALL:
 // TODO: Prompt for action package/name
 newNode.name='foo';
 adhoc.refreshRender();
-							break;
-						case adhoc.nodeWhich.VARIABLE_ASIGN:
-						case adhoc.nodeWhich.VARIABLE_EVAL:
+						break;
+
+					case adhoc.nodeWhich.VARIABLE_ASIGN:
+					case adhoc.nodeWhich.VARIABLE_EVAL:
 // TODO: Prompt for variable name
 newNode.name='bar';
 adhoc.refreshRender();
-							break;
-						case adhoc.nodeWhich.LITERAL_BOOL:
-						case adhoc.nodeWhich.LITERAL_INT:
-						case adhoc.nodeWhich.LITERAL_FLOAT:
-						case adhoc.nodeWhich.LITERAL_STRNG:
-						case adhoc.nodeWhich.LITERAL_ARRAY:
-						case adhoc.nodeWhich.LITERAL_HASH:
-						case adhoc.nodeWhich.LITERAL_STRCT:
+						break;
+
+					case adhoc.nodeWhich.LITERAL_BOOL: newNode.value = newNode.value || 1;
+					case adhoc.nodeWhich.LITERAL_INT: newNode.value = newNode.value || 72;
+					case adhoc.nodeWhich.LITERAL_FLOAT: newNode.value = newNode.value || 4.56;
+					case adhoc.nodeWhich.LITERAL_STRNG: newNode.value = newNode.value || 'Hello';
+					case adhoc.nodeWhich.LITERAL_ARRAY: newNode.value = newNode.value || 'a';
+					case adhoc.nodeWhich.LITERAL_HASH: newNode.value = newNode.value || 'b';
+					case adhoc.nodeWhich.LITERAL_STRCT: newNode.value = newNode.value || 'c';
 // TODO: Prompt for literal value
 adhoc.refreshRender();
-							break;
-						default:
-							adhoc.refreshRender();
+						break;
+
+					default:
+						adhoc.refreshRender();
 					}
 				}
 			}
@@ -375,8 +380,8 @@ adhoc.refreshRender();
 			// Get the scaled location of the cursor
 			var offset = adhoc.canvas.positionedOffset();
 			var click = {
-				x: (Event.pointerX(e)-offset.left) / adhoc.display_scale + adhoc.display_x
-				,y: (Event.pointerY(e)-offset.top) / adhoc.display_scale + adhoc.display_y
+				x: (Event.pointerX(e) - offset.left + adhoc.display_x) / adhoc.display_scale
+				,y: (Event.pointerY(e) - offset.top + adhoc.display_y) / adhoc.display_scale
 			};
 
 			// Get the canvas' move coordinates
@@ -386,8 +391,8 @@ adhoc.refreshRender();
 			var startpy = parseFloat(adhoc.canvas.getAttribute('data-startpy'));
 
 			// Set the new coordinates and redraw
-			adhoc.display_x = startx - ((Event.pointerX(e) - startpx) / adhoc.display_scale);
-			adhoc.display_y = starty - ((Event.pointerY(e) - startpy) / adhoc.display_scale);
+			adhoc.display_x = startx + startpx - Event.pointerX(e);
+			adhoc.display_y = starty + startpy - Event.pointerY(e);
 			adhoc.refreshRender();
 		};
 		adhoc.canvas.observe('mousedown', downFunc);
@@ -396,6 +401,16 @@ adhoc.refreshRender();
 		adhoc.canvas.observe('touchend', upFunc);
 		adhoc.canvas.observe('mousemove', moveFunc);
 		adhoc.canvas.observe('touchmove', moveFunc);
+
+		// Ready the zoom buttons
+		$('zoomIn').observe('click', function(){
+			adhoc.display_scale *= 1.2;
+			adhoc.refreshRender();
+		});
+		$('zoomOut').observe('click', function(){
+			adhoc.display_scale /= 1.2;
+			adhoc.refreshRender();
+		});
 
 		// Open an existing project or start a new one
 // TODO: Load an old project or initialize a new one with it's root action
@@ -548,11 +563,11 @@ adhoc.rootNode.name = 'Print 99 Bottles';
 			ctx.beginPath();
 			ctx.moveTo(
 				(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
-				,(n.y-(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
+				,n.y * adhoc.display_scale - adhoc.display_y
 			);
 			ctx.lineTo(
 				(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
-				,(n.y+(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
+				,(n.y-(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
 			);
 			ctx.lineTo(
 				(n.x+(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
@@ -560,7 +575,11 @@ adhoc.rootNode.name = 'Print 99 Bottles';
 			);
 			ctx.lineTo(
 				(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
-				,(n.y-(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
+				,(n.y+(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
+			);
+			ctx.lineTo(
+				(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+				,n.y * adhoc.display_scale - adhoc.display_y
 			);
 			ctx.stroke();
 			break;
@@ -572,7 +591,10 @@ adhoc.rootNode.name = 'Print 99 Bottles';
 			ctx.font = "32px Arial";
 
 			// Get label text and its size
-			var title = adhoc.nodeWhichNames[n.type][n.which - adhoc.nodeWhich.OPERATOR_PLUS][1];
+			var offset = (n.nodeType == adhoc.nodeTypes.OPERATOR)
+				? adhoc.nodeWhich.OPERATOR_PLUS
+				: adhoc.nodeWhich.ASSIGNMENT_INCPR;
+			var title = adhoc.nodeWhichNames[n.nodeType][n.which-offset][1];
 			var size = ctx.measureText(title);
 			size.height = 20;
 			n.width = 80;
@@ -617,7 +639,104 @@ adhoc.rootNode.name = 'Print 99 Bottles';
 
 		case adhoc.nodeTypes.LITERAL:
 			ctx.fillStyle = '#FF8700';
-// TODO: Render a literal
+			switch(n.which){
+			case adhoc.nodeWhich.LITERAL_BOOL:
+				// Get label text and its size
+				var title = (n.value ? "true" : "false");
+				var size = ctx.measureText(title);
+				size.height = 20;
+				n.width = size.width + 30;
+				n.height = size.height + 50;
+
+				// Print label text
+				ctx.fillText(
+					title
+					,(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+					,(n.y+(n.height/2.0)-3) * adhoc.display_scale - adhoc.display_y
+				); 
+				break;
+
+			case adhoc.nodeWhich.LITERAL_INT:
+			case adhoc.nodeWhich.LITERAL_FLOAT:
+			case adhoc.nodeWhich.LITERAL_STRNG:
+				// Get label text and its size
+				var title = n.value;
+				if(title.length > 20) title = title.substr(0, 18)+'...';
+				var size = ctx.measureText(title);
+				size.height = 20;
+				n.width = size.width + 30;
+				n.height = size.height + 50;
+
+				// Print label text
+				ctx.fillText(
+					title
+					,(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+					,(n.y+(n.height/2.0)-3) * adhoc.display_scale - adhoc.display_y
+				); 
+				break;
+
+			case adhoc.nodeWhich.LITERAL_ARRAY:
+				// Determine the color for the brackets
+				nodeColor = '#000000';
+
+				// Set the node's dimensions
+				n.width = 100;
+				n.height = 100;
+
+				// Darw the items
+// TODO: draw shorthand for array items
+
+				// Draw the brackets
+				ctx.strokeStyle = nodeColor;
+				ctx.beginPath();
+				ctx.moveTo(
+					(n.x-(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
+					,(n.y-(n.height/2.0+5)+5) * adhoc.display_scale - adhoc.display_y
+				);
+				ctx.lineTo(
+					(n.x-(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
+					,(n.y-(n.height/2.0+5)) * adhoc.display_scale - adhoc.display_y
+				);
+				ctx.lineTo(
+					(n.x+(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
+					,(n.y-(n.height/2.0+5)) * adhoc.display_scale - adhoc.display_y
+				);
+				ctx.lineTo(
+					(n.x+(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
+					,(n.y-(n.height/2.0+5)+5) * adhoc.display_scale - adhoc.display_y
+				);
+				ctx.stroke();
+				ctx.beginPath();
+				ctx.moveTo(
+					(n.x-(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
+					,(n.y+(n.height/2.0+5)-5) * adhoc.display_scale - adhoc.display_y
+				);
+				ctx.lineTo(
+					(n.x-(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
+					,(n.y+(n.height/2.0+5)) * adhoc.display_scale - adhoc.display_y
+				);
+				ctx.lineTo(
+					(n.x+(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
+					,(n.y+(n.height/2.0+5)) * adhoc.display_scale - adhoc.display_y
+				);
+				ctx.lineTo(
+					(n.x+(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
+					,(n.y+(n.height/2.0+5)-5) * adhoc.display_scale - adhoc.display_y
+				);
+				ctx.stroke();
+
+				ctx.strokeStyle = nodeColor;
+				break;
+
+			case adhoc.nodeWhich.LITERAL_HASH:
+// TODO: render a literal hash
+				break;
+
+			case adhoc.nodeWhich.LITERAL_STRCT:
+// TODO: render a literal struct
+				break;
+
+			}
 			break;
 		}
 

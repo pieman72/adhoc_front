@@ -175,12 +175,12 @@ body.dark {
 .toolIcon_4_26	{ background-position:-1000px 0; }
 .toolIcon_4_27	{ background-position:-1040px 0; }
 .toolIcon_4_28	{ background-position:-1080px 0; }
-.toolIcon_4_29	{ background-position:-1120px 0; }
-.toolIcon_4_30	{ background-position:-1160px 0; }
-.toolIcon_4_31	{ background-position:-1200px 0; }
-.toolIcon_4_32	{ background-position:-1240px 0; }
-.toolIcon_4_33	{ background-position:-1280px 0; }
-.toolIcon_4_34	{ background-position:-1320px 0; }
+.toolIcon_5_29	{ background-position:-1120px 0; }
+.toolIcon_5_30	{ background-position:-1160px 0; }
+.toolIcon_5_31	{ background-position:-1200px 0; }
+.toolIcon_5_32	{ background-position:-1240px 0; }
+.toolIcon_5_33	{ background-position:-1280px 0; }
+.toolIcon_5_34	{ background-position:-1320px 0; }
 .toolIcon_5_35	{ background-position:-1360px 0; }
 .toolIcon_5_36	{ background-position:-1400px 0; }
 .toolIcon_5_37	{ background-position:-1440px 0; }
@@ -205,6 +205,42 @@ body.dark {
 	}
 
 #canvas {
+	}
+
+#viewControls {
+	bottom:10px;
+	position:absolute;
+	right:10px;
+	}
+.zoomHolder {
+	border:1px solid #BBBBBB;
+	cursor:pointer;
+	float:left;
+	padding:5px 8px;
+	}
+.zoomHolder:hover {
+	background-color:#5FD7FF;
+	}
+.zoomHolder:active {
+	background-color:#7FFF00;
+	}
+#zoomIn {
+	border-radius:15px 0 0 15px;
+	border-right:0;
+	}
+#zoomOut {
+	border-radius:0 15px 15px 0;
+	}
+.zoomHolder .icon {
+	background:url('../img/zoom.png') no-repeat;
+	height:26px;
+	width:26px;
+	}
+#zoomIn .icon {
+	background-position:-26px 0;
+	}
+#zoomOut .icon {
+	background-position:0 0;
 	}
 
 #output {
