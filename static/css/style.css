@@ -12,6 +12,10 @@ body.dark {
 	color:#EEEEEE;
 	}
 
+label {
+	cursor:pointer;
+	}
+
 #page {
 	height:100%;
 	position:relative;
@@ -19,11 +23,10 @@ body.dark {
 	}
 
 #theLightbox .nxj_lightbox {
-	padding:40px 0;
+	margin:0 auto;
+	padding:3px;
 	text-align:center;
-	}
-#theLightbox .nxj_lightboxContent {
-	text-align:center;
+	top:20%;
 	}
 
 #controls {

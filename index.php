@@ -11,7 +11,8 @@
 <body>
 	<div id="page">
 		<?php echo Nxj_UI::lightbox(array(
-			'id'            => 'thenLightbox'
+			'id'            => 'theLightbox'
+			,'title'		=> 'Lightbox'
 			,'content'      => 'This is a test'
 		));?>
 

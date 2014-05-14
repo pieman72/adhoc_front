@@ -191,8 +191,75 @@ Event.observe(window, 'load', function(){
 
 	// Sisplay errors to the user
 	adhoc.error = function(s){
-		alert(s);
+		// Add a title
+		$$('#theLightbox .nxj_lightboxTitle')[0].update('Error');
+
+		// Create the new lightbox content
+		var cont = $(document.createElement('div'));
+		cont.addClassName('nxj_lightboxContent');
+		cont.update(s);
+
+		// Delete old lightbox content and add the new one, then show
+		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
+		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
+		$('theLightbox').show();
 		return false;
+	}
+
+	// Prompt the user for an option
+	adhoc.promptFlag = function(prmpt, opts, callBack){
+		// Add the prompt text as the title
+		$$('#theLightbox .nxj_lightboxTitle')[0].update(prmpt);
+
+		// Create the new lightbox content
+		var cont = $(document.createElement('div'));
+		cont.addClassName('nxj_lightboxContent');
+
+		// Create and add the prompt options
+		for(var i=0; i<opts.length; ++i){
+			// Create the option itself
+			var opt = $(document.createElement('input'));
+			opt.setAttribute('type', 'radio');
+			opt.setAttribute('name', 'lb_flag_opt');
+			opt.setAttribute('id', 'lb_flag_opt_'+i);
+			opt.setAttribute('value', i);
+			opt.observe('click', function(){
+				$('lb_flag_select').removeClassName('disabled');
+			});
+			cont.appendChild(opt);
+
+			// Create a label
+			var lbl = $(document.createElement('label'));
+			lbl.setAttribute('for', 'lb_flag_opt_'+i);
+			lbl.update(opts[i]);
+			cont.appendChild(lbl);
+
+			// Add a break
+			var br = $(document.createElement('br'));
+			cont.appendChild(br);
+		}
+
+		// Add a break
+		var br = $(document.createElement('br'));
+		cont.appendChild(br);
+
+		// Create the confirmation button
+		var butt = $(document.createElement('a'));
+		butt.setAttribute('id', 'lb_flag_select');
+		butt.addClassName('nxj_button');
+		butt.addClassName('nxj_cssButton');
+		butt.addClassName('disabled');
+		butt.update('Select');
+		butt.observe('click', function(){
+			callBack(parseInt($$('#theLightbox input:checked')[0].value));
+			$('theLightbox').hide();
+		});
+		cont.appendChild(butt);
+
+		// Delete old lightbox content and add the new one, then show
+		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
+		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
+		$('theLightbox').show();
 	}
 
 	// Initialize the GUI editor
@@ -328,32 +395,34 @@ Event.observe(window, 'load', function(){
 				var activeTools = $$('.toolboxItem.active');
 				// If a tool is active
 				if(activeTools.length){
-					// Create a new node of the tool's type
+					// Get the tool's type and which
 					var type = parseInt(activeTools[0].getAttribute('data-type'));
 					var which = parseInt(activeTools[0].getAttribute('data-which'));
-					var newNode = adhoc.createNode(type, which);
-
-					// Add the new node to its parent
-					newNode.parent = clickedNode;
-					clickedNode.children.push(newNode);
 
 					// Ask for node info based on which
 					switch(which){
 					case adhoc.nodeWhich.ACTION_DEFIN:
 					case adhoc.nodeWhich.ACTION_CALL:
 // TODO: Prompt for action package/name
-newNode.name='foo';
+adhoc.createNode(clickedNode, type, which, null, null, 'foo');
 adhoc.refreshRender();
 						break;
 
 					case adhoc.nodeWhich.VARIABLE_ASIGN:
 					case adhoc.nodeWhich.VARIABLE_EVAL:
 // TODO: Prompt for variable name
-newNode.name='bar';
+adhoc.createNode(clickedNode, type, which, null, null, 'bar');
 adhoc.refreshRender();
 						break;
 
-					case adhoc.nodeWhich.LITERAL_BOOL: newNode.value = newNode.value || 1;
+					// Prompt for a boolean value
+					case adhoc.nodeWhich.LITERAL_BOOL:
+						adhoc.promptFlag('Select a value:', ['true', 'false'], function(val){
+							adhoc.createNode(clickedNode, type, which, null, null, null, !val);
+							adhoc.refreshRender();
+						});
+						break;
+
 					case adhoc.nodeWhich.LITERAL_INT: newNode.value = newNode.value || 72;
 					case adhoc.nodeWhich.LITERAL_FLOAT: newNode.value = newNode.value || 4.56;
 					case adhoc.nodeWhich.LITERAL_STRNG: newNode.value = newNode.value || 'Hello';
@@ -361,10 +430,12 @@ adhoc.refreshRender();
 					case adhoc.nodeWhich.LITERAL_HASH: newNode.value = newNode.value || 'b';
 					case adhoc.nodeWhich.LITERAL_STRCT: newNode.value = newNode.value || 'c';
 // TODO: Prompt for literal value
+adhoc.createNode(clickedNode, type, which);
 adhoc.refreshRender();
 						break;
 
 					default:
+						adhoc.createNode(clickedNode, type, which);
 						adhoc.refreshRender();
 					}
 				}
@@ -414,7 +485,7 @@ adhoc.refreshRender();
 
 		// Open an existing project or start a new one
 // TODO: Load an old project or initialize a new one with it's root action
-adhoc.rootNode = adhoc.createNode(adhoc.nodeTypes.ACTION, adhoc.nodeWhich.ACTION_DEFIN);
+adhoc.rootNode = adhoc.createNode(null, adhoc.nodeTypes.ACTION, adhoc.nodeWhich.ACTION_DEFIN);
 adhoc.rootNode.name = 'Print 99 Bottles';
 
 		// Render the initial tree
@@ -427,18 +498,19 @@ adhoc.rootNode.name = 'Print 99 Bottles';
 	}
 
 	// Create a new node with just a type and empty contents
-	adhoc.createNode = function(t, w){
-		return {
+	adhoc.createNode = function(p, t, w, c, k, n, v){
+		// Create the object with its params
+		var newNode = {
 			id: adhoc.nextId()
-			,parent: null
+			,parent: p
 			,scope: null
 			,nodeType: t
 			,which: w
-			,childType: null
+			,childType: c
 			,dataType: null
-			,package: null
-			,name: null
-			,value: null
+			,package: k
+			,name: n
+			,value: v
 			,children: []
 			,scopeVars: []
 			,x: 0
@@ -447,6 +519,12 @@ adhoc.rootNode.name = 'Print 99 Bottles';
 			,height: null
 			,subTreeHeight: 100
 		};
+
+		// Assign to the parent if present
+		if(p) p.children.push(newNode);
+
+		// Return the new node
+		return newNode;
 	}
 
 	// When the screen size changes, we have to resize the canvas too
