@@ -189,6 +189,19 @@ Event.observe(window, 'load', function(){
 		,'Member'
 	];
 
+	// Validate integer values
+	adhoc.validateInt = function(v){
+		return ((!isNaN(parseFloat(v))&&isFinite(v)&&(v==parseInt(v))) ? false : "Input is not an integer.");
+	}
+	// Validate float values
+	adhoc.validateFloat = function(v){
+		return ((!isNaN(parseFloat(v))&&isFinite(v)) ? false : "Input is not a float.");
+	}
+	// Validate string values
+	adhoc.validateString = function(v){
+		return false;
+	}
+
 	// Sisplay errors to the user
 	adhoc.error = function(s){
 		// Add a title
@@ -260,6 +273,64 @@ Event.observe(window, 'load', function(){
 		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
 		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
 		$('theLightbox').show();
+	}
+
+	// Prompt the user for a value
+	adhoc.promptValue = function(prmpt, vldt, algnR, callBack){
+		// Add the prompt text as the title
+		$$('#theLightbox .nxj_lightboxTitle')[0].update(prmpt);
+
+		// Create the new lightbox content
+		var cont = $(document.createElement('div'));
+		cont.addClassName('nxj_lightboxContent');
+
+		// Create and add the input field
+		var inp = $(document.createElement('input'));
+		inp.addClassName('nxj_input').addClassName(algnR ? 'textAlignRight' : 'textAlignLeft');
+		inp.observe('keyup', function(e){
+			// On keyup, validate the input
+			var msg = vldt(this.value);
+			if(msg){
+				// Input is invalid, display a message
+				$('lb_input_error').update(msg);
+				$('lb_input_select').addClassName('disabled');
+			}else{
+				// Input is good, allow submission
+				$('lb_input_error').update('');
+				$('lb_input_select').removeClassName('disabled');
+
+				// If the key happened to be Enter, try to submit now
+				if((e.keyCode||e.which) == Event.KEY_RETURN){
+					callBack(this.value);
+					$('theLightbox').hide();
+				}
+			}
+		});
+		cont.appendChild(inp);
+
+		// Add a break
+		var error = $(document.createElement('div'));
+		error.setAttribute('id', 'lb_input_error');
+		cont.appendChild(error);
+
+		// Create the confirmation button
+		var butt = $(document.createElement('a'));
+		butt.setAttribute('id', 'lb_input_select');
+		butt.addClassName('nxj_button');
+		butt.addClassName('nxj_cssButton');
+		butt.addClassName('disabled');
+		butt.update('Select');
+		butt.observe('click', function(){
+			callBack(inp.value);
+			$('theLightbox').hide();
+		});
+		cont.appendChild(butt);
+
+		// Delete old lightbox content and add the new one, then show
+		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
+		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
+		$('theLightbox').show();
+		inp.focus();
 	}
 
 	// Initialize the GUI editor
@@ -417,18 +488,39 @@ adhoc.refreshRender();
 
 					// Prompt for a boolean value
 					case adhoc.nodeWhich.LITERAL_BOOL:
-						adhoc.promptFlag('Select a value:', ['true', 'false'], function(val){
+						adhoc.promptFlag('Select a boolean value:', ['true', 'false'], function(val){
 							adhoc.createNode(clickedNode, type, which, null, null, null, !val);
 							adhoc.refreshRender();
 						});
 						break;
 
-					case adhoc.nodeWhich.LITERAL_INT: newNode.value = newNode.value || 72;
-					case adhoc.nodeWhich.LITERAL_FLOAT: newNode.value = newNode.value || 4.56;
-					case adhoc.nodeWhich.LITERAL_STRNG: newNode.value = newNode.value || 'Hello';
-					case adhoc.nodeWhich.LITERAL_ARRAY: newNode.value = newNode.value || 'a';
-					case adhoc.nodeWhich.LITERAL_HASH: newNode.value = newNode.value || 'b';
-					case adhoc.nodeWhich.LITERAL_STRCT: newNode.value = newNode.value || 'c';
+					// Prompt for an integer value
+					case adhoc.nodeWhich.LITERAL_INT:
+						adhoc.promptValue('Enter an integer:', adhoc.validateInt, true, function(val){
+							adhoc.createNode(clickedNode, type, which, null, null, null, parseInt(val));
+							adhoc.refreshRender();
+						});
+						break;
+
+					// Prompt for a float value
+					case adhoc.nodeWhich.LITERAL_FLOAT:
+						adhoc.promptValue('Enter a float:', adhoc.validateFloat, true, function(val){
+							adhoc.createNode(clickedNode, type, which, null, null, null, parseFloat(val));
+							adhoc.refreshRender();
+						});
+						break;
+
+					// Prompt for a string value
+					case adhoc.nodeWhich.LITERAL_STRNG:
+						adhoc.promptValue('Enter a string:', adhoc.validateString, false, function(val){
+							adhoc.createNode(clickedNode, type, which, null, null, null, val);
+							adhoc.refreshRender();
+						});
+						break;
+
+					case adhoc.nodeWhich.LITERAL_ARRAY:
+					case adhoc.nodeWhich.LITERAL_HASH:
+					case adhoc.nodeWhich.LITERAL_STRCT:
 // TODO: Prompt for literal value
 adhoc.createNode(clickedNode, type, which);
 adhoc.refreshRender();
@@ -739,7 +831,9 @@ adhoc.rootNode.name = 'Print 99 Bottles';
 			case adhoc.nodeWhich.LITERAL_STRNG:
 				// Get label text and its size
 				var title = n.value;
+				if(n.which==adhoc.nodeWhich.LITERAL_FLOAT && title==(title>>0)) title = title+'.0';
 				if(title.length > 20) title = title.substr(0, 18)+'...';
+				if(n.which == adhoc.nodeWhich.LITERAL_STRNG) title = '"'+title+'"'
 				var size = ctx.measureText(title);
 				size.height = 20;
 				n.width = size.width + 30;
