@@ -1,6 +1,6 @@
 // Set up everything only after the page loads
 Event.observe(window, 'load', function(){
-	var adhoc = window.adhoc || {};
+	var adhoc = {};
 
 	// Certain class globals
 	adhoc.canvas = null;
@@ -201,8 +201,14 @@ Event.observe(window, 'load', function(){
 	adhoc.validateString = function(v){
 		return false;
 	}
+	// Validate the name of a new identifier
+	adhoc.validateIdentifier = function(name){
+		if(!name.match(/^[_a-zA-Z][_a-zA-Z0-9]*$/)){
+			return 'Not a valid variable name';
+		}
+	};
 
-	// Sisplay errors to the user
+	// Display errors to the user
 	adhoc.error = function(s){
 		// Add a title
 		$$('#theLightbox .nxj_lightboxTitle')[0].update('Error');
@@ -213,6 +219,7 @@ Event.observe(window, 'load', function(){
 		cont.update(s);
 
 		// Delete old lightbox content and add the new one, then show
+		adhoc.removeAutocomplete();
 		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
 		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
 		$('theLightbox').show();
@@ -270,19 +277,25 @@ Event.observe(window, 'load', function(){
 		cont.appendChild(butt);
 
 		// Delete old lightbox content and add the new one, then show
+		adhoc.removeAutocomplete();
 		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
 		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
 		$('theLightbox').show();
 	}
 
 	// Prompt the user for a value
-	adhoc.promptValue = function(prmpt, vldt, algnR, callBack){
+	adhoc.promptValue = function(prmpt, vldt, algnR, callBack, searchFunc){
 		// Add the prompt text as the title
 		$$('#theLightbox .nxj_lightboxTitle')[0].update(prmpt);
 
 		// Create the new lightbox content
 		var cont = $(document.createElement('div'));
 		cont.addClassName('nxj_lightboxContent');
+
+		// Create a holder in case we use an autocomplete
+		var holder = $(document.createElement('div'));
+		holder.addClassName('searchHolder');
+		cont.appendChild(holder);
 
 		// Create and add the input field
 		var inp = $(document.createElement('input'));
@@ -306,9 +319,25 @@ Event.observe(window, 'load', function(){
 				}
 			}
 		});
-		cont.appendChild(inp);
+		holder.appendChild(inp);
+
+		// If a search function is provided, attach an autocomplete
+		if(searchFunc){
+			// Create the autocomplete list
+			var acList = $(document.createElement('div'));
+			acList.setAttribute('id', 'lb_input_acList');
+			acList.setAttribute('style', 'display:none;');
+			holder.appendChild(acList);
+
+			// Attach the autocomplete functions to the input
+			adhoc.attachAutocomplete(inp, acList, searchFunc, function(){}, vldt);
+		}
 
 		// Add a break
+		var clear = $(document.createElement('div')).addClassName('clear');
+		cont.appendChild(clear);
+
+		// Add an error message holder
 		var error = $(document.createElement('div'));
 		error.setAttribute('id', 'lb_input_error');
 		cont.appendChild(error);
@@ -327,10 +356,194 @@ Event.observe(window, 'load', function(){
 		cont.appendChild(butt);
 
 		// Delete old lightbox content and add the new one, then show
+		adhoc.removeAutocomplete();
 		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
 		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
 		$('theLightbox').show();
 		inp.focus();
+	}
+
+	// Hold the autocomplete listener so we can remove it later... javascript
+	adhoc.autocompleteListener = null;
+	// Function to clear the listener on autocomplete
+	adhoc.removeAutocomplete = function(){
+		if(!adhoc.autocompleteListener) return;
+		$$('#theLightbox input').each(function(elem){
+			elem.stopObserving('keyup', adhoc.autocompleteListener);
+		})
+	}
+	// Function to attach and operate the autocomplete
+	adhoc.attachAutocomplete = function(input, list, acSearchFunc, acLoadFunc, validate){
+		// Autocomplete globals
+		var acLock = null;
+		var acOpen = false;
+
+		// Handle a keypress in the autocomplete
+		function acInput(evt){
+			// Get the keycode from the event
+			var key = evt.which || window.event.keyCode;
+
+			// Get the search term from the input, close the list if none
+			var term = $F(input);
+			if(!term || validate(term)) return acClose();
+
+			// Get the currently selected item if there is one
+			var selectedItems = $$('.acItem.selected');
+			var selectedItem = selectedItems.length ? selectedItems[0] : null;
+
+			// Clear the search timer
+			if(acLock) clearTimeout(acLock);
+
+			// Handle different keys
+			switch(key){
+			// On ESC, close the menu
+			case Event.KEY_ESCAPE:
+				acClose();
+				break;
+
+			// On DOWN, move to the next item
+			case Event.KEY_DOWN:
+				// If the autocomplete is not already open, set the search timer
+				if(!acOpen){
+					input.up().addClassName('acLoading');
+					acLock = setTimeout(function(){
+						acSearch(term);
+					}, 150);
+				// Otherwise, if there is a selected item, try to move to the next
+				}else if(selectedItem){
+					var next = selectedItem.next('div');
+					if(next){
+						selectedItem.removeClassName('selected');
+						selectedItem = next;
+						selectedItem.addClassName('selected');
+					}
+					// Update the autocomplete's input field
+					input.value = selectedItem.getAttribute('data-value');
+				}
+				break;
+
+			// On UP, move to the previous item
+			case Event.KEY_UP:
+				// If the autocomplete is not already open, set the search timer
+				if(!acOpen){
+					input.up().addClassName('searchLoading');
+					acLock = setTimeout(function(){
+						acSearch(term);
+					}, 150);
+				// Otherwise, if there is a selected item, try to move to the previous
+				}else if(selectedItem){
+					var prev = selectedItem.previous('div');
+					if(prev){
+						selectedItem.removeClassName('selected');
+						selectedItem = prev;
+						selectedItem.addClassName('selected');
+					}
+					// Update the autocomplete's input field
+					input.value = selectedItem.getAttribute('data-value');
+				}
+				break;
+
+			// On RETURN, if there is a selected item, use it, otherwise search
+			case Event.KEY_RETURN:
+				if(selectedItem){
+					acLoad();
+					acClose();
+				}else{
+					input.up().addClassName('searchLoading');
+					acSearch(term);
+				}
+				break;
+
+			// Any other key is assumed to have been typed as part of the search
+			default:
+				input.up().addClassName('searchLoading');
+				acLock = setTimeout(function(){
+					acSearch(term);
+				}, 150);
+			}
+		}
+
+		// Given a term, do a search, and update the autocomplete results
+		function acSearch(term){
+			// If there's no search term, become inactive
+			if(!term){
+				input.up().removeClassName('searchLoading');
+				return;
+			}
+
+			// Regex for highlighting the search term in the results
+			var acRxp = new RegExp('('+term+')', 'gi');
+
+			// TODO: perform a search with the provided function
+			var results = acSearchFunc(term);
+
+			// If there are matches, display them
+			if(results.length){
+				// Create a new autocomplete list from the results
+				list.update('');
+				results.each(function(item, idx){
+					// Create a new autocomplete option
+					var elem = $(document.createElement('div'));
+					elem.addClassName('acItem');
+
+					// If this is the first result, default it to be selected
+					if(idx == 0){
+						elem.addClassName('selected');
+						input.value = item.value;
+					}
+
+					// Set the element's values from the result
+					elem.setAttribute('data-value', item.value);
+					elem.update(
+						item.display.replace(acRxp, '<span class="match">$1</span>')
+						+ ' <span class="reminder">'
+						+ item.reminder
+						+ '</span>'
+					);
+
+					// Enable clicking the element to complete the autocomplete
+					elem.observe('click', function(){
+						var selectedItems = $$('.acItem.selected');
+						var selectedItem = selectedItems.length ? selectedItems[0] : null;
+						if(selectedItem) selectedItem.removeClassName('selected');
+						selectedItem = elem;
+						selectedItem.addClassName('selected');
+						input.value = selectedItem.getAttribute('data-value');
+						acLoad();
+						acClose();
+					});
+
+					// Add the element to the autocomplete list
+					list.appendChild(elem);
+				});
+
+			// If no results, show sorry text
+			}else{
+				list.update('<div class="sorry">'+acSorryText+'</div>');
+			}
+
+			// Regardless, show the list now, and become inactive
+			list.show();
+			acOpen = true;
+			input.up().removeClassName('searchLoading');
+			clearTimeout(acLock);
+		}
+
+		// Perform the provided action on the selected result
+		function acLoad(){
+			input.blur();
+			acLoadFunc(input.value);
+		}
+
+		// Close the autocomplete list
+		function acClose(){
+			list.hide();
+			acOpen = false;
+		}
+
+		// Attache the listener to the autocomplete input
+		adhoc.autocompleteListener = acInput;
+		input.observe('keyup', acInput);
 	}
 
 	// Initialize the GUI editor
@@ -476,21 +689,19 @@ Event.observe(window, 'load', function(){
 					case adhoc.nodeWhich.ACTION_CALL:
 // TODO: Prompt for action package/name
 adhoc.createNode(clickedNode, type, which, null, null, 'foo');
-adhoc.refreshRender();
 						break;
 
 					case adhoc.nodeWhich.VARIABLE_ASIGN:
 					case adhoc.nodeWhich.VARIABLE_EVAL:
-// TODO: Prompt for variable name
-adhoc.createNode(clickedNode, type, which, null, null, 'bar');
-adhoc.refreshRender();
+						adhoc.promptValue('Enter a variable name:', adhoc.validateIdentifier, false, function(val){
+							adhoc.createNode(clickedNode, type, which, null, null, val);
+						}, adhoc.completeVarByScope);
 						break;
 
 					// Prompt for a boolean value
 					case adhoc.nodeWhich.LITERAL_BOOL:
 						adhoc.promptFlag('Select a boolean value:', ['true', 'false'], function(val){
 							adhoc.createNode(clickedNode, type, which, null, null, null, !val);
-							adhoc.refreshRender();
 						});
 						break;
 
@@ -498,7 +709,6 @@ adhoc.refreshRender();
 					case adhoc.nodeWhich.LITERAL_INT:
 						adhoc.promptValue('Enter an integer:', adhoc.validateInt, true, function(val){
 							adhoc.createNode(clickedNode, type, which, null, null, null, parseInt(val));
-							adhoc.refreshRender();
 						});
 						break;
 
@@ -506,7 +716,6 @@ adhoc.refreshRender();
 					case adhoc.nodeWhich.LITERAL_FLOAT:
 						adhoc.promptValue('Enter a float:', adhoc.validateFloat, true, function(val){
 							adhoc.createNode(clickedNode, type, which, null, null, null, parseFloat(val));
-							adhoc.refreshRender();
 						});
 						break;
 
@@ -514,7 +723,6 @@ adhoc.refreshRender();
 					case adhoc.nodeWhich.LITERAL_STRNG:
 						adhoc.promptValue('Enter a string:', adhoc.validateString, false, function(val){
 							adhoc.createNode(clickedNode, type, which, null, null, null, val);
-							adhoc.refreshRender();
 						});
 						break;
 
@@ -523,12 +731,10 @@ adhoc.refreshRender();
 					case adhoc.nodeWhich.LITERAL_STRCT:
 // TODO: Prompt for literal value
 adhoc.createNode(clickedNode, type, which);
-adhoc.refreshRender();
 						break;
 
 					default:
 						adhoc.createNode(clickedNode, type, which);
-						adhoc.refreshRender();
 					}
 				}
 			}
@@ -577,10 +783,17 @@ adhoc.refreshRender();
 
 		// Open an existing project or start a new one
 // TODO: Load an old project or initialize a new one with it's root action
-adhoc.rootNode = adhoc.createNode(null, adhoc.nodeTypes.ACTION, adhoc.nodeWhich.ACTION_DEFIN);
-adhoc.rootNode.name = 'Print 99 Bottles';
+adhoc.rootNode = adhoc.createNode(
+	null
+	,adhoc.nodeTypes.ACTION
+	,adhoc.nodeWhich.ACTION_DEFIN
+	,adhoc.nodeChildType.STATEMENT
+	,'My Project'
+	,'Print 99 Bottles'
+	,null
+);
 
-		// Render the initial tree
+		// Draw the initial canvas
 		adhoc.refreshRender();
 	}
 
@@ -614,6 +827,9 @@ adhoc.rootNode.name = 'Print 99 Bottles';
 
 		// Assign to the parent if present
 		if(p) p.children.push(newNode);
+
+		// Refresh the canvas with the new node
+		adhoc.refreshRender();
 
 		// Return the new node
 		return newNode;
@@ -665,11 +881,20 @@ adhoc.rootNode.name = 'Print 99 Bottles';
 	adhoc.renderNode = function(n){
 		var ctx = adhoc.canvas.getContext('2d');
 		var nodeColor;
-		ctx.font = "20px Arial";
+		ctx.font = '20px Arial';
 		ctx.fillStyle = adhoc.textColor;
 
 		switch(n.nodeType){
 		case adhoc.nodeTypes.TYPE_NULL:
+			ctx.fillStyle = '#808080';
+			n.width = 70;
+			n.height = 70;
+			ctx.strokeRect(
+				(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+				,(n.y-(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
+				,n.width * adhoc.display_scale
+				,n.height * adhoc.display_scale
+			);
 			break;
 
 		case adhoc.nodeTypes.ACTION:
@@ -863,7 +1088,7 @@ adhoc.rootNode.name = 'Print 99 Bottles';
 				ctx.beginPath();
 				ctx.moveTo(
 					(n.x-(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
-					,(n.y-(n.height/2.0+5)+5) * adhoc.display_scale - adhoc.display_y
+					,(n.y-(n.height/2.0+5)+10) * adhoc.display_scale - adhoc.display_y
 				);
 				ctx.lineTo(
 					(n.x-(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
@@ -875,13 +1100,13 @@ adhoc.rootNode.name = 'Print 99 Bottles';
 				);
 				ctx.lineTo(
 					(n.x+(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
-					,(n.y-(n.height/2.0+5)+5) * adhoc.display_scale - adhoc.display_y
+					,(n.y-(n.height/2.0+5)+10) * adhoc.display_scale - adhoc.display_y
 				);
 				ctx.stroke();
 				ctx.beginPath();
 				ctx.moveTo(
 					(n.x-(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
-					,(n.y+(n.height/2.0+5)-5) * adhoc.display_scale - adhoc.display_y
+					,(n.y+(n.height/2.0+5)-10) * adhoc.display_scale - adhoc.display_y
 				);
 				ctx.lineTo(
 					(n.x-(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
@@ -893,7 +1118,7 @@ adhoc.rootNode.name = 'Print 99 Bottles';
 				);
 				ctx.lineTo(
 					(n.x+(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
-					,(n.y+(n.height/2.0+5)-5) * adhoc.display_scale - adhoc.display_y
+					,(n.y+(n.height/2.0+5)-10) * adhoc.display_scale - adhoc.display_y
 				);
 				ctx.stroke();
 
@@ -952,6 +1177,28 @@ adhoc.rootNode.name = 'Print 99 Bottles';
 		// If we've gotten here, then the click was on the canvas
 		return null;
 	}
+
+	// Find existing variables by name in a given scope
+	adhoc.completeVarByScope = function(part, node){
+// TODO
+		return [
+			{
+				value: part
+				,display: part
+				,reminder: 'test'
+			}
+			,{
+				value: part+'foo'
+				,display: part+'foo'
+				,reminder: 'test'
+			}
+			,{
+				value: 'print'
+				,display: 'print'
+				,reminder: 'system'
+			}
+		];
+	};
 
 	// Initialize the application
 	adhoc.init();
