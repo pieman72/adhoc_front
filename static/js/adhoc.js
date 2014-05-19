@@ -10,6 +10,9 @@ Event.observe(window, 'load', function(){
 	adhoc.lastId = 0;
 	adhoc.textColor = '#000000';
 
+	// Hold the autocomplete listener so we can remove it later... javascript
+	adhoc.autocompleteListener = null;
+
 	// AST node super-types
 	adhoc.nodeTypes = {
 		TYPE_NULL:	0
@@ -202,8 +205,8 @@ Event.observe(window, 'load', function(){
 		return false;
 	}
 	// Validate the name of a new identifier
-	adhoc.validateIdentifier = function(name){
-		if(!name.match(/^[_a-zA-Z][_a-zA-Z0-9]*$/)){
+	adhoc.validateIdentifier = function(v){
+		if(!v.match(/^[_a-zA-Z][_a-zA-Z0-9]*$/)){
 			return 'Not a valid variable name';
 		}
 	};
@@ -284,7 +287,7 @@ Event.observe(window, 'load', function(){
 	}
 
 	// Prompt the user for a value
-	adhoc.promptValue = function(prmpt, vldt, algnR, callBack, searchFunc){
+	adhoc.promptValue = function(prmpt, vldt, algnR, callBack, searchFunc, sorryText){
 		// Add the prompt text as the title
 		$$('#theLightbox .nxj_lightboxTitle')[0].update(prmpt);
 
@@ -316,6 +319,9 @@ Event.observe(window, 'load', function(){
 				if((e.keyCode||e.which) == Event.KEY_RETURN){
 					callBack(this.value);
 					$('theLightbox').hide();
+				// And if it happened to be Esc, then close the lightbox
+				}else if((e.keyCode||e.which) == Event.KEY_ESC){
+					$('theLightbox').hide();
 				}
 			}
 		});
@@ -330,7 +336,7 @@ Event.observe(window, 'load', function(){
 			holder.appendChild(acList);
 
 			// Attach the autocomplete functions to the input
-			adhoc.attachAutocomplete(inp, acList, searchFunc, function(){}, vldt);
+			adhoc.attachAutocomplete(inp, acList, searchFunc, function(){}, vldt, sorryText);
 		}
 
 		// Add a break
@@ -363,8 +369,6 @@ Event.observe(window, 'load', function(){
 		inp.focus();
 	}
 
-	// Hold the autocomplete listener so we can remove it later... javascript
-	adhoc.autocompleteListener = null;
 	// Function to clear the listener on autocomplete
 	adhoc.removeAutocomplete = function(){
 		if(!adhoc.autocompleteListener) return;
@@ -373,7 +377,7 @@ Event.observe(window, 'load', function(){
 		})
 	}
 	// Function to attach and operate the autocomplete
-	adhoc.attachAutocomplete = function(input, list, acSearchFunc, acLoadFunc, validate){
+	adhoc.attachAutocomplete = function(input, list, acSearchFunc, acLoadFunc, validate, acSorryText){
 		// Autocomplete globals
 		var acLock = null;
 		var acOpen = false;
@@ -397,8 +401,19 @@ Event.observe(window, 'load', function(){
 			// Handle different keys
 			switch(key){
 			// On ESC, close the menu
-			case Event.KEY_ESCAPE:
+			case Event.KEY_ESC:
 				acClose();
+				break;
+
+			// On RIGHT, complete the current item
+			case Event.KEY_RIGHT:
+				// If the autocomplete is not already open, do nothing
+				if(!acOpen) break;
+
+				// Otherwise, if there is a selected item, complete its value
+				if(selectedItem){
+					input.value = selectedItem.getAttribute('data-value');
+				}
 				break;
 
 			// On DOWN, move to the next item
@@ -474,7 +489,7 @@ Event.observe(window, 'load', function(){
 			// Regex for highlighting the search term in the results
 			var acRxp = new RegExp('('+term+')', 'gi');
 
-			// TODO: perform a search with the provided function
+			// Perform a search with the provided function
 			var results = acSearchFunc(term);
 
 			// If there are matches, display them
@@ -489,7 +504,6 @@ Event.observe(window, 'load', function(){
 					// If this is the first result, default it to be selected
 					if(idx == 0){
 						elem.addClassName('selected');
-						input.value = item.value;
 					}
 
 					// Set the element's values from the result
@@ -548,6 +562,11 @@ Event.observe(window, 'load', function(){
 
 	// Initialize the GUI editor
 	adhoc.init = function(){
+		// Activate the top control panel toggle
+		$('controlsToggle').observe('click', function(){
+			$('controls').toggleClassName('collapsed');
+		})
+
 		// Initialize drawing canvas
 		adhoc.canvas = $('canvas');
 		if(!adhoc.canvas) return adhoc.error("Could not find drawing canvas.");
@@ -687,15 +706,16 @@ Event.observe(window, 'load', function(){
 					switch(which){
 					case adhoc.nodeWhich.ACTION_DEFIN:
 					case adhoc.nodeWhich.ACTION_CALL:
-// TODO: Prompt for action package/name
-adhoc.createNode(clickedNode, type, which, null, null, 'foo');
+						adhoc.promptValue('Enter an action name:', adhoc.validateActionName, false, function(val){
+							adhoc.createNode(clickedNode, type, which, null, null, val);
+						}, adhoc.genScopeSearch(clickedNode, false), 'New action');
 						break;
 
 					case adhoc.nodeWhich.VARIABLE_ASIGN:
 					case adhoc.nodeWhich.VARIABLE_EVAL:
 						adhoc.promptValue('Enter a variable name:', adhoc.validateIdentifier, false, function(val){
 							adhoc.createNode(clickedNode, type, which, null, null, val);
-						}, adhoc.completeVarByScope);
+						}, adhoc.genScopeSearch(clickedNode, false), 'New variable');
 						break;
 
 					// Prompt for a boolean value
@@ -826,7 +846,15 @@ adhoc.rootNode = adhoc.createNode(
 		};
 
 		// Assign to the parent if present
-		if(p) p.children.push(newNode);
+		if(p){
+			p.children.push(newNode);
+			if(w == adhoc.nodeWhich.VARIABLE_ASIGN){
+				var searchFunc = adhoc.genScopeSearch(p, true);
+				if(!searchFunc(n).length){
+					p.scopeVars.push(newNode);
+				}
+			}
+		}
 
 		// Refresh the canvas with the new node
 		adhoc.refreshRender();
@@ -1178,27 +1206,38 @@ adhoc.rootNode = adhoc.createNode(
 		return null;
 	}
 
-	// Find existing variables by name in a given scope
-	adhoc.completeVarByScope = function(part, node){
-// TODO
-		return [
-			{
-				value: part
-				,display: part
-				,reminder: 'test'
+	// Generate a function to find variables by name in a given scope
+	adhoc.genScopeSearch = function(scope, exact){
+		// Create a search function to return
+		return function(part){
+			// Keep a local copy of the context
+			var myScope = scope;
+			// Create an empty list of variables to return
+			var out = [];
+
+			// Traverse up the scope lineage
+			while(myScope){
+				// Search the variables in scope
+				for(i=0; i<myScope.scopeVars.length; ++i){
+					// If they match, add them into the output array
+					var n = myScope.scopeVars[i].name;
+					if(n.indexOf(part)===0 && (!exact || n.length==part.length)){
+						out.push({
+							value: n
+							,display: n
+							,reminder: myScope.name
+						});
+					}
+				}
+
+				// Move to the parent scope
+				myScope = myScope.parent;
 			}
-			,{
-				value: part+'foo'
-				,display: part+'foo'
-				,reminder: 'test'
-			}
-			,{
-				value: 'print'
-				,display: 'print'
-				,reminder: 'system'
-			}
-		];
-	};
+
+			// Return the final list
+			return out;
+		};
+	}
 
 	// Initialize the application
 	adhoc.init();

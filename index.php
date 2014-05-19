@@ -20,7 +20,9 @@
 			<div class="controlsLeft floatLeft">
 			</div>
 			<div class="controlsRight floatRight">
-				<div id="controlsToggle" title="Show/Hide Controls" onclick="$('controls').toggleClassName('collapsed');"><div></div></div>
+				<div id="controlsToggle" title="Show/Hide Controls">
+					<div></div>
+				</div>
 			</div>
 		</div>
 

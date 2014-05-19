@@ -64,6 +64,11 @@ label {
 	color:#999999;
 	float:right;
 }
+#lb_input_acList .sorry {
+	color:#707070;
+	font-style:italic;
+	padding:2px 5px;
+}
 #lb_input_error {
 	color:#FF0000;
 	font-size:14px;
