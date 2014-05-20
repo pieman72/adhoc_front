@@ -210,6 +210,12 @@ Event.observe(window, 'load', function(){
 			return 'Not a valid variable name';
 		}
 	};
+	// Validate the name of a new action
+	adhoc.validateActionName = function(v){
+		if(!v.match(/^[_a-zA-Z][ _a-zA-Z0-9]*$/)){
+			return 'Not a valid action name';
+		}
+	};
 
 	// Display errors to the user
 	adhoc.error = function(s){
@@ -885,8 +891,8 @@ adhoc.rootNode = adhoc.createNode(
 
 	// Recursively determine the display heights of each subtree
 	adhoc.subTreeHeightNode = function(n){
-		if(!n.children.length) return (n.subTreeHeight = 100);
-		n.subTreeHeight = 0;
+		if(!n.children.length) return (n.subTreeHeight = (n.nodeType==adhoc.nodeTypes.GROUP ? 30 : 100));
+		n.subTreeHeight = (n.nodeType==adhoc.nodeTypes.GROUP ? 30 : 0);
 		for(var i=0; i<n.children.length; ++i){
 			n.subTreeHeight += adhoc.subTreeHeightNode(n.children[i]);
 		}
@@ -901,7 +907,7 @@ adhoc.rootNode = adhoc.createNode(
 		for(var i=0; i<n.children.length; ++i){
 			n.children[i].y = passed;
 			passed += n.children[i].subTreeHeight;
-			adhoc.positionNode(n.children[i], d+1);
+			adhoc.positionNode(n.children[i], d+(n.nodeType==adhoc.nodeTypes.GROUP ? 0 : 1));
 		}
 	}
 
@@ -909,7 +915,8 @@ adhoc.rootNode = adhoc.createNode(
 	adhoc.renderNode = function(n){
 		var ctx = adhoc.canvas.getContext('2d');
 		var nodeColor;
-		ctx.font = '20px Arial';
+		ctx.lineWidth = (6.0*adhoc.display_scale)<<0;
+		ctx.font = ((20.0*adhoc.display_scale)<<0)+'px Arial';
 		ctx.fillStyle = adhoc.textColor;
 
 		switch(n.nodeType){
@@ -934,13 +941,13 @@ adhoc.rootNode = adhoc.createNode(
 			if(title.length > 20) title = title.substr(0, 18)+'...';
 			var size = ctx.measureText(title);
 			size.height = 20;
-			n.width = size.width + 30;
+			n.width = size.width/adhoc.display_scale + 30;
 			n.height = size.height + 50;
 
 			// Print label text
 			ctx.fillText(
 				title
-				,(n.x-(size.width/2.0)) * adhoc.display_scale - adhoc.display_x
+				,(n.x-(size.width/(2.0*adhoc.display_scale))) * adhoc.display_scale - adhoc.display_x
 				,(n.y+(size.height/2.0)-3) * adhoc.display_scale - adhoc.display_y
 			); 
 
@@ -955,7 +962,23 @@ adhoc.rootNode = adhoc.createNode(
 			break;
 
 		case adhoc.nodeTypes.GROUP:
-// TODO: Render a group
+			// Determine the right color
+			nodeColor = '#8A8A8A';
+
+			// Set the group's dimensions by the size of its subtree
+			n.width = 120;
+			n.height = n.subTreeHeight + 20;
+
+			// Draw box border
+			ctx.strokeStyle = nodeColor;
+			ctx.setLineDash([10, 7]);
+			ctx.strokeRect(
+				(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+				,(n.y-(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
+				,n.width * adhoc.display_scale
+				,n.height * adhoc.display_scale
+			);
+			ctx.setLineDash([]);
 			break;
 
 		case adhoc.nodeTypes.CONTROL:
@@ -964,12 +987,12 @@ adhoc.rootNode = adhoc.createNode(
 
 			// Get label text and its size
 			var title = adhoc.nodeWhichNames[adhoc.nodeTypes.CONTROL][n.which - adhoc.nodeWhich.CONTROL_IF][0];
-			var size, textSize = 20;
+			var size, textSize = (20*adhoc.display_scale)<<0;
 			n.width = 87;
 			n.height = 100;
 			do{
 				size = ctx.measureText(title);
-				if(size.width+15 < n.width) break;
+				if((size.width/adhoc.display_scale)+15 < n.width) break;
 				ctx.font = "" + (--textSize) + "px Arial";
 			}while(true);
 			size.height = 20;
@@ -977,7 +1000,7 @@ adhoc.rootNode = adhoc.createNode(
 			// Print label text
 			ctx.fillText(
 				title
-				,(n.x-(size.width/2.0)-5) * adhoc.display_scale - adhoc.display_x
+				,(n.x-(size.width/(2.0*adhoc.display_scale))-5) * adhoc.display_scale - adhoc.display_x
 				,(n.y+(size.height/2.0)-3) * adhoc.display_scale - adhoc.display_y
 			);
 
@@ -1011,7 +1034,7 @@ adhoc.rootNode = adhoc.createNode(
 		case adhoc.nodeTypes.ASSIGNMENT:
 			// Determine the right color
 			nodeColor = '#AF5FFF';
-			ctx.font = "32px Arial";
+			ctx.font = ((32.0*adhoc.display_scale)<<0)+'px Arial';
 
 			// Get label text and its size
 			var offset = (n.nodeType == adhoc.nodeTypes.OPERATOR)
@@ -1026,7 +1049,7 @@ adhoc.rootNode = adhoc.createNode(
 			// Print label text
 			ctx.fillText(
 				title
-				,(n.x-(size.width/2.0)) * adhoc.display_scale - adhoc.display_x
+				,(n.x-(size.width/(2.0*adhoc.display_scale))) * adhoc.display_scale - adhoc.display_x
 				,(n.y+(size.height/2.0)) * adhoc.display_scale - adhoc.display_y
 			); 
 
@@ -1084,7 +1107,7 @@ adhoc.rootNode = adhoc.createNode(
 			case adhoc.nodeWhich.LITERAL_STRNG:
 				// Get label text and its size
 				var title = n.value;
-				if(n.which==adhoc.nodeWhich.LITERAL_FLOAT && title==(title>>0)) title = title+'.0';
+				if(n.which==adhoc.nodeWhich.LITERAL_FLOAT && title==(title<<0)) title = title+'.0';
 				if(title.length > 20) title = title.substr(0, 18)+'...';
 				if(n.which == adhoc.nodeWhich.LITERAL_STRNG) title = '"'+title+'"'
 				var size = ctx.measureText(title);
@@ -1172,7 +1195,8 @@ adhoc.rootNode = adhoc.createNode(
 			// Render one child
 			adhoc.renderNode(c);
 
-			// Draw a connecting arrow
+			// Draw a connecting arrow except for groups
+			if(n.nodeType == adhoc.nodeTypes.GROUP) continue;
 			ctx.strokeStyle = nodeColor;
 			ctx.beginPath();
 			ctx.moveTo(
@@ -1189,18 +1213,18 @@ adhoc.rootNode = adhoc.createNode(
 
 	// Recursively determine whether the click landed in a node
 	adhoc.getClickedNode = function(n, click){
+		// Check the children
+		for(var i=0; i<n.children.length; ++i){
+			var temp = adhoc.getClickedNode(n.children[i], click);
+			if(temp) return temp;
+		}
+
 		// See if it's in this node
 		if(click.x >= n.x-(n.width/2.0)
 				&& click.x <= n.x+(n.width/2.0)
 				&& click.y >= n.y-(n.height/2.0)
 				&& click.y <= n.y+(n.height/2.0)
 			) return n;
-
-		// Check the children
-		for(var i=0; i<n.children.length; ++i){
-			var temp = adhoc.getClickedNode(n.children[i], click);
-			if(temp) return temp;
-		}
 
 		// If we've gotten here, then the click was on the canvas
 		return null;
