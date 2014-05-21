@@ -857,6 +857,10 @@ adhoc.rootNode = adhoc.createNode(
 			if(w == adhoc.nodeWhich.VARIABLE_ASIGN){
 				var searchFunc = adhoc.genScopeSearch(p, true);
 				if(!searchFunc(n).length){
+					while(p.which != adhoc.nodeWhich.ACTION_DEFIN
+							&& p.which != adhoc.nodeWhich.CONTROL_LOOP){
+						p = p.parent;
+					}
 					p.scopeVars.push(newNode);
 				}
 			}
