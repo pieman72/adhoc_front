@@ -7,8 +7,21 @@ Event.observe(window, 'load', function(){
 	adhoc.display_scale = 1.0;
 	adhoc.display_x = 0;
 	adhoc.display_y = 0;
-	adhoc.lastId = 0;
 	adhoc.textColor = '#000000';
+	adhoc.lastId = 0;
+	adhoc.registeredActions = [];
+	adhoc.systemActions = [
+		{
+			package: 'system'
+			,name: 'print'
+			,argc: -1
+		}
+		,{
+			package: 'system'
+			,name: 'cat'
+			,argc: -1
+		}
+	];
 
 	// Hold the autocomplete listener so we can remove it later... javascript
 	adhoc.autocompleteListener = null;
@@ -93,6 +106,8 @@ Event.observe(window, 'load', function(){
 		,PARENT:		8
 		,CHILD:			9
 		,MEMBER:		10
+		,IF:			11
+		,ELSE:			12
 	};
 	// AST node type names
 	adhoc.nodeTypeNames = [
@@ -118,14 +133,15 @@ Event.observe(window, 'load', function(){
 			['Serial Group', '']
 		]
 		,[
-			['If', '']
-			,['Loop', '']
-			,['Switch', '']
-			,['Case', '']
-			,['Fork', '']
-			,['Continue', '']
-			,['Break', '']
-			,['Return', '']
+			['If', 'If']
+			,['Else', 'Else']
+			,['Loop', 'Loop']
+			,['Switch', 'Switch']
+			,['Case', 'Case']
+			,['Fork', 'Fork']
+			,['Continue', 'Continue']
+			,['Break', 'Break']
+			,['Return', 'Return']
 		]
 		,[
 			['Plus', '+']
@@ -178,18 +194,572 @@ Event.observe(window, 'load', function(){
 		]
 	];
 	// AST node child connection type names
-	adhoc.nodeChildTypeNames = [
-		'Null'
-		,'Statement'
-		,'Expression'
-		,'Initialization'
-		,'Condition'
-		,'Case'
-		,'Parameter'
-		,'Argument'
-		,'Parent'
-		,'Child'
-		,'Member'
+	adhoc.nodeChildTypeInfo = [
+		{label: 'Null'
+			,useLabel: false
+			,nodeTypes: []
+			,nodeNotWhich: []
+		}
+		,{label: 'Statement'
+			,useLabel: false
+			,nodeTypes: [
+				adhoc.nodeTypes.ACTION
+				,adhoc.nodeTypes.GROUP
+				,adhoc.nodeTypes.CONTROL
+				,adhoc.nodeTypes.ASSIGNMENT
+			]
+			,nodeNotWhich: [
+				adhoc.nodeWhich.CONTROL_CASE
+			]
+		}
+		,{label: 'Expression'
+			,useLabel: false
+			,nodeTypes: [
+				adhoc.nodeTypes.ACTION
+				,adhoc.nodeTypes.OPERATOR
+				,adhoc.nodeTypes.ASSIGNMENT
+				,adhoc.nodeTypes.VARIABLE
+				,adhoc.nodeTypes.LITERAL
+			]
+			,nodeNotWhich: [
+				adhoc.nodeWhich.VARIABLE_ASIGN
+			]
+		}
+		,{label: 'Initialization'
+			,useLabel: true
+			,nodeTypes: [
+				,adhoc.nodeTypes.VARIABLE
+			]
+			,nodeNotWhich: [
+				adhoc.nodeWhich.VARIABLE_EVAL
+			]
+		}
+		,{label: 'Condition'
+			,useLabel: true
+			,nodeTypes: [
+				adhoc.nodeTypes.ACTION
+				,adhoc.nodeTypes.OPERATOR
+				,adhoc.nodeTypes.ASSIGNMENT
+				,adhoc.nodeTypes.VARIABLE
+				,adhoc.nodeTypes.LITERAL
+			]
+			,nodeNotWhich: [
+				adhoc.nodeWhich.VARIABLE_ASIGN
+			]
+		}
+		,{label: 'Case'
+			,useLabel: false
+			,nodeTypes: [
+				adhoc.nodeTypes.ACTION
+				,adhoc.nodeTypes.OPERATOR
+				,adhoc.nodeTypes.ASSIGNMENT
+				,adhoc.nodeTypes.VARIABLE
+				,adhoc.nodeTypes.LITERAL
+			]
+			,nodeNotWhich: [
+				adhoc.nodeWhich.VARIABLE_ASIGN
+			]
+		}
+		,{label: 'Parameter'
+			,useLabel: false
+			,nodeTypes: [
+				adhoc.nodeTypes.VARIABLE
+			]
+			,nodeNotWhich: [
+				adhoc.nodeWhich.VARIABLE_EVAL
+			]
+		}
+		,{label: 'Argument'
+			,useLabel: false
+			,nodeTypes: [
+				adhoc.nodeTypes.ACTION
+				,adhoc.nodeTypes.OPERATOR
+				,adhoc.nodeTypes.ASSIGNMENT
+				,adhoc.nodeTypes.VARIABLE
+				,adhoc.nodeTypes.LITERAL
+			]
+			,nodeNotWhich: [
+				adhoc.nodeWhich.VARIABLE_ASIGN
+			]
+		}
+		,{label: 'Parent'
+			,useLabel: true
+			,nodeTypes: [
+				adhoc.nodeTypes.ACTION
+				,adhoc.nodeTypes.GROUP
+				,adhoc.nodeTypes.CONTROL
+				,adhoc.nodeTypes.ASSIGNMENT
+			]
+			,nodeNotWhich: [
+				adhoc.nodeWhich.CONTROL_CASE
+			]
+		}
+		,{label: 'Child'
+			,useLabel: true
+			,nodeTypes: [
+				adhoc.nodeTypes.ACTION
+				,adhoc.nodeTypes.GROUP
+				,adhoc.nodeTypes.CONTROL
+				,adhoc.nodeTypes.ASSIGNMENT
+			]
+			,nodeNotWhich: [
+				adhoc.nodeWhich.CONTROL_CASE
+			]
+		}
+		,{label: 'Member'
+			,useLabel: true
+			,nodeTypes: [
+				adhoc.nodeTypes.ACTION
+				,adhoc.nodeTypes.OPERATOR
+				,adhoc.nodeTypes.ASSIGNMENT
+				,adhoc.nodeTypes.VARIABLE
+				,adhoc.nodeTypes.LITERAL
+			]
+			,nodeNotWhich: [
+				adhoc.nodeWhich.VARIABLE_ASIGN
+			]
+		}
+		,{label: 'If'
+			,useLabel: true
+			,nodeTypes: [
+				adhoc.nodeTypes.ACTION
+				,adhoc.nodeTypes.GROUP
+				,adhoc.nodeTypes.CONTROL
+				,adhoc.nodeTypes.ASSIGNMENT
+			]
+			,nodeNotWhich: [
+				adhoc.nodeWhich.CONTROL_CASE
+			]
+		}
+		,{label: 'Else'
+			,useLabel: true
+			,nodeTypes: [
+				adhoc.nodeTypes.ACTION
+				,adhoc.nodeTypes.GROUP
+				,adhoc.nodeTypes.CONTROL
+				,adhoc.nodeTypes.ASSIGNMENT
+			]
+			,nodeNotWhich: [
+				adhoc.nodeWhich.CONTROL_CASE
+			]
+		}
+	];
+	// Define the accepted child types of each type/which
+	adhoc.nodeWhichChildren = [
+		[ // NULL
+			[ // WHICH_NULL
+			]
+		]
+		,[ // ACTION
+			[ // ACTION_DEFIN
+				{
+					childType: adhoc.nodeChildType.PARAMETER
+					,min: 0
+					,max: null
+				},{
+					nodeType: adhoc.nodeChildType.STATEMENT
+					,min: 1
+					,max: null
+				}
+			]
+			,[ // ACTION_CALL
+				{
+					childType: adhoc.nodeChildType.ARGUMENT
+					,min: 0
+					,max: null
+				}
+			]
+		]
+		,[ // GROUP
+			[ // GROUP_SERIAL
+				{
+					childType: adhoc.nodeChildType.STATEMENT
+					,min: 1
+					,max: null
+				}
+			]
+		]
+		,[ // CONTROL
+			[ // CONTROL_IF
+				{
+					childType: adhoc.nodeChildType.CONDITION
+					,min: 1
+					,max: 1
+				},{
+					childType: adhoc.nodeChildType.IF
+					,min: 1
+					,max: null
+				},{
+					childType: adhoc.nodeChildType.ELSE
+					,min: 0
+					,max: null
+				}
+			]
+			,[ // CONTROL_LOOP
+				{
+					childType: adhoc.nodeChildType.INITIALIZATION
+					,min: 0
+					,max: 1
+				},{
+					childType: adhoc.nodeChildType.CONDITION
+					,min: 1
+					,max: 1
+				},{
+					childType: adhoc.nodeChildType.STATEMENT
+					,min: 1
+					,max: null
+				}
+			]
+			,[ // CONTROL_SWITCH
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 1
+					,max: 1
+				},{
+					childType: adhoc.nodeChildType.CASE
+					,min: 1
+					,max: null
+				}
+			]
+			,[ // CONTROL_CASE
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 1
+					,max: 1
+				},{
+					childType: adhoc.nodeChildType.STATEMENT
+					,min: 0
+					,max: null
+				}
+			]
+			,[ // CONTROL_FORK
+				{
+					childType: adhoc.nodeChildType.INITIALIZATION
+					,min: 0
+					,max: 1
+				},{
+					childType: adhoc.nodeChildType.PARENT
+					,min: 1
+					,max: 1
+				},{
+					childType: adhoc.nodeChildType.CHILD
+					,min: 1
+					,max: 1
+				}
+			]
+			,[ // CONTROL_CNTNU
+			]
+			,[ // CONTROL_BREAK
+			]
+			,[ // CONTROL_RETRN
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 0
+					,max: 1
+				}
+			]
+		]
+		,[ // OPERATOR
+			[ // OPERATOR_PLUS
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 2
+					,max: 2
+				}
+			]
+			,[ // OPERATOR_MINUS
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 2
+					,max: 2
+				}
+			]
+			,[ // OPERATOR_TIMES
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 2
+					,max: 2
+				}
+			]
+			,[ // OPERATOR_DIVBY
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 2
+					,max: 2
+				}
+			]
+			,[ // OPERATOR_MOD
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 2
+					,max: 2
+				}
+			]
+			,[ // OPERATOR_EXP
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 2
+					,max: 2
+				}
+			]
+			,[ // OPERATOR_OR
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 2
+					,max: 2
+				}
+			]
+			,[ // OPERATOR_AND
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 2
+					,max: 2
+				}
+			]
+			,[ // OPERATOR_NOT
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 1
+					,max: 1
+				}
+			]
+			,[ // OPERATOR_EQUIV
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 2
+					,max: 2
+				}
+			]
+			,[ // OPERATOR_GRTTN
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 2
+					,max: 2
+				}
+			]
+			,[ // OPERATOR_LESTN
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 2
+					,max: 2
+				}
+			]
+			,[ // OPERATOR_GRTEQ
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 2
+					,max: 2
+				}
+			]
+			,[ // OPERATOR_LESEQ
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 2
+					,max: 2
+				}
+			]
+			,[ // OPERATOR_NOTEQ
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 2
+					,max: 2
+				}
+			]
+			,[ // OPERATOR_ARIND
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 2
+					,max: 2
+				}
+			]
+			,[ // OPERATOR_TRNIF
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 3
+					,max: 3
+				}
+			]
+		]
+		,[ // ASSIGNMENT
+			[ // ASSIGNMENT_INCPR
+				{
+					childType: adhoc.nodeChildType.PARAMETER
+					,min: 1
+					,max: 1
+				}
+			]
+			,[ // ASSIGNMENT_INCPS
+				{
+					childType: adhoc.nodeChildType.PARAMETER
+					,min: 1
+					,max: 1
+				}
+			]
+			,[ // ASSIGNMENT_DECPR
+				{
+					childType: adhoc.nodeChildType.PARAMETER
+					,min: 1
+					,max: 1
+				}
+			]
+			,[ // ASSIGNMENT_DECPS
+				{
+					childType: adhoc.nodeChildType.PARAMETER
+					,min: 1
+					,max: 1
+				}
+			]
+			,[ // ASSIGNMENT_NEGPR
+				{
+					childType: adhoc.nodeChildType.PARAMETER
+					,min: 1
+					,max: 1
+				}
+			]
+			,[ // ASSIGNMENT_NEGPS
+				{
+					childType: adhoc.nodeChildType.PARAMETER
+					,min: 1
+					,max: 1
+				}
+			]
+			,[ // ASSIGNMENT_EQUAL
+				{
+					childType: adhoc.nodeChildType.PARAMETER
+					,min: 1
+					,max: 1
+				},{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 1
+					,max: 1
+				}
+			]
+			,[ // ASSIGNMENT_PLUS
+				{
+					childType: adhoc.nodeChildType.PARAMETER
+					,min: 1
+					,max: 1
+				},{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 1
+					,max: 1
+				}
+			]
+			,[ // ASSIGNMENT_MINUS
+				{
+					childType: adhoc.nodeChildType.PARAMETER
+					,min: 1
+					,max: 1
+				},{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 1
+					,max: 1
+				}
+			]
+			,[ // ASSIGNMENT_TIMES
+				{
+					childType: adhoc.nodeChildType.PARAMETER
+					,min: 1
+					,max: 1
+				},{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 1
+					,max: 1
+				}
+			]
+			,[ // ASSIGNMENT_DIVBY
+				{
+					childType: adhoc.nodeChildType.PARAMETER
+					,min: 1
+					,max: 1
+				},{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 1
+					,max: 1
+				}
+			]
+			,[ // ASSIGNMENT_MOD
+				{
+					childType: adhoc.nodeChildType.PARAMETER
+					,min: 1
+					,max: 1
+				},{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 1
+					,max: 1
+				}
+			]
+			,[ // ASSIGNMENT_EXP
+				{
+					childType: adhoc.nodeChildType.PARAMETER
+					,min: 1
+					,max: 1
+				},{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 1
+					,max: 1
+				}
+			]
+			,[ // ASSIGNMENT_OR
+				{
+					childType: adhoc.nodeChildType.PARAMETER
+					,min: 1
+					,max: 1
+				},{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 1
+					,max: 1
+				}
+			]
+			,[ // ASSIGNMENT_AND
+				{
+					childType: adhoc.nodeChildType.PARAMETER
+					,min: 1
+					,max: 1
+				},{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 1
+					,max: 1
+				}
+			]
+		]
+		,[ // VARIABLE
+			[ // VARIABLE_ASIGN
+			]
+			,[ // VARIABLE_EVAL
+			]
+		]
+		,[
+			[ // LITERAL_BOOL
+			]
+			,[ // LITERAL_INT
+			]
+			,[ // LITERAL_FLOAT
+			]
+			,[ // LITERAL_STRNG
+			]
+			,[ // LITERAL_ARRAY
+				{
+					childType: adhoc.nodeChildType.MEMBER
+					,min: 0
+					,max: null
+				}
+			]
+			,[ // LITERAL_HASH
+				{
+					childType: adhoc.nodeChildType.MEMBER
+					,min: 0
+					,max: null
+				}
+			]
+			,[ // LITERAL_STRCT
+				{
+					childType: adhoc.nodeChildType.MEMBER
+					,min: 0
+					,max: null
+				}
+			]
+		]
 	];
 
 	// Validate integer values
@@ -316,6 +886,11 @@ Event.observe(window, 'load', function(){
 				// Input is invalid, display a message
 				$('lb_input_error').update(msg);
 				$('lb_input_select').addClassName('disabled');
+
+				// If the key was Esc, close the lightbox
+				if((e.keyCode||e.which) == Event.KEY_ESC){
+					$('theLightbox').hide();
+				}
 			}else{
 				// Input is good, allow submission
 				$('lb_input_error').update('');
@@ -711,10 +1286,15 @@ Event.observe(window, 'load', function(){
 					// Ask for node info based on which
 					switch(which){
 					case adhoc.nodeWhich.ACTION_DEFIN:
+						adhoc.promptValue('Enter an action name:', adhoc.validateActionName, false, function(val){
+							adhoc.createNode(clickedNode, type, which, null, null, val);
+						});
+						break;
+
 					case adhoc.nodeWhich.ACTION_CALL:
 						adhoc.promptValue('Enter an action name:', adhoc.validateActionName, false, function(val){
 							adhoc.createNode(clickedNode, type, which, null, null, val);
-						}, adhoc.genScopeSearch(clickedNode, false), 'New action');
+						}, adhoc.actionSearch, 'New action');
 						break;
 
 					case adhoc.nodeWhich.VARIABLE_ASIGN:
@@ -866,6 +1446,11 @@ adhoc.rootNode = adhoc.createNode(
 			}
 		}
 
+		// Register actions for later use
+		if(w == adhoc.nodeWhich.ACTION_DEFIN){
+			adhoc.registeredActions.push(newNode);
+		}
+
 		// Refresh the canvas with the new node
 		adhoc.refreshRender();
 
@@ -917,6 +1502,15 @@ adhoc.rootNode = adhoc.createNode(
 
 	// Recursively draw each node
 	adhoc.renderNode = function(n){
+		// Process the children recursively
+		var c, maxWidth=30;
+		for(var i=0; i<n.children.length; ++i){
+			// Render one child
+			c = n.children[i];
+			adhoc.renderNode(c);
+			if(c.width > maxWidth) maxWidth = c.width;
+		}
+
 		var ctx = adhoc.canvas.getContext('2d');
 		var nodeColor;
 		ctx.lineWidth = (6.0*adhoc.display_scale)<<0;
@@ -970,12 +1564,12 @@ adhoc.rootNode = adhoc.createNode(
 			nodeColor = '#8A8A8A';
 
 			// Set the group's dimensions by the size of its subtree
-			n.width = 120;
-			n.height = n.subTreeHeight + 20;
+			n.width = maxWidth + 10;
+			n.height = n.subTreeHeight + 10;
 
 			// Draw box border
 			ctx.strokeStyle = nodeColor;
-			ctx.setLineDash([10, 7]);
+			ctx.setLineDash([10*adhoc.display_scale, 7*adhoc.display_scale]);
 			ctx.strokeRect(
 				(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
 				,(n.y-(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
@@ -1192,15 +1786,11 @@ adhoc.rootNode = adhoc.createNode(
 			break;
 		}
 
-		// Proceed recursively
+		// Process the children recursively
 		for(var i=0; i<n.children.length; ++i){
-			var c = n.children[i];
-
-			// Render one child
-			adhoc.renderNode(c);
-
 			// Draw a connecting arrow except for groups
 			if(n.nodeType == adhoc.nodeTypes.GROUP) continue;
+			c = n.children[i];
 			ctx.strokeStyle = nodeColor;
 			ctx.beginPath();
 			ctx.moveTo(
@@ -1265,6 +1855,41 @@ adhoc.rootNode = adhoc.createNode(
 			// Return the final list
 			return out;
 		};
+	}
+
+	// Generate a function to find actions by name
+	adhoc.actionSearch = function(part){
+		// Create an empty list of actions to return
+		var out = [];
+
+		// Search registered actions first
+		for(var i=0; i<adhoc.registeredActions.length; ++i){
+			// If one matches, add it to the output array
+			var n = adhoc.registeredActions[i].name;
+			if(n.indexOf(part)===0){
+				out.push({
+					value: n
+					,display: n
+					,reminder: adhoc.registeredActions[i].package
+				});
+			}
+		}
+
+		// Then search system actions
+		for(var i=0; i<adhoc.systemActions.length; ++i){
+			// If one matches, add it to the output array
+			var n = adhoc.systemActions[i].name;
+			if(n.indexOf(part)===0){
+				out.push({
+					value: n
+					,display: n
+					,reminder: 'system'
+				});
+			}
+		}
+
+		// Return the final list
+		return out;
 	}
 
 	// Initialize the application
