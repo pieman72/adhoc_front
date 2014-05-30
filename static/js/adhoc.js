@@ -3,6 +3,7 @@ Event.observe(window, 'load', function(){
 	var adhoc = {};
 
 	// Certain class globals
+	adhoc.dbg = false;
 	adhoc.canvas = null;
 	adhoc.display_scale = 1.0;
 	adhoc.display_x = 0;
@@ -122,19 +123,18 @@ Event.observe(window, 'load', function(){
 	];
 	// AST node sub-type names
 	adhoc.nodeWhichNames = [
-		[
+		[ // NULL
 			['Null', '']
 		]
-		,[
+		,[ // ACTION
 			['Define Action', '']
 			,['Call Action', '']
 		]
-		,[
+		,[ // GROUP
 			['Serial Group', '']
 		]
-		,[
+		,[ // CONTROL
 			['If', 'If']
-			,['Else', 'Else']
 			,['Loop', 'Loop']
 			,['Switch', 'Switch']
 			,['Case', 'Case']
@@ -143,7 +143,7 @@ Event.observe(window, 'load', function(){
 			,['Break', 'Break']
 			,['Return', 'Return']
 		]
-		,[
+		,[ // OPERATOR
 			['Plus', '+']
 			,['Minus', '-']
 			,['Times', '*']
@@ -162,7 +162,7 @@ Event.observe(window, 'load', function(){
 			,['Array Index', '[]']
 			,['Ternary If', '? :']
 		]
-		,[
+		,[ // ASSIGNMENT
 			['Increment', '++']
 			,['Increment', '++']
 			,['Decrement', '--']
@@ -179,11 +179,11 @@ Event.observe(window, 'load', function(){
 			,['Disjoin With', '||=']
 			,['Conjoin With', '&&=']
 		]
-		,[
+		,[ // VARIABLE
 			['Variable', '']
 			,['Variable', '']
 		]
-		,[
+		,[ // LITERAL
 			['Boolean', '']
 			,['Integer', '']
 			,['Float', '']
@@ -192,6 +192,17 @@ Event.observe(window, 'load', function(){
 			,['Hash', '']
 			,['Struct', '']
 		]
+	];
+	// AST node sub-type indices
+	adhoc.nodeWhichIndices = [
+		[0,0]
+		,[1,0],[1,1]
+		,[2,0]
+		,[3,0],[3,1],[3,2],[3,3],[3,4],[3,5],[3,6],[3,7]
+		,[4,0],[4,1],[4,2],[4,3],[4,4],[4,5],[4,6],[4,7],[4,8],[4,9],[4,10],[4,11],[4,12],[4,13],[4,14],[4,15],[4,16]
+		,[5,0],[5,1],[5,2],[5,3],[5,4],[5,5],[5,6],[5,7],[5,8],[5,9],[5,10],[5,11],[5,12],[5,13],[5,14]
+		,[6,0],[6,1]
+		,[7,0],[7,1],[7,2],[7,3],[7,4],[7,5],[7,6]
 	];
 	// AST node child connection type names
 	adhoc.nodeChildTypeInfo = [
@@ -357,7 +368,7 @@ Event.observe(window, 'load', function(){
 					,min: 0
 					,max: null
 				},{
-					nodeType: adhoc.nodeChildType.STATEMENT
+					childType: adhoc.nodeChildType.STATEMENT
 					,min: 1
 					,max: null
 				}
@@ -725,11 +736,16 @@ Event.observe(window, 'load', function(){
 		]
 		,[ // VARIABLE
 			[ // VARIABLE_ASIGN
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 1
+					,max: 1
+				}
 			]
 			,[ // VARIABLE_EVAL
 			]
 		]
-		,[
+		,[ // LITERAL
 			[ // LITERAL_BOOL
 			]
 			,[ // LITERAL_INT
@@ -804,7 +820,6 @@ Event.observe(window, 'load', function(){
 		$('theLightbox').show();
 		return false;
 	}
-
 	// Prompt the user for an option
 	adhoc.promptFlag = function(prmpt, opts, callBack){
 		// Add the prompt text as the title
@@ -861,7 +876,6 @@ Event.observe(window, 'load', function(){
 		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
 		$('theLightbox').show();
 	}
-
 	// Prompt the user for a value
 	adhoc.promptValue = function(prmpt, vldt, algnR, callBack, searchFunc, sorryText){
 		// Add the prompt text as the title
@@ -1266,6 +1280,9 @@ Event.observe(window, 'load', function(){
 			}
 		};
 		var upFunc = function(e){
+			// We're done moving the canvas
+			adhoc.canvas.removeClassName('moving');
+
 			// Get the scaled location of the click
 			var offset = adhoc.canvas.positionedOffset();
 			var click = {
@@ -1274,61 +1291,89 @@ Event.observe(window, 'load', function(){
 			};
 			var clickedNode = adhoc.getClickedNode(adhoc.rootNode, click);
 
-			// If a node was clicked, figure out what to do with it
-			if(clickedNode){
-				var activeTools = $$('.toolboxItem.active');
-				// If a tool is active
-				if(activeTools.length){
-					// Get the tool's type and which
-					var type = parseInt(activeTools[0].getAttribute('data-type'));
-					var which = parseInt(activeTools[0].getAttribute('data-which'));
+			// A tool is active and a node was clicked, figure out what to do with it
+			var activeTools = $$('.toolboxItem.active');
+			if(activeTools.length && clickedNode){
+				// Get the tool's type, which, parent, and replacee
+				var type = parseInt(activeTools[0].getAttribute('data-type'));
+				var which = parseInt(activeTools[0].getAttribute('data-which'));
+				var prnt = (clickedNode.nodeType == adhoc.nodeTypes.TYPE_NULL) ? clickedNode.parent : clickedNode;
+				var repl = (prnt == clickedNode) ? null : clickedNode;
 
+				// For variables, determine the which from context
+				if(type == adhoc.nodeTypes.VARIABLE){
+					var neededChildren = adhoc.nodeWhichChildren[prnt.nodeType][adhoc.nodeWhichIndices[prnt.which][1]];
+					var assignOk = false;
+					for(var i=0; i<neededChildren.length; ++i){
+						var role = neededChildren[i];
+						// Skip if the child's type is not allowed
+						if(adhoc.nodeChildTypeInfo[role.childType].nodeTypes.indexOf(adhoc.nodeTypes.VARIABLE) < 0) continue;
+						// Skip if the child's sub-type is not allowed
+						if(adhoc.nodeChildTypeInfo[role.childType].nodeNotWhich.indexOf(adhoc.nodeWhich.VARIABLE_ASIGN) >= 0) continue;
+						// Skip if the parent has already maxed the child's type
+						if(role.max!=null && adhoc.countChildrenOfType(prnt, role.childType)>=role.max) continue;
+						// Variable assignments are ok
+						assignOk = true;
+						break;
+					}
+					if(assignOk){
+						which = adhoc.nodeWhich.VARIABLE_ASIGN;
+					}else{
+						which = adhoc.nodeWhich.VARIABLE_EVAL;
+					}
+				}
+
+				// Make a callback that takes a childtype and does the rest of node creation
+				var createNodeWithType = function(childType){
 					// Ask for node info based on which
 					switch(which){
 					case adhoc.nodeWhich.ACTION_DEFIN:
+						// Prompt for an action name
 						adhoc.promptValue('Enter an action name:', adhoc.validateActionName, false, function(val){
-							adhoc.createNode(clickedNode, type, which, null, null, val);
+							adhoc.createNode(prnt, repl, type, which, childType, null, val);
 						});
 						break;
 
 					case adhoc.nodeWhich.ACTION_CALL:
+						// Prompt for an action name
 						adhoc.promptValue('Enter an action name:', adhoc.validateActionName, false, function(val){
-							adhoc.createNode(clickedNode, type, which, null, null, val);
+							adhoc.createNode(prnt, repl, type, which, childType, null, val);
 						}, adhoc.actionSearch, 'New action');
 						break;
 
 					case adhoc.nodeWhich.VARIABLE_ASIGN:
 					case adhoc.nodeWhich.VARIABLE_EVAL:
+						// Prompt for a variable name
 						adhoc.promptValue('Enter a variable name:', adhoc.validateIdentifier, false, function(val){
-							adhoc.createNode(clickedNode, type, which, null, null, val);
-						}, adhoc.genScopeSearch(clickedNode, false), 'New variable');
+							adhoc.createNode(prnt, repl, type, which, childType, null, val);
+						}, adhoc.genScopeSearch(prnt, false), 'New variable');
 						break;
 
-					// Prompt for a boolean value
 					case adhoc.nodeWhich.LITERAL_BOOL:
+						// Prompt for a boolean value
 						adhoc.promptFlag('Select a boolean value:', ['true', 'false'], function(val){
-							adhoc.createNode(clickedNode, type, which, null, null, null, !val);
+							adhoc.createNode(prnt, repl, type, which, childType, null, null, !val);
 						});
 						break;
 
-					// Prompt for an integer value
 					case adhoc.nodeWhich.LITERAL_INT:
+						// Prompt for an integer value
 						adhoc.promptValue('Enter an integer:', adhoc.validateInt, true, function(val){
-							adhoc.createNode(clickedNode, type, which, null, null, null, parseInt(val));
+							adhoc.createNode(prnt, repl, type, which, childType, null, null, parseInt(val));
 						});
 						break;
 
-					// Prompt for a float value
 					case adhoc.nodeWhich.LITERAL_FLOAT:
+						// Prompt for a float value
 						adhoc.promptValue('Enter a float:', adhoc.validateFloat, true, function(val){
-							adhoc.createNode(clickedNode, type, which, null, null, null, parseFloat(val));
+							adhoc.createNode(prnt, repl, type, which, childType, null, null, parseFloat(val));
 						});
 						break;
 
-					// Prompt for a string value
 					case adhoc.nodeWhich.LITERAL_STRNG:
+						// Prompt for a string value
 						adhoc.promptValue('Enter a string:', adhoc.validateString, false, function(val){
-							adhoc.createNode(clickedNode, type, which, null, null, null, val);
+							adhoc.createNode(prnt, repl, type, which, childType, null, null, val);
 						});
 						break;
 
@@ -1336,17 +1381,62 @@ Event.observe(window, 'load', function(){
 					case adhoc.nodeWhich.LITERAL_HASH:
 					case adhoc.nodeWhich.LITERAL_STRCT:
 // TODO: Prompt for literal value
-adhoc.createNode(clickedNode, type, which);
+adhoc.createNode(prnt, repl, type, which, childType);
 						break;
 
 					default:
-						adhoc.createNode(clickedNode, type, which);
+						adhoc.createNode(prnt, repl, type, which, childType);
 					}
 				}
-			}
 
-			// Regardless, we're done moving the canvas
-			adhoc.canvas.removeClassName('moving');
+				// If we're dealing with a replacement, so take that role
+				if(repl){
+					createNodeWithType(repl.childType);
+					return;
+				}
+
+				// Get the child roles this node can fill
+				var neededChildren = adhoc.nodeWhichChildren[prnt.nodeType][adhoc.nodeWhichIndices[prnt.which][1]];
+				var roleOptions = [];
+				var roleOptionNames = [];
+				var someOk = false;
+				// Loop over the types of children the parent needs
+				for(var i=0; i<neededChildren.length; ++i){
+					var role = neededChildren[i];
+					// Skip if the child's type is not allowed
+					if(adhoc.nodeChildTypeInfo[role.childType].nodeTypes.indexOf(type) < 0) continue;
+					// Skip if the child's sub-type is not allowed
+					if(adhoc.nodeChildTypeInfo[role.childType].nodeNotWhich.indexOf(which) >= 0) continue;
+					// The child type is allowed for at least one role
+					someOk = true;
+					// Skip if the parent has already maxed the child's type
+					if(role.max!=null && adhoc.countChildrenOfType(prnt, role.childType) >= role.max) continue;
+
+					// If we make it here, the child type is viable
+					roleOptions.push(role.childType);
+					roleOptionNames.push(adhoc.nodeChildTypeInfo[role.childType].label);
+				}
+
+				// Report errors if there are no roles available
+				if(!roleOptions.length){
+					var parentName = adhoc.nodeWhichNames[adhoc.nodeWhichIndices[prnt.which][0]][adhoc.nodeWhichIndices[prnt.which][1]][0];
+					var childName = adhoc.nodeWhichNames[type][adhoc.nodeWhichIndices[which][1]][0];
+					adhoc.error(someOk
+						? "The parent node cannot hold any more children of this type."
+						: "A '"+parentName+"' node cannot hold a '"+childName+"' node directly."
+					);
+
+				// If no errors, but only one option, then just use that
+				}else if(roleOptions.length == 1){
+					createNodeWithType(roleOptions[0]);
+
+				// If multiple roles available, prompt for which role will be filled
+				}else{
+					adhoc.promptFlag('Select a role for the new node:', roleOptionNames, function(val){
+						createNodeWithType(roleOptions[val]);
+					});
+				}
+			}
 		};
 		var moveFunc = function(e){
 			// If the canvas isn't moving, just return
@@ -1391,6 +1481,7 @@ adhoc.createNode(clickedNode, type, which);
 // TODO: Load an old project or initialize a new one with it's root action
 adhoc.rootNode = adhoc.createNode(
 	null
+	,null
 	,adhoc.nodeTypes.ACTION
 	,adhoc.nodeWhich.ACTION_DEFIN
 	,adhoc.nodeChildType.STATEMENT
@@ -1407,9 +1498,13 @@ adhoc.rootNode = adhoc.createNode(
 	adhoc.nextId = function(){
 		return ++adhoc.lastId;
 	}
-
 	// Create a new node with just a type and empty contents
-	adhoc.createNode = function(p, t, w, c, k, n, v){
+	adhoc.createNode = function(p, r, t, w, c, k, n, v){
+		// Set the type, which, and childType if they're not passed
+		if(!t) t = adhoc.nodeTypes.TYPE_NULL;
+		if(!w) w = adhoc.nodeWhich.WHICH_NULL;
+		if(!c) c = adhoc.nodeChildType.CHILD_NULL;
+
 		// Create the object with its params
 		var newNode = {
 			id: adhoc.nextId()
@@ -1433,7 +1528,15 @@ adhoc.rootNode = adhoc.createNode(
 
 		// Assign to the parent if present
 		if(p){
-			p.children.push(newNode);
+			// If there is a null node to replace, do so
+			if(r){
+				var replIndex = p.children.indexOf(r);
+				p.children[replIndex] = newNode;
+			}else{
+				p.children.push(newNode);
+			}
+
+			// Assign this variable to the appropriate scope as well
 			if(w == adhoc.nodeWhich.VARIABLE_ASIGN){
 				var searchFunc = adhoc.genScopeSearch(p, true);
 				if(!searchFunc(n).length){
@@ -1451,8 +1554,26 @@ adhoc.rootNode = adhoc.createNode(
 			adhoc.registeredActions.push(newNode);
 		}
 
+		// Give this node empty children as necessary (dbg mode)
+		if(adhoc.dbg){
+			var neededChildren = adhoc.nodeWhichChildren[t][adhoc.nodeWhichIndices[w][1]];
+			for(var i=0; i<neededChildren.length; ++i){
+				for(var j=0; j<neededChildren[i].min; ++j){
+					adhoc.createNode(
+						newNode
+						,null
+						,adhoc.nodeTypes.TYPE_NULL
+						,adhoc.nodeWhich.WHICH_NULL
+						,neededChildren[i].childType
+					);
+				}
+			}
+		}
+
 		// Refresh the canvas with the new node
-		adhoc.refreshRender();
+		if(t != adhoc.nodeTypes.TYPE_NULL){
+			adhoc.refreshRender();
+		}
 
 		// Return the new node
 		return newNode;
@@ -1465,7 +1586,6 @@ adhoc.rootNode = adhoc.createNode(
 		adhoc.canvas.setAttribute('height', workspace.getHeight());
 		adhoc.refreshRender();
 	}
-
 	// Re-compute all the node locations and redraw those that are on-screen
 	adhoc.refreshRender = function(){
 		if(!adhoc.rootNode) return;
@@ -1487,7 +1607,6 @@ adhoc.rootNode = adhoc.createNode(
 		}
 		return n.subTreeHeight;
 	}
-
 	// Recursively determine each node's display position
 	adhoc.positionNode = function(n, d){
 		var passed = d ? n.y : 0;
@@ -1519,7 +1638,8 @@ adhoc.rootNode = adhoc.createNode(
 
 		switch(n.nodeType){
 		case adhoc.nodeTypes.TYPE_NULL:
-			ctx.fillStyle = '#808080';
+			nodeColor = '#A0A0A0';
+			ctx.strokeStyle = nodeColor;
 			n.width = 70;
 			n.height = 70;
 			ctx.strokeRect(
@@ -1793,15 +1913,35 @@ adhoc.rootNode = adhoc.createNode(
 			c = n.children[i];
 			ctx.strokeStyle = nodeColor;
 			ctx.beginPath();
-			ctx.moveTo(
+			var arrowFrom = [
 				(n.x+(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
 				,n.y * adhoc.display_scale - adhoc.display_y
-			);
-			ctx.lineTo(
+			]
+			,arrowTo = [
 				(c.x-(c.width/2.0)) * adhoc.display_scale - adhoc.display_x
 				,c.y * adhoc.display_scale - adhoc.display_y
-			);
+			]
+			,arrowCenter = [
+				(arrowFrom[0]+arrowTo[0])/2.0
+				, (arrowFrom[1]+arrowTo[1])/2.0
+			]
+			ctx.moveTo(arrowFrom[0], arrowFrom[1]);
+			ctx.lineTo(arrowTo[0], arrowTo[1]);
 			ctx.stroke();
+
+			// Label the connector for certain child types
+			var childInfo = adhoc.nodeChildTypeInfo[c.childType];
+if(true || adhoc.dbg || childInfo.useLabel){
+				var rise = arrowTo[1] - arrowFrom[1];
+				var run = arrowTo[0] - arrowFrom[0];
+				ctx.save();
+				ctx.translate(arrowCenter[0], arrowCenter[1]);
+				ctx.rotate(Math.atan(rise/run));
+				ctx.textAlign = "center";
+				ctx.fillStyle = nodeColor;
+				ctx.fillText(childInfo.label, 0, 0);
+				ctx.restore();
+			}
 		}
 	}
 
@@ -1856,7 +1996,6 @@ adhoc.rootNode = adhoc.createNode(
 			return out;
 		};
 	}
-
 	// Generate a function to find actions by name
 	adhoc.actionSearch = function(part){
 		// Create an empty list of actions to return
@@ -1890,6 +2029,14 @@ adhoc.rootNode = adhoc.createNode(
 
 		// Return the final list
 		return out;
+	}
+	// Check how many children of a particular type some parent has
+	adhoc.countChildrenOfType = function(prnt, childType){
+		var count = 0;
+		for(var i=0; i<prnt.children.length; ++i){
+			if(prnt.children[i].childType == childType) ++count;
+		}
+		return count;
 	}
 
 	// Initialize the application
