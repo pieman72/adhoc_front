@@ -20,6 +20,7 @@
 			<div class="controlsLeft floatLeft">
 			</div>
 			<div class="controlsRight floatRight">
+				<a id="generateButton" class="nxj_button nxj_cssButton" href="javascript:void(0);">Generate Code</a>
 				<div id="controlsToggle" title="Show/Hide Controls">
 					<div></div>
 				</div>

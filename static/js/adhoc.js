@@ -778,6 +778,15 @@ Event.observe(window, 'load', function(){
 		]
 	];
 
+	// Convert an int to a 3-byte string
+	adhoc.intTo3Byte = function(i){
+		var out = String.fromCharCode(i%256);
+		i = (i/256)>>0;
+		out = String.fromCharCode(i%256) + out;
+		i = (i/256)>>0;
+		return String.fromCharCode(i%256) + out;
+	}
+
 	// Validate integer values
 	adhoc.validateInt = function(v){
 		return ((!isNaN(parseFloat(v))&&isFinite(v)&&(v==parseInt(v))) ? false : "Input is not an integer.");
@@ -1157,10 +1166,27 @@ Event.observe(window, 'load', function(){
 
 	// Initialize the GUI editor
 	adhoc.init = function(){
+		// Activate the generate button
+		$('generateButton').observe('click', function(){
+			new Ajax.Request('generate/', {
+				parameters: {
+					binary: adhoc.serialize(adhoc.rootNode)
+					,language: 'c'
+					,executable: 1
+					,dbg: (adhoc.dbg ? 1 : 0)
+				}
+				,onFailure: function(){
+					adhoc.error("Unable to send request to server. Make sure you're online.");
+				}
+				,onSuccess: function(t){
+console.log(t.responseText);
+				}
+			});
+		});
 		// Activate the top control panel toggle
 		$('controlsToggle').observe('click', function(){
 			$('controls').toggleClassName('collapsed');
-		})
+		});
 
 		// Initialize drawing canvas
 		adhoc.canvas = $('canvas');
@@ -1786,6 +1812,7 @@ adhoc.rootNode = adhoc.createNode(
 
 		case adhoc.nodeTypes.VARIABLE:
 			// Get label text and its size
+			nodeColor = '#000000';
 			var title = n.name;
 			if(title.length > 20) title = title.substr(0, 18)+'...';
 			var size = ctx.measureText(title);
@@ -1906,7 +1933,7 @@ adhoc.rootNode = adhoc.createNode(
 			break;
 		}
 
-		// Process the children recursively
+		// Process the child connectors recursively
 		for(var i=0; i<n.children.length; ++i){
 			// Draw a connecting arrow except for groups
 			if(n.nodeType == adhoc.nodeTypes.GROUP) continue;
@@ -1931,11 +1958,12 @@ adhoc.rootNode = adhoc.createNode(
 
 			// Label the connector for certain child types
 			var childInfo = adhoc.nodeChildTypeInfo[c.childType];
-if(true || adhoc.dbg || childInfo.useLabel){
+			if(adhoc.dbg || childInfo.useLabel){
+				ctx.font = "" + (14*adhoc.display_scale) + "px Arial";
 				var rise = arrowTo[1] - arrowFrom[1];
 				var run = arrowTo[0] - arrowFrom[0];
 				ctx.save();
-				ctx.translate(arrowCenter[0], arrowCenter[1]);
+				ctx.translate(arrowCenter[0], arrowCenter[1]-5);
 				ctx.rotate(Math.atan(rise/run));
 				ctx.textAlign = "center";
 				ctx.fillStyle = nodeColor;
@@ -2037,6 +2065,23 @@ if(true || adhoc.dbg || childInfo.useLabel){
 			if(prnt.children[i].childType == childType) ++count;
 		}
 		return count;
+	}
+
+	// Function to serialize a node and its children for binary
+	adhoc.serialize = function(n){
+		var out =
+			adhoc.intTo3Byte(n.id)
+			+ adhoc.intTo3Byte(n.parent ? n.parent.id : 0)
+			+ adhoc.intTo3Byte(n.nodeType)
+			+ adhoc.intTo3Byte(n.which)
+			+ adhoc.intTo3Byte(n.childType)
+			+ '"' + n.package + '"'
+			+ '"' + n.name + '"'
+			+ '"' + n.value + '"';
+		for(var i=0; i<n.children.length; ++i){
+			out += adhoc.serialize(n.children[i]);
+		}
+		return out;
 	}
 
 	// Initialize the application

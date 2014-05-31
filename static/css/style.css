@@ -98,6 +98,11 @@ label {
 	position:relative;
 	width:50%;
 	}
+#generateButton {
+	bottom:20px;
+	position:absolute;
+	right:10px;
+	}
 #controlsToggle {
 	background:#EEEEEE;
 	border:1px solid #BBBBBB;
