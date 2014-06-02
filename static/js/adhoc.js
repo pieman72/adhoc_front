@@ -874,8 +874,8 @@ Event.observe(window, 'load', function(){
 		butt.addClassName('disabled');
 		butt.update('Select');
 		butt.observe('click', function(){
-			callBack(parseInt($$('#theLightbox input:checked')[0].value));
 			$('theLightbox').hide();
+			callBack(parseInt($$('#theLightbox input:checked')[0].value));
 		});
 		cont.appendChild(butt);
 
