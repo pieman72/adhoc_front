@@ -18,9 +18,84 @@
 
 		<div id="controls" class="collapsed">
 			<div class="controlsLeft floatLeft">
+				<div class="floatLeft" style="height:100%;width:10px;"></div>
+				<div class="floatLeft">
+					<div style="height:10px;" class="clear"></div>
+
+					<div class="floatLeft">
+						<div class="floatLeft">
+							<span>Show Placeholders</span>
+							<div class="clear"></div>
+
+							<input type="radio" class="floatLeft" name="showNullNodes" value="1" id="showNullNodes_1" checked="checked" />
+							<label for="showNullNodes_1">Yes</label>
+							<div class="clear"></div>
+
+							<input type="radio" class="floatLeft" name="showNullNodes" value="0" id="showNullNodes_0" />
+							<label for="showNullNodes_0">No</label>
+							<div class="clear"></div>
+						</div>
+						<div class="clear" style="height:10px;"></div>
+
+						<div class="floatLeft">
+							<span>Connector Labels</span>
+							<div class="clear"></div>
+
+							<input type="radio" class="floatLeft" name="labelConnectors" value="0" id="labelConnectors_0" />
+							<label for="labelConnectors_0">None</label>
+							<div class="clear"></div>
+
+							<input type="radio" class="floatLeft" name="labelConnectors" value="1" id="labelConnectors_1" checked="checked" />
+							<label for="labelConnectors_1">Some</label>
+							<div class="clear"></div>
+
+							<input type="radio" class="floatLeft" name="labelConnectors" value="2" id="labelConnectors_2" />
+							<label for="labelConnectors_2">All</label>
+							<div class="clear"></div>
+
+						</div>
+					</div>
+					<div class="floatLeft" style="height:10px;width:20px;"></div>
+
+					<div class="floatLeft">
+						<div class="floatLeft">
+							<span>Color Scheme</span>
+							<div class="clear"></div>
+
+							<input type="radio" class="floatLeft" name="colorScheme" value="light" id="colorScheme_light" checked="checked" />
+							<label for="colorScheme_light">Light</label>
+							<div class="clear"></div>
+
+							<input type="radio" class="floatLeft" name="colorScheme" value="dark" id="colorScheme_dark" />
+							<label for="colorScheme_dark">Dark</label>
+							<div class="clear"></div>
+						</div>
+					</div>
+				</div>
 			</div>
 			<div class="controlsRight floatRight">
+				<div style="height:10px;" class="clear"></div>
+
+				<div class="floatLeft">
+					<label onclick="$('languageChoice').addClassName('nxj_selectOpen'); Event.stop(event);">Target Language</label>
+					<div class="clear"></div>
+
+					<?php echo Nxj_UI::selectbox(array(
+						'id'			=> 'languageChoice'
+						,'float'		=> 'left'
+						,'width'		=> 200
+						,'options'		=> array(
+							(object) array(
+								'value'		=> 'c'
+								,'display'	=> 'C (ANSI C99)'
+								,'default'	=> true
+							)
+						)
+					));?>
+				</div>
+
 				<a id="generateButton" class="nxj_button nxj_cssButton" href="javascript:void(0);">Generate Code</a>
+
 				<div id="controlsToggle" title="Show/Hide Controls">
 					<div></div>
 				</div>

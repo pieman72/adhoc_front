@@ -209,7 +209,7 @@ class Nxj_UI {
             $output .= "
         <div class=\"nxj_selectOption\"
                     data-value=\"".$oneOption->value."\"
-                    onclick=\"".$params['callback']."($(this).getAttribute('data-value'), $(this).innerHTML);\"
+                    ".($params['callback'] ? "onclick=\"".$params['callback']."($(this).getAttribute('data-value'), $(this).innerHTML);\"" : "")."
                     ".(isset($oneOption->default)&&$oneOption->default ? ' data-default="true"' : '')."
             >
             ".$oneOption->display."
@@ -222,7 +222,7 @@ class Nxj_UI {
         id=\"".$params['id']."_input\"
         type=\"hidden\"
         ".(isset($params['name']) ? 'name="'.$params['name'].'"' : $params['id'])."
-        value=".(isset($params['defaultValue']) ? $params['defaultValue'] : '')."\"/>
+        value=\"".(isset($params['defaultValue']) ? $params['defaultValue'] : '')."\"/>
 </div>";
 
         return $output;

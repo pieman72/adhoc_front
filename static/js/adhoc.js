@@ -5,15 +5,16 @@ Event.observe(window, 'load', function(){
 	// Certain class globals
 	adhoc.settings = {
 		dbg: false
-		,colorTone: 'light'
+		,colorScheme: 'light'
 		,showNullNodes: true
-		,labelAllChildConnectors: false
+		,labelConnectors: 1
 	};
 	adhoc.canvas = null;
 	adhoc.display_scale = 1.0;
 	adhoc.display_x = 0;
 	adhoc.display_y = 0;
 	adhoc.textColor = '#000000';
+	adhoc.textColorDark = '#EEEEEE';
 	adhoc.lastId = 0;
 	adhoc.registeredActions = [];
 	adhoc.systemActions = [
@@ -335,7 +336,7 @@ Event.observe(window, 'load', function(){
 				adhoc.nodeWhich.VARIABLE_ASIGN
 			]
 		}
-		,{label: 'If'
+		,{label: 'If (true)'
 			,useLabel: true
 			,nodeTypes: [
 				adhoc.nodeTypes.ACTION
@@ -347,7 +348,7 @@ Event.observe(window, 'load', function(){
 				adhoc.nodeWhich.CONTROL_CASE
 			]
 		}
-		,{label: 'Else'
+		,{label: 'Else (false)'
 			,useLabel: true
 			,nodeTypes: [
 				adhoc.nodeTypes.ACTION
@@ -1178,12 +1179,41 @@ Event.observe(window, 'load', function(){
 
 	// Initialize the GUI editor
 	adhoc.init = function(){
+		// Activate colorscheme toggles
+		$$('#controls input[name=showNullNodes]').each(function(elem){
+			elem.observe('change', function(){
+				if(!this.checked) return;
+				adhoc.settings.showNullNodes = false || parseInt(this.value);
+				adhoc.refreshRender();
+			});
+		});
+		// Activate connector label toggles
+		$$('#controls input[name=labelConnectors]').each(function(elem){
+			elem.observe('change', function(){
+				if(!this.checked) return;
+				adhoc.settings.labelConnectors = parseInt(this.value);
+				adhoc.refreshRender();
+			});
+		});
+		// Activate colorscheme toggles
+		$$('#controls input[name=colorScheme]').each(function(elem){
+			elem.observe('change', function(){
+				if(!this.checked) return;
+				adhoc.settings.colorScheme = this.value;
+				$(document.body)
+					.removeClassName('dark')
+					.removeClassName('light')
+					.addClassName(this.value);
+				adhoc.refreshRender();
+			});
+		});
+
 		// Activate the generate button
 		$('generateButton').observe('click', function(){
 			new Ajax.Request('generate/', {
 				parameters: {
 					binary: adhoc.serialize(adhoc.rootNode)
-					,language: 'c'
+					,language: $F('languageChoice_input')
 					,executable: 1
 					,dbg: (adhoc.settings.dbg ? 1 : 0)
 				}
@@ -1368,6 +1398,15 @@ console.log(t.responseText);
 
 				// Make a callback that takes a childtype and does the rest of node creation
 				var createNodeWithType = function(childType){
+					// Make sure the child type is ok with the which
+					if(adhoc.nodeChildTypeInfo[childType].nodeTypes.indexOf(type) < 0
+							|| adhoc.nodeChildTypeInfo[childType].nodeNotWhich.indexOf(type) >= 0){
+						var typeName = adhoc.nodeWhichNames[type][adhoc.nodeWhichIndices[which][1]][0];
+						var roleName = adhoc.nodeChildTypeInfo[childType].label;
+						adhoc.error("A '"+typeName+"' node cannot fill the '"+roleName+"' role.");
+						return;
+					}
+
 					// Ask for node info based on which
 					switch(which){
 					case adhoc.nodeWhich.ACTION_DEFIN:
@@ -1462,7 +1501,7 @@ adhoc.createNode(prnt, repl, type, which, childType);
 					// The child type is allowed for at least one role
 					someOk = true;
 					// Skip if the parent has already maxed the child's type
-					if(role.max!=null && adhoc.countChildrenOfType(prnt, role.childType) >= role.max) continue;
+					if(role.max!=null && adhoc.countChildrenOfType(prnt, role.childType, true) >= role.max) continue;
 
 					// If we make it here, the child type is viable
 					roleOptions.push(role.childType);
@@ -1547,7 +1586,6 @@ adhoc.rootNode = adhoc.createNode(
 
 		// Draw the initial canvas
 		adhoc.refreshRender();
-adhoc.error("this is a test");
 	}
 
 	// Generate the next available node ID
@@ -1585,12 +1623,9 @@ adhoc.error("this is a test");
 		// Assign to the parent if present
 		if(p){
 			// If there is a null node to replace, do so
-			if(r){
-				var replIndex = p.children.indexOf(r);
-				p.children[replIndex] = newNode;
-			}else{
-				p.children.push(newNode);
-			}
+			if(!r && t!=adhoc.nodeTypes.TYPE_NULL) r = adhoc.getFirstNullChildByType(p, c);
+			if(r) p.children[p.children.indexOf(r)] = newNode;
+			else p.children.push(newNode);
 
 			// Assign this variable to the appropriate scope as well
 			if(w == adhoc.nodeWhich.VARIABLE_ASIGN){
@@ -1611,18 +1646,16 @@ adhoc.error("this is a test");
 		}
 
 		// Give this node empty children as necessary
-		if(adhoc.settings.showNullNodes){
-			var neededChildren = adhoc.nodeWhichChildren[t][adhoc.nodeWhichIndices[w][1]];
-			for(var i=0; i<neededChildren.length; ++i){
-				for(var j=0; j<neededChildren[i].min; ++j){
-					adhoc.createNode(
-						newNode
-						,null
-						,adhoc.nodeTypes.TYPE_NULL
-						,adhoc.nodeWhich.WHICH_NULL
-						,neededChildren[i].childType
-					);
-				}
+		var neededChildren = adhoc.nodeWhichChildren[t][adhoc.nodeWhichIndices[w][1]];
+		for(var i=0; i<neededChildren.length; ++i){
+			for(var j=0; j<neededChildren[i].min; ++j){
+				adhoc.createNode(
+					newNode
+					,null
+					,adhoc.nodeTypes.TYPE_NULL
+					,adhoc.nodeWhich.WHICH_NULL
+					,neededChildren[i].childType
+				);
 			}
 		}
 
@@ -1659,6 +1692,10 @@ adhoc.error("this is a test");
 		if(!n.children.length) return (n.subTreeHeight = (n.nodeType==adhoc.nodeTypes.GROUP ? 30 : 100));
 		n.subTreeHeight = (n.nodeType==adhoc.nodeTypes.GROUP ? 30 : 0);
 		for(var i=0; i<n.children.length; ++i){
+			// Skip null placeholders when setting is disabled
+			if(n.children[i].nodeType==adhoc.nodeTypes.TYPE_NULL &&
+					!adhoc.settings.showNullNodes) continue;
+
 			n.subTreeHeight += adhoc.subTreeHeightNode(n.children[i]);
 		}
 		return n.subTreeHeight;
@@ -1669,6 +1706,10 @@ adhoc.error("this is a test");
 		n.x = d*200 + 100;
 		n.y = n.subTreeHeight/2 + passed;
 		for(var i=0; i<n.children.length; ++i){
+			// Skip null placeholders when setting is disabled
+			if(n.children[i].nodeType==adhoc.nodeTypes.TYPE_NULL &&
+					!adhoc.settings.showNullNodes) continue;
+
 			n.children[i].y = passed;
 			passed += n.children[i].subTreeHeight;
 			adhoc.positionNode(n.children[i], d+(n.nodeType==adhoc.nodeTypes.GROUP ? 0 : 1));
@@ -1682,6 +1723,11 @@ adhoc.error("this is a test");
 		for(var i=0; i<n.children.length; ++i){
 			// Render one child
 			c = n.children[i];
+
+			// Skip null placeholders when setting is disabled
+			if(c.nodeType==adhoc.nodeTypes.TYPE_NULL &&
+					!adhoc.settings.showNullNodes) continue;
+
 			adhoc.renderNode(c);
 			if(c.width > maxWidth) maxWidth = c.width;
 		}
@@ -1690,11 +1736,11 @@ adhoc.error("this is a test");
 		var nodeColor;
 		ctx.lineWidth = (6.0*adhoc.display_scale)<<0;
 		ctx.font = ((20.0*adhoc.display_scale)<<0)+'px Arial';
-		ctx.fillStyle = adhoc.textColor;
+		ctx.fillStyle = adhoc.settings.colorScheme=='dark' ? adhoc.textColorDark : adhoc.textColor;
 
 		switch(n.nodeType){
 		case adhoc.nodeTypes.TYPE_NULL:
-			nodeColor = '#A0A0A0';
+			nodeColor = '#989898';
 			ctx.strokeStyle = nodeColor;
 			n.width = 70;
 			n.height = 70;
@@ -1842,7 +1888,7 @@ adhoc.error("this is a test");
 
 		case adhoc.nodeTypes.VARIABLE:
 			// Get label text and its size
-			nodeColor = '#000000';
+			nodeColor = adhoc.settings.colorScheme=='dark' ? adhoc.textColorDark : adhoc.textColor;
 			var title = n.name;
 			if(title.length > 20) title = title.substr(0, 18)+'...';
 			var size = ctx.measureText(title);
@@ -1968,6 +2014,11 @@ adhoc.error("this is a test");
 			// Draw a connecting arrow except for groups
 			if(n.nodeType == adhoc.nodeTypes.GROUP) continue;
 			c = n.children[i];
+
+			// Skip null placeholders when setting is disabled
+			if(c.nodeType==adhoc.nodeTypes.TYPE_NULL &&
+					!adhoc.settings.showNullNodes) continue;
+
 			ctx.strokeStyle = nodeColor;
 			ctx.beginPath();
 			var arrowFrom = [
@@ -1988,7 +2039,7 @@ adhoc.error("this is a test");
 
 			// Label the connector for certain child types
 			var childInfo = adhoc.nodeChildTypeInfo[c.childType];
-			if(adhoc.settings.labelAllChildConnectors || childInfo.useLabel){
+			if(adhoc.settings.labelConnectors && (adhoc.settings.labelConnectors==2 || childInfo.useLabel)){
 				ctx.font = "" + (14*adhoc.display_scale) + "px Arial";
 				var rise = arrowTo[1] - arrowFrom[1];
 				var run = arrowTo[0] - arrowFrom[0];
@@ -2089,12 +2140,20 @@ adhoc.error("this is a test");
 		return out;
 	}
 	// Check how many children of a particular type some parent has
-	adhoc.countChildrenOfType = function(prnt, childType){
+	adhoc.countChildrenOfType = function(prnt, childType, skipNull){
 		var count = 0;
 		for(var i=0; i<prnt.children.length; ++i){
+			if(prnt.children[i].nodeType == adhoc.nodeTypes.TYPE_NULL && skipNull) continue;
 			if(prnt.children[i].childType == childType) ++count;
 		}
 		return count;
+	}
+	// Get the first null child of a certain type
+	adhoc.getFirstNullChildByType = function(prnt, childType){
+		for(var i=0; i<prnt.children.length; ++i){
+			if(prnt.children[i].childType == childType) return prnt.children[i];
+		}
+		return null;
 	}
 
 	// Function to serialize a node and its children for binary
@@ -2105,9 +2164,9 @@ adhoc.error("this is a test");
 			+ adhoc.intTo3Byte(n.nodeType)
 			+ adhoc.intTo3Byte(n.which)
 			+ adhoc.intTo3Byte(n.childType)
-			+ '"' + n.package + '"'
-			+ '"' + n.name + '"'
-			+ '"' + n.value + '"';
+			+ '"' + (n.package ? n.package : 'NULL') + '"'
+			+ '"' + (n.name ? n.name : 'NULL') + '"'
+			+ '"' + (n.value ? n.value : 'NULL') + '"';
 		for(var i=0; i<n.children.length; ++i){
 			out += adhoc.serialize(n.children[i]);
 		}

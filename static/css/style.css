@@ -28,6 +28,10 @@ label {
 	text-align:center;
 	top:20%;
 	}
+.dark .nxj_lightbox {
+	background:#000000;
+	box-shadow:0 0 20px 7px #FFFFFF;
+	}
 #theLightbox .nxj_input {
 	font-size:20px;
 	width:370px;
@@ -39,7 +43,7 @@ label {
 	position:relative;
 	width:380px;
 	z-index:0;
-}
+	}
 #lb_input_acList {
 	background:#FFFFFF;
 	border:1px solid #999999;
@@ -48,27 +52,27 @@ label {
 	top:31px;
 	width:378px;
 	z-index:1;
-}
+	}
 #lb_input_acList .acItem {
 	cursor:pointer;
 	padding:4px 9px;
-}
+	}
 #lb_input_acList .acItem.selected {
 	background:#5FD7FF;
-}
+	}
 #lb_input_acList .match {
 	color:#1F6CE0;
 	font-weight:bold;
-}
+	}
 #lb_input_acList .reminder {
 	color:#999999;
 	float:right;
-}
+	}
 #lb_input_acList .sorry {
 	color:#707070;
 	font-style:italic;
 	padding:2px 5px;
-}
+	}
 #lb_input_error {
 	color:#FF0000;
 	font-size:14px;
@@ -80,7 +84,8 @@ label {
 #controls {
 	background:#EEEEEE;
 	border-bottom:1px solid #BBBBBB;
-	height:150px;
+	box-shadow:0 -3px 4px 0 #BBBBBB inset;
+	height:200px;
 	left:0;
 	overflow:visible;
 	position:absolute;
@@ -90,13 +95,18 @@ label {
 	z-index:2;
 	}
 #controls.collapsed {
-	top:-150px;
+	top:-200px;
 	}
 #controls .controlsLeft,
 #controls .controlsRight {
 	height:100%;
 	position:relative;
 	width:50%;
+	}
+#controls label,
+#controls span {
+	color:#000000;
+	float:left;
 	}
 #generateButton {
 	bottom:20px;
@@ -137,6 +147,9 @@ label {
 	overflow-y:auto;
 	width:20%;
 	}
+.dark #toolbox {
+	box-shadow:inset -3px 0px 4px 0px #303030;
+	}
 .toolboxTitle {
 	font-size:32px;
 	height:8%;
@@ -174,6 +187,7 @@ label {
 	}
 .dark .toolboxCategoryHeading {
 	background:#333333;
+	box-shadow:0 0 4px 3px #111111 inset;
 	}
 .toolboxCategoryBody {
 	height:100%;
@@ -279,6 +293,9 @@ label {
 	}
 .zoomHolder:active {
 	background-color:#7FFF00;
+	}
+.dark .zoomHolder {
+	border-color:#303030;
 	}
 #zoomIn {
 	border-radius:15px 0 0 15px;
