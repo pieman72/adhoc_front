@@ -3,7 +3,12 @@ Event.observe(window, 'load', function(){
 	var adhoc = {};
 
 	// Certain class globals
-	adhoc.dbg = false;
+	adhoc.settings = {
+		dbg: false
+		,colorTone: 'light'
+		,showNullNodes: true
+		,labelAllChildConnectors: false
+	};
 	adhoc.canvas = null;
 	adhoc.display_scale = 1.0;
 	adhoc.display_x = 0;
@@ -1164,6 +1169,13 @@ Event.observe(window, 'load', function(){
 		input.observe('keyup', acInput);
 	}
 
+	// Deactivate toolbox tools
+	adhoc.deactivateAllTools = function(){
+		$$('.toolboxItem.active').each(function(active){
+			active.removeClassName('active');
+		});
+	}
+
 	// Initialize the GUI editor
 	adhoc.init = function(){
 		// Activate the generate button
@@ -1173,12 +1185,13 @@ Event.observe(window, 'load', function(){
 					binary: adhoc.serialize(adhoc.rootNode)
 					,language: 'c'
 					,executable: 1
-					,dbg: (adhoc.dbg ? 1 : 0)
+					,dbg: (adhoc.settings.dbg ? 1 : 0)
 				}
 				,onFailure: function(){
 					adhoc.error("Unable to send request to server. Make sure you're online.");
 				}
 				,onSuccess: function(t){
+// TODO: Display generated code nicely
 console.log(t.responseText);
 				}
 			});
@@ -1255,9 +1268,7 @@ console.log(t.responseText);
 				item.setAttribute('data-which', j+passed);
 				item.observe('click', function(){
 					var wasActive = this.hasClassName('active');
-					$$('.toolboxItem.active').each(function(active){
-						active.removeClassName('active');
-					});
+					adhoc.deactivateAllTools();
 					if(!wasActive) this.addClassName('active');
 				});
 
@@ -1284,6 +1295,9 @@ console.log(t.responseText);
 
 		// Ready the canvas
 		var downFunc = function(e){
+			// Handle touch
+			if(e.touches && e.touches.length) e = e.touches[0];
+
 			// Get the scaled location of the click
 			var offset = adhoc.canvas.positionedOffset();
 			var click = {
@@ -1306,6 +1320,9 @@ console.log(t.responseText);
 			}
 		};
 		var upFunc = function(e){
+			// Handle touch
+			if(e.touches && e.touches.length) e = e.touches[0];
+
 			// We're done moving the canvas
 			adhoc.canvas.removeClassName('moving');
 
@@ -1356,6 +1373,7 @@ console.log(t.responseText);
 					case adhoc.nodeWhich.ACTION_DEFIN:
 						// Prompt for an action name
 						adhoc.promptValue('Enter an action name:', adhoc.validateActionName, false, function(val){
+							adhoc.deactivateAllTools();
 							adhoc.createNode(prnt, repl, type, which, childType, null, val);
 						});
 						break;
@@ -1363,6 +1381,7 @@ console.log(t.responseText);
 					case adhoc.nodeWhich.ACTION_CALL:
 						// Prompt for an action name
 						adhoc.promptValue('Enter an action name:', adhoc.validateActionName, false, function(val){
+							adhoc.deactivateAllTools();
 							adhoc.createNode(prnt, repl, type, which, childType, null, val);
 						}, adhoc.actionSearch, 'New action');
 						break;
@@ -1371,6 +1390,7 @@ console.log(t.responseText);
 					case adhoc.nodeWhich.VARIABLE_EVAL:
 						// Prompt for a variable name
 						adhoc.promptValue('Enter a variable name:', adhoc.validateIdentifier, false, function(val){
+							adhoc.deactivateAllTools();
 							adhoc.createNode(prnt, repl, type, which, childType, null, val);
 						}, adhoc.genScopeSearch(prnt, false), 'New variable');
 						break;
@@ -1378,6 +1398,7 @@ console.log(t.responseText);
 					case adhoc.nodeWhich.LITERAL_BOOL:
 						// Prompt for a boolean value
 						adhoc.promptFlag('Select a boolean value:', ['true', 'false'], function(val){
+							adhoc.deactivateAllTools();
 							adhoc.createNode(prnt, repl, type, which, childType, null, null, !val);
 						});
 						break;
@@ -1385,6 +1406,7 @@ console.log(t.responseText);
 					case adhoc.nodeWhich.LITERAL_INT:
 						// Prompt for an integer value
 						adhoc.promptValue('Enter an integer:', adhoc.validateInt, true, function(val){
+							adhoc.deactivateAllTools();
 							adhoc.createNode(prnt, repl, type, which, childType, null, null, parseInt(val));
 						});
 						break;
@@ -1392,6 +1414,7 @@ console.log(t.responseText);
 					case adhoc.nodeWhich.LITERAL_FLOAT:
 						// Prompt for a float value
 						adhoc.promptValue('Enter a float:', adhoc.validateFloat, true, function(val){
+							adhoc.deactivateAllTools();
 							adhoc.createNode(prnt, repl, type, which, childType, null, null, parseFloat(val));
 						});
 						break;
@@ -1399,6 +1422,7 @@ console.log(t.responseText);
 					case adhoc.nodeWhich.LITERAL_STRNG:
 						// Prompt for a string value
 						adhoc.promptValue('Enter a string:', adhoc.validateString, false, function(val){
+							adhoc.deactivateAllTools();
 							adhoc.createNode(prnt, repl, type, which, childType, null, null, val);
 						});
 						break;
@@ -1406,11 +1430,13 @@ console.log(t.responseText);
 					case adhoc.nodeWhich.LITERAL_ARRAY:
 					case adhoc.nodeWhich.LITERAL_HASH:
 					case adhoc.nodeWhich.LITERAL_STRCT:
+						adhoc.deactivateAllTools();
 // TODO: Prompt for literal value
 adhoc.createNode(prnt, repl, type, which, childType);
 						break;
 
 					default:
+						adhoc.deactivateAllTools();
 						adhoc.createNode(prnt, repl, type, which, childType);
 					}
 				}
@@ -1465,6 +1491,9 @@ adhoc.createNode(prnt, repl, type, which, childType);
 			}
 		};
 		var moveFunc = function(e){
+			// Handle touch
+			if(e.touches && e.touches.length) e = e.touches[0];
+
 			// If the canvas isn't moving, just return
 			if(!adhoc.canvas.hasClassName('moving')) return;
 
@@ -1518,6 +1547,7 @@ adhoc.rootNode = adhoc.createNode(
 
 		// Draw the initial canvas
 		adhoc.refreshRender();
+adhoc.error("this is a test");
 	}
 
 	// Generate the next available node ID
@@ -1580,8 +1610,8 @@ adhoc.rootNode = adhoc.createNode(
 			adhoc.registeredActions.push(newNode);
 		}
 
-		// Give this node empty children as necessary (dbg mode)
-		if(adhoc.dbg){
+		// Give this node empty children as necessary
+		if(adhoc.settings.showNullNodes){
 			var neededChildren = adhoc.nodeWhichChildren[t][adhoc.nodeWhichIndices[w][1]];
 			for(var i=0; i<neededChildren.length; ++i){
 				for(var j=0; j<neededChildren[i].min; ++j){
@@ -1958,7 +1988,7 @@ adhoc.rootNode = adhoc.createNode(
 
 			// Label the connector for certain child types
 			var childInfo = adhoc.nodeChildTypeInfo[c.childType];
-			if(adhoc.dbg || childInfo.useLabel){
+			if(adhoc.settings.labelAllChildConnectors || childInfo.useLabel){
 				ctx.font = "" + (14*adhoc.display_scale) + "px Arial";
 				var rise = arrowTo[1] - arrowFrom[1];
 				var run = arrowTo[0] - arrowFrom[0];
