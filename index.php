@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <?php include_once('ui.php');?>
+<?$settings = (isset($_COOKIE)&&isset($_COOKIE['adhocSettings']) ? json_decode(stripslashes($_COOKIE['adhocSettings'])) : (object)array());?>
 <html>
 <head>
 	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
@@ -8,7 +9,7 @@
 	<link rel="stylesheet" href="static/css/ui.css" type="text/css"/>
 	<link rel="stylesheet" href="static/css/style.css" type="text/css"/>
 </head>
-<body>
+<body class="<?=(isset($settings->colorScheme) ? $settings->colorScheme : 'light')?>">
 	<div id="page">
 		<?php echo Nxj_UI::lightbox(array(
 			'id'            => 'theLightbox'
@@ -27,11 +28,11 @@
 							<span>Show Placeholders</span>
 							<div class="clear"></div>
 
-							<input type="radio" class="floatLeft" name="showNullNodes" value="1" id="showNullNodes_1" checked="checked" />
+							<input type="radio" class="floatLeft" name="showNullNodes" value="1" id="showNullNodes_1" <?=(isset($settings->showNullNodes)&&$settings->showNullNodes ? 'checked="checked" ' : '')?>/>
 							<label for="showNullNodes_1">Yes</label>
 							<div class="clear"></div>
 
-							<input type="radio" class="floatLeft" name="showNullNodes" value="0" id="showNullNodes_0" />
+							<input type="radio" class="floatLeft" name="showNullNodes" value="0" id="showNullNodes_0" <?=(!isset($settings->showNullNodes)||!$settings->showNullNodes ? 'checked="checked" ' : '')?> />
 							<label for="showNullNodes_0">No</label>
 							<div class="clear"></div>
 						</div>
@@ -41,15 +42,15 @@
 							<span>Connector Labels</span>
 							<div class="clear"></div>
 
-							<input type="radio" class="floatLeft" name="labelConnectors" value="0" id="labelConnectors_0" />
+							<input type="radio" class="floatLeft" name="labelConnectors" value="0" id="labelConnectors_0" <?=(isset($settings->labelConnectors)&&$settings->labelConnectors==0 ? 'checked="checked" ' : '')?>/>
 							<label for="labelConnectors_0">None</label>
 							<div class="clear"></div>
 
-							<input type="radio" class="floatLeft" name="labelConnectors" value="1" id="labelConnectors_1" checked="checked" />
+							<input type="radio" class="floatLeft" name="labelConnectors" value="1" id="labelConnectors_1" <?=(!isset($settings->labelConnectors)||$settings->labelConnectors==1 ? 'checked="checked" ' : '')?>/>
 							<label for="labelConnectors_1">Some</label>
 							<div class="clear"></div>
 
-							<input type="radio" class="floatLeft" name="labelConnectors" value="2" id="labelConnectors_2" />
+							<input type="radio" class="floatLeft" name="labelConnectors" value="2" id="labelConnectors_2" <?=(isset($settings->labelConnectors)&&$settings->labelConnectors==2 ? 'checked="checked" ' : '')?>/>
 							<label for="labelConnectors_2">All</label>
 							<div class="clear"></div>
 
@@ -62,11 +63,11 @@
 							<span>Color Scheme</span>
 							<div class="clear"></div>
 
-							<input type="radio" class="floatLeft" name="colorScheme" value="light" id="colorScheme_light" checked="checked" />
+							<input type="radio" class="floatLeft" name="colorScheme" value="light" id="colorScheme_light" <?=(!isset($settings->colorScheme)||$settings->colorScheme=='light' ? 'checked="checked" ' : '')?>/>
 							<label for="colorScheme_light">Light</label>
 							<div class="clear"></div>
 
-							<input type="radio" class="floatLeft" name="colorScheme" value="dark" id="colorScheme_dark" />
+							<input type="radio" class="floatLeft" name="colorScheme" value="dark" id="colorScheme_dark" <?=(isset($settings->colorScheme)&&$settings->colorScheme=='dark' ? 'checked="checked" ' : '')?>/>
 							<label for="colorScheme_dark">Dark</label>
 							<div class="clear"></div>
 						</div>

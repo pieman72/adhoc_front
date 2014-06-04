@@ -16,19 +16,6 @@ Event.observe(window, 'load', function(){
 	adhoc.textColor = '#000000';
 	adhoc.textColorDark = '#EEEEEE';
 	adhoc.lastId = 0;
-	adhoc.registeredActions = [];
-	adhoc.systemActions = [
-		{
-			package: 'system'
-			,name: 'print'
-			,argc: -1
-		}
-		,{
-			package: 'system'
-			,name: 'cat'
-			,argc: -1
-		}
-	];
 
 	// Hold the autocomplete listener so we can remove it later... javascript
 	adhoc.autocompleteListener = null;
@@ -591,9 +578,13 @@ Event.observe(window, 'load', function(){
 			]
 			,[ // OPERATOR_TRNIF
 				{
+					childType: adhoc.nodeChildType.CONDITION
+					,min: 1
+					,max: 1
+				},{
 					childType: adhoc.nodeChildType.EXPRESSION
-					,min: 3
-					,max: 3
+					,min: 2
+					,max: 2
 				}
 			]
 		]
@@ -783,6 +774,21 @@ Event.observe(window, 'load', function(){
 			]
 		]
 	];
+	// List of system actions that ADHOC supports
+	adhoc.systemActions = [
+		{
+			package: 'system'
+			,name: 'print'
+			,argc: -1
+		}
+		,{
+			package: 'system'
+			,name: 'cat'
+			,argc: -1
+		}
+	];
+	// List of user-defined actions
+	adhoc.registeredActions = [];
 
 	// Convert an int to a 3-byte string
 	adhoc.intTo3Byte = function(i){
@@ -817,6 +823,17 @@ Event.observe(window, 'load', function(){
 			return 'Not a valid action name';
 		}
 	};
+
+	// Get and set GUI settings
+	adhoc.setting = function(s, v){
+		// If not being set, simply return the stored value
+		if(v===undefined) return adhoc.settings[s];
+
+		// Set the value in memory, and in the cookie, then return it
+		adhoc.settings[s] = v;
+		document.cookie = 'adhocSettings='+Object.toJSON(adhoc.settings);
+		return v;
+	}
 
 	// Display errors to the user
 	adhoc.error = function(s){
@@ -1179,11 +1196,19 @@ Event.observe(window, 'load', function(){
 
 	// Initialize the GUI editor
 	adhoc.init = function(){
+		// Load settings from cookie
+		if(document.cookie && document.cookie.indexOf('adhocSettings=')>=0){
+			var settingsJSON = document.cookie.match(/adhocSettings=([^;]*)/);
+			adhoc.settings = settingsJSON[1].evalJSON();
+		}else{
+			document.cookie = 'adhocSettings='+Object.toJSON(adhoc.settings);
+		}
+
 		// Activate colorscheme toggles
 		$$('#controls input[name=showNullNodes]').each(function(elem){
 			elem.observe('change', function(){
 				if(!this.checked) return;
-				adhoc.settings.showNullNodes = false || parseInt(this.value);
+				adhoc.setting('showNullNodes', false||parseInt(this.value));
 				adhoc.refreshRender();
 			});
 		});
@@ -1191,7 +1216,7 @@ Event.observe(window, 'load', function(){
 		$$('#controls input[name=labelConnectors]').each(function(elem){
 			elem.observe('change', function(){
 				if(!this.checked) return;
-				adhoc.settings.labelConnectors = parseInt(this.value);
+				adhoc.setting('labelConnectors', parseInt(this.value));
 				adhoc.refreshRender();
 			});
 		});
@@ -1199,7 +1224,7 @@ Event.observe(window, 'load', function(){
 		$$('#controls input[name=colorScheme]').each(function(elem){
 			elem.observe('change', function(){
 				if(!this.checked) return;
-				adhoc.settings.colorScheme = this.value;
+				adhoc.setting('colorScheme', this.value);
 				$(document.body)
 					.removeClassName('dark')
 					.removeClassName('light')
@@ -1215,7 +1240,7 @@ Event.observe(window, 'load', function(){
 					binary: adhoc.serialize(adhoc.rootNode)
 					,language: $F('languageChoice_input')
 					,executable: 1
-					,dbg: (adhoc.settings.dbg ? 1 : 0)
+					,dbg: (adhoc.setting('dbg') ? 1 : 0)
 				}
 				,onFailure: function(){
 					adhoc.error("Unable to send request to server. Make sure you're online.");
@@ -1377,6 +1402,7 @@ console.log(t.responseText);
 				if(type == adhoc.nodeTypes.VARIABLE){
 					var neededChildren = adhoc.nodeWhichChildren[prnt.nodeType][adhoc.nodeWhichIndices[prnt.which][1]];
 					var assignOk = false;
+
 					for(var i=0; i<neededChildren.length; ++i){
 						var role = neededChildren[i];
 						// Skip if the child's type is not allowed
@@ -1384,7 +1410,7 @@ console.log(t.responseText);
 						// Skip if the child's sub-type is not allowed
 						if(adhoc.nodeChildTypeInfo[role.childType].nodeNotWhich.indexOf(adhoc.nodeWhich.VARIABLE_ASIGN) >= 0) continue;
 						// Skip if the parent has already maxed the child's type
-						if(role.max!=null && adhoc.countChildrenOfType(prnt, role.childType)>=role.max) continue;
+						if(role.max!=null && adhoc.countChildrenOfType(prnt, role.childType, true)>=role.max) continue;
 						// Variable assignments are ok
 						assignOk = true;
 						break;
@@ -1631,11 +1657,12 @@ adhoc.rootNode = adhoc.createNode(
 			if(w == adhoc.nodeWhich.VARIABLE_ASIGN){
 				var searchFunc = adhoc.genScopeSearch(p, true);
 				if(!searchFunc(n).length){
-					while(p.which != adhoc.nodeWhich.ACTION_DEFIN
-							&& p.which != adhoc.nodeWhich.CONTROL_LOOP){
-						p = p.parent;
+					var scope = p;
+					while(scope.which != adhoc.nodeWhich.ACTION_DEFIN
+							&& scope.which != adhoc.nodeWhich.CONTROL_LOOP){
+						scope = scope.parent;
 					}
-					p.scopeVars.push(newNode);
+					scope.scopeVars.push(newNode);
 				}
 			}
 		}
@@ -1646,16 +1673,18 @@ adhoc.rootNode = adhoc.createNode(
 		}
 
 		// Give this node empty children as necessary
-		var neededChildren = adhoc.nodeWhichChildren[t][adhoc.nodeWhichIndices[w][1]];
-		for(var i=0; i<neededChildren.length; ++i){
-			for(var j=0; j<neededChildren[i].min; ++j){
-				adhoc.createNode(
-					newNode
-					,null
-					,adhoc.nodeTypes.TYPE_NULL
-					,adhoc.nodeWhich.WHICH_NULL
-					,neededChildren[i].childType
-				);
+		if(!(w==adhoc.nodeWhich.VARIABLE_ASIGN && p && p.which!=adhoc.nodeWhich.ACTION_DEFIN)){
+			var neededChildren = adhoc.nodeWhichChildren[t][adhoc.nodeWhichIndices[w][1]];
+			for(var i=0; i<neededChildren.length; ++i){
+				for(var j=0; j<neededChildren[i].min; ++j){
+					adhoc.createNode(
+						newNode
+						,null
+						,adhoc.nodeTypes.TYPE_NULL
+						,adhoc.nodeWhich.WHICH_NULL
+						,neededChildren[i].childType
+					);
+				}
 			}
 		}
 
@@ -1694,7 +1723,7 @@ adhoc.rootNode = adhoc.createNode(
 		for(var i=0; i<n.children.length; ++i){
 			// Skip null placeholders when setting is disabled
 			if(n.children[i].nodeType==adhoc.nodeTypes.TYPE_NULL &&
-					!adhoc.settings.showNullNodes) continue;
+					!adhoc.setting('showNullNodes')) continue;
 
 			n.subTreeHeight += adhoc.subTreeHeightNode(n.children[i]);
 		}
@@ -1708,7 +1737,7 @@ adhoc.rootNode = adhoc.createNode(
 		for(var i=0; i<n.children.length; ++i){
 			// Skip null placeholders when setting is disabled
 			if(n.children[i].nodeType==adhoc.nodeTypes.TYPE_NULL &&
-					!adhoc.settings.showNullNodes) continue;
+					!adhoc.setting('showNullNodes')) continue;
 
 			n.children[i].y = passed;
 			passed += n.children[i].subTreeHeight;
@@ -1726,7 +1755,7 @@ adhoc.rootNode = adhoc.createNode(
 
 			// Skip null placeholders when setting is disabled
 			if(c.nodeType==adhoc.nodeTypes.TYPE_NULL &&
-					!adhoc.settings.showNullNodes) continue;
+					!adhoc.setting('showNullNodes')) continue;
 
 			adhoc.renderNode(c);
 			if(c.width > maxWidth) maxWidth = c.width;
@@ -1736,7 +1765,7 @@ adhoc.rootNode = adhoc.createNode(
 		var nodeColor;
 		ctx.lineWidth = (6.0*adhoc.display_scale)<<0;
 		ctx.font = ((20.0*adhoc.display_scale)<<0)+'px Arial';
-		ctx.fillStyle = adhoc.settings.colorScheme=='dark' ? adhoc.textColorDark : adhoc.textColor;
+		ctx.fillStyle = adhoc.setting('colorScheme')=='dark' ? adhoc.textColorDark : adhoc.textColor;
 
 		switch(n.nodeType){
 		case adhoc.nodeTypes.TYPE_NULL:
@@ -1888,7 +1917,7 @@ adhoc.rootNode = adhoc.createNode(
 
 		case adhoc.nodeTypes.VARIABLE:
 			// Get label text and its size
-			nodeColor = adhoc.settings.colorScheme=='dark' ? adhoc.textColorDark : adhoc.textColor;
+			nodeColor = adhoc.setting('colorScheme')=='dark' ? adhoc.textColorDark : adhoc.textColor;
 			var title = n.name;
 			if(title.length > 20) title = title.substr(0, 18)+'...';
 			var size = ctx.measureText(title);
@@ -2017,7 +2046,7 @@ adhoc.rootNode = adhoc.createNode(
 
 			// Skip null placeholders when setting is disabled
 			if(c.nodeType==adhoc.nodeTypes.TYPE_NULL &&
-					!adhoc.settings.showNullNodes) continue;
+					!adhoc.setting('showNullNodes')) continue;
 
 			ctx.strokeStyle = nodeColor;
 			ctx.beginPath();
@@ -2039,7 +2068,8 @@ adhoc.rootNode = adhoc.createNode(
 
 			// Label the connector for certain child types
 			var childInfo = adhoc.nodeChildTypeInfo[c.childType];
-			if(adhoc.settings.labelConnectors && (adhoc.settings.labelConnectors==2 || childInfo.useLabel)){
+			var labelSetting = adhoc.setting('labelConnectors');
+			if(labelSetting && (labelSetting==2 || childInfo.useLabel)){
 				ctx.font = "" + (14*adhoc.display_scale) + "px Arial";
 				var rise = arrowTo[1] - arrowFrom[1];
 				var run = arrowTo[0] - arrowFrom[0];
