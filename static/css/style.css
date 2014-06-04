@@ -54,6 +54,7 @@ label {
 	z-index:1;
 	}
 #lb_input_acList .acItem {
+	color:#000000;
 	cursor:pointer;
 	padding:4px 9px;
 	}

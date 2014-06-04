@@ -102,6 +102,7 @@ Event.observe(window, 'load', function(){
 		,MEMBER:		10
 		,IF:			11
 		,ELSE:			12
+		,STORAGE:		13
 	};
 	// AST node type names
 	adhoc.nodeTypeNames = [
@@ -347,6 +348,15 @@ Event.observe(window, 'load', function(){
 				adhoc.nodeWhich.CONTROL_CASE
 			]
 		}
+		,{label: 'Store'
+			,useLabel: false
+			,nodeTypes: [
+				adhoc.nodeTypes.VARIABLE
+			]
+			,nodeNotWhich: [
+				adhoc.nodeWhich.VARIABLE_EVAL
+			]
+		}
 	];
 	// Define the accepted child types of each type/which
 	adhoc.nodeWhichChildren = [
@@ -402,7 +412,7 @@ Event.observe(window, 'load', function(){
 			,[ // CONTROL_LOOP
 				{
 					childType: adhoc.nodeChildType.INITIALIZATION
-					,min: 0
+					,min: 1
 					,max: 1
 				},{
 					childType: adhoc.nodeChildType.CONDITION
@@ -591,49 +601,49 @@ Event.observe(window, 'load', function(){
 		,[ // ASSIGNMENT
 			[ // ASSIGNMENT_INCPR
 				{
-					childType: adhoc.nodeChildType.PARAMETER
+					childType: adhoc.nodeChildType.STORAGE
 					,min: 1
 					,max: 1
 				}
 			]
 			,[ // ASSIGNMENT_INCPS
 				{
-					childType: adhoc.nodeChildType.PARAMETER
+					childType: adhoc.nodeChildType.STORAGE
 					,min: 1
 					,max: 1
 				}
 			]
 			,[ // ASSIGNMENT_DECPR
 				{
-					childType: adhoc.nodeChildType.PARAMETER
+					childType: adhoc.nodeChildType.STORAGE
 					,min: 1
 					,max: 1
 				}
 			]
 			,[ // ASSIGNMENT_DECPS
 				{
-					childType: adhoc.nodeChildType.PARAMETER
+					childType: adhoc.nodeChildType.STORAGE
 					,min: 1
 					,max: 1
 				}
 			]
 			,[ // ASSIGNMENT_NEGPR
 				{
-					childType: adhoc.nodeChildType.PARAMETER
+					childType: adhoc.nodeChildType.STORAGE
 					,min: 1
 					,max: 1
 				}
 			]
 			,[ // ASSIGNMENT_NEGPS
 				{
-					childType: adhoc.nodeChildType.PARAMETER
+					childType: adhoc.nodeChildType.STORAGE
 					,min: 1
 					,max: 1
 				}
 			]
 			,[ // ASSIGNMENT_EQUAL
 				{
-					childType: adhoc.nodeChildType.PARAMETER
+					childType: adhoc.nodeChildType.STORAGE
 					,min: 1
 					,max: 1
 				},{
@@ -644,7 +654,7 @@ Event.observe(window, 'load', function(){
 			]
 			,[ // ASSIGNMENT_PLUS
 				{
-					childType: adhoc.nodeChildType.PARAMETER
+					childType: adhoc.nodeChildType.STORAGE
 					,min: 1
 					,max: 1
 				},{
@@ -655,7 +665,7 @@ Event.observe(window, 'load', function(){
 			]
 			,[ // ASSIGNMENT_MINUS
 				{
-					childType: adhoc.nodeChildType.PARAMETER
+					childType: adhoc.nodeChildType.STORAGE
 					,min: 1
 					,max: 1
 				},{
@@ -666,7 +676,7 @@ Event.observe(window, 'load', function(){
 			]
 			,[ // ASSIGNMENT_TIMES
 				{
-					childType: adhoc.nodeChildType.PARAMETER
+					childType: adhoc.nodeChildType.STORAGE
 					,min: 1
 					,max: 1
 				},{
@@ -677,7 +687,7 @@ Event.observe(window, 'load', function(){
 			]
 			,[ // ASSIGNMENT_DIVBY
 				{
-					childType: adhoc.nodeChildType.PARAMETER
+					childType: adhoc.nodeChildType.STORAGE
 					,min: 1
 					,max: 1
 				},{
@@ -688,7 +698,7 @@ Event.observe(window, 'load', function(){
 			]
 			,[ // ASSIGNMENT_MOD
 				{
-					childType: adhoc.nodeChildType.PARAMETER
+					childType: adhoc.nodeChildType.STORAGE
 					,min: 1
 					,max: 1
 				},{
@@ -699,7 +709,7 @@ Event.observe(window, 'load', function(){
 			]
 			,[ // ASSIGNMENT_EXP
 				{
-					childType: adhoc.nodeChildType.PARAMETER
+					childType: adhoc.nodeChildType.STORAGE
 					,min: 1
 					,max: 1
 				},{
@@ -710,7 +720,7 @@ Event.observe(window, 'load', function(){
 			]
 			,[ // ASSIGNMENT_OR
 				{
-					childType: adhoc.nodeChildType.PARAMETER
+					childType: adhoc.nodeChildType.STORAGE
 					,min: 1
 					,max: 1
 				},{
@@ -721,7 +731,7 @@ Event.observe(window, 'load', function(){
 			]
 			,[ // ASSIGNMENT_AND
 				{
-					childType: adhoc.nodeChildType.PARAMETER
+					childType: adhoc.nodeChildType.STORAGE
 					,min: 1
 					,max: 1
 				},{
@@ -1199,7 +1209,10 @@ Event.observe(window, 'load', function(){
 		// Load settings from cookie
 		if(document.cookie && document.cookie.indexOf('adhocSettings=')>=0){
 			var settingsJSON = document.cookie.match(/adhocSettings=([^;]*)/);
-			adhoc.settings = settingsJSON[1].evalJSON();
+			var loadedSettings = settingsJSON[1].evalJSON();
+			for(var i in loadedSettings){
+				adhoc.setting(i, loadedSettings[i]);
+			}
 		}else{
 			document.cookie = 'adhocSettings='+Object.toJSON(adhoc.settings);
 		}
@@ -1539,7 +1552,7 @@ adhoc.createNode(prnt, repl, type, which, childType);
 					var parentName = adhoc.nodeWhichNames[adhoc.nodeWhichIndices[prnt.which][0]][adhoc.nodeWhichIndices[prnt.which][1]][0];
 					var childName = adhoc.nodeWhichNames[type][adhoc.nodeWhichIndices[which][1]][0];
 					adhoc.error(someOk
-						? "The parent node cannot hold any more children of this type."
+						? "The parent node cannot directly hold any more children of this type."
 						: "A '"+parentName+"' node cannot hold a '"+childName+"' node directly."
 					);
 
@@ -1651,7 +1664,32 @@ adhoc.rootNode = adhoc.createNode(
 			// If there is a null node to replace, do so
 			if(!r && t!=adhoc.nodeTypes.TYPE_NULL) r = adhoc.getFirstNullChildByType(p, c);
 			if(r) p.children[p.children.indexOf(r)] = newNode;
-			else p.children.push(newNode);
+			else{
+				var pp=0
+					,pc=0
+					,reached=false
+					,neededChildren=adhoc.nodeWhichChildren[p.nodeType][adhoc.nodeWhichIndices[p.which][1]]
+					;
+				while(true){
+					if(pc >= p.children.length){
+						p.children.push(newNode);
+						break;
+					}
+					if(neededChildren[pp].childType == c){
+						reached = true;
+					}
+					if(neededChildren[pp].childType == p.children[pc].childType){
+						++pc;
+						continue;
+					}
+					if(!reached){
+						++pp;
+						continue;
+					}
+					p.children.splice(pc, 0, newNode);
+					break;
+				}
+			}
 
 			// Assign this variable to the appropriate scope as well
 			if(w == adhoc.nodeWhich.VARIABLE_ASIGN){
@@ -1718,15 +1756,17 @@ adhoc.rootNode = adhoc.createNode(
 
 	// Recursively determine the display heights of each subtree
 	adhoc.subTreeHeightNode = function(n){
-		if(!n.children.length) return (n.subTreeHeight = (n.nodeType==adhoc.nodeTypes.GROUP ? 30 : 100));
 		n.subTreeHeight = (n.nodeType==adhoc.nodeTypes.GROUP ? 30 : 0);
+		var childrenFound = false;
 		for(var i=0; i<n.children.length; ++i){
 			// Skip null placeholders when setting is disabled
 			if(n.children[i].nodeType==adhoc.nodeTypes.TYPE_NULL &&
 					!adhoc.setting('showNullNodes')) continue;
 
+			childrenFound = true;
 			n.subTreeHeight += adhoc.subTreeHeightNode(n.children[i]);
 		}
+		if(!childrenFound) n.subTreeHeight = (n.nodeType==adhoc.nodeTypes.GROUP ? 30 : 100);
 		return n.subTreeHeight;
 	}
 	// Recursively determine each node's display position
@@ -2181,7 +2221,8 @@ adhoc.rootNode = adhoc.createNode(
 	// Get the first null child of a certain type
 	adhoc.getFirstNullChildByType = function(prnt, childType){
 		for(var i=0; i<prnt.children.length; ++i){
-			if(prnt.children[i].childType == childType) return prnt.children[i];
+			if(prnt.children[i].nodeType==adhoc.nodeTypes.TYPE_NULL
+					&& prnt.children[i].childType==childType) return prnt.children[i];
 		}
 		return null;
 	}
