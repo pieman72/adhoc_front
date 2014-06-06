@@ -8,13 +8,14 @@ Event.observe(window, 'load', function(){
 		,colorScheme: 'light'
 		,showNullNodes: true
 		,labelConnectors: 1
+		,projectName: 'New Project'
 	};
 	adhoc.canvas = null;
+	adhoc.textColor = '#000000';
+	adhoc.textColorDark = '#EEEEEE';
 	adhoc.display_scale = 1.0;
 	adhoc.display_x = 0;
 	adhoc.display_y = 0;
-	adhoc.textColor = '#000000';
-	adhoc.textColorDark = '#EEEEEE';
 	adhoc.lastId = 0;
 
 	// Hold the autocomplete listener so we can remove it later... javascript
@@ -833,6 +834,12 @@ Event.observe(window, 'load', function(){
 			return 'Not a valid action name';
 		}
 	};
+	// Validate the name of a new paclage
+	adhoc.validatePackageName = function(v){
+		if(!v.match(/^[_a-zA-Z][ _a-zA-Z0-9]*$/)){
+			return 'Not a valid package name';
+		}
+	};
 
 	// Get and set GUI settings
 	adhoc.setting = function(s, v){
@@ -1217,19 +1224,54 @@ Event.observe(window, 'load', function(){
 			document.cookie = 'adhocSettings='+Object.toJSON(adhoc.settings);
 		}
 
-		// Activate colorscheme toggles
-		$$('#controls input[name=showNullNodes]').each(function(elem){
-			elem.observe('change', function(){
-				if(!this.checked) return;
-				adhoc.setting('showNullNodes', false||parseInt(this.value));
+		// Activate package name input
+		$('projectName').observe('focus', function(){
+			adhoc.promptValue('Rename This Package', adhoc.validatePackageName, false, function(val){
+				$('projectName').value = val;
+				var oldPackage = adhoc.setting('projectName', val);
+				adhoc.updatePackageName(adhoc.rootNode, oldPackage, val);
+			});
+		});
+
+		// Activate new package button
+		$('newPackageButton').observe('click', function(){
+			adhoc.promptFlag('New Package: Are you sure?', ['Yes','No'], function(val){
+				if(val == 1) return;
+				adhoc.setting('projectName', 'New Project');
+				$('projectName').value = adhoc.setting('projectName');
+				adhoc.display_scale = 1.0;
+				adhoc.display_x = 0;
+				adhoc.display_y = 0;
+				adhoc.lastId = 0;
+				adhoc.registeredActions = [];
+				adhoc.rootNode = null;
+				adhoc.rootNode = adhoc.createNode(
+					null
+					,null
+					,adhoc.nodeTypes.ACTION
+					,adhoc.nodeWhich.ACTION_DEFIN
+					,adhoc.nodeChildType.STATEMENT
+					,adhoc.setting('projectName')
+					,'New Action'
+					,null
+				);
 				adhoc.refreshRender();
 			});
 		});
+
 		// Activate connector label toggles
 		$$('#controls input[name=labelConnectors]').each(function(elem){
 			elem.observe('change', function(){
 				if(!this.checked) return;
 				adhoc.setting('labelConnectors', parseInt(this.value));
+				adhoc.refreshRender();
+			});
+		});
+		// Activate show placeholders toggles
+		$$('#controls input[name=showNullNodes]').each(function(elem){
+			elem.observe('change', function(){
+				if(!this.checked) return;
+				adhoc.setting('showNullNodes', false||parseInt(this.value));
 				adhoc.refreshRender();
 			});
 		});
@@ -1264,6 +1306,7 @@ console.log(t.responseText);
 				}
 			});
 		});
+
 		// Activate the top control panel toggle
 		$('controlsToggle').observe('click', function(){
 			$('controls').toggleClassName('collapsed');
@@ -1618,7 +1661,7 @@ adhoc.rootNode = adhoc.createNode(
 	,adhoc.nodeTypes.ACTION
 	,adhoc.nodeWhich.ACTION_DEFIN
 	,adhoc.nodeChildType.STATEMENT
-	,'My Project'
+	,adhoc.setting('projectName')
 	,'Print 99 Bottles'
 	,null
 );
@@ -2225,6 +2268,14 @@ adhoc.rootNode = adhoc.createNode(
 					&& prnt.children[i].childType==childType) return prnt.children[i];
 		}
 		return null;
+	}
+
+	// Function to change the package name of all children
+	adhoc.updatePackageName = function(n, oldP, newP){
+		if(n.package == oldP) n.package = newP;
+		for(var i=0; i<n.children.length; ++i){
+			adhoc.updatePackageName(n.children[i], oldP, newP);
+		}
 	}
 
 	// Function to serialize a node and its children for binary

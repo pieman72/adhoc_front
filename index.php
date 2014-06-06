@@ -25,35 +25,74 @@
 
 					<div class="floatLeft">
 						<div class="floatLeft">
-							<span>Show Placeholders</span>
+							<label for="projectName">Package Name</label>
 							<div class="clear"></div>
 
-							<input type="radio" class="floatLeft" name="showNullNodes" value="1" id="showNullNodes_1" <?=(isset($settings->showNullNodes)&&$settings->showNullNodes ? 'checked="checked" ' : '')?>/>
-							<label for="showNullNodes_1">Yes</label>
+							<input type="text" id="projectName" class="nxj_input" value="My Project" />
+							<div class="clear" style="height:20px;"></div>
+
+							<a id="newPackageButton" class="nxj_button nxj_cssButton" href="javascript:void(0);">New Package</a>
+						</div>
+					</div>
+					<div class="floatLeft" style="height:10px;width:20px;"></div>
+
+					<div class="floatLeft">
+						<div class="floatLeft">
+							<span>Connector Labels</span>
 							<div class="clear"></div>
 
-							<input type="radio" class="floatLeft" name="showNullNodes" value="0" id="showNullNodes_0" <?=(!isset($settings->showNullNodes)||!$settings->showNullNodes ? 'checked="checked" ' : '')?> />
-							<label for="showNullNodes_0">No</label>
+							<?$checked = (isset($settings->labelConnectors)&&$settings->labelConnectors==0 ? 'checked="checked"' : '');?>
+							<input type="radio"
+									class="floatLeft"
+									name="labelConnectors"
+									value="0"
+									id="labelConnectors_0"
+									<?=$checked?> />
+							<label for="labelConnectors_0">None</label>
+							<div class="clear"></div>
+							<?$checked = (!isset($settings->labelConnectors)||$settings->labelConnectors==1 ? 'checked="checked" ' : '');?>
+							<input type="radio"
+									class="floatLeft"
+									name="labelConnectors"
+									value="1"
+									id="labelConnectors_1"
+									<?=$checked?> />
+							<label for="labelConnectors_1">Some</label>
+							<div class="clear"></div>
+							<?$checked = (isset($settings->labelConnectors)&&$settings->labelConnectors==2 ? 'checked="checked" ' : '');?>
+							<input type="radio"
+									class="floatLeft"
+									name="labelConnectors"
+									value="2"
+									id="labelConnectors_2"
+									<?=$checked?> />
+							<label for="labelConnectors_2">All</label>
 							<div class="clear"></div>
 						</div>
 						<div class="clear" style="height:10px;"></div>
 
 						<div class="floatLeft">
-							<span>Connector Labels</span>
+							<span>Show Placeholders</span>
 							<div class="clear"></div>
 
-							<input type="radio" class="floatLeft" name="labelConnectors" value="0" id="labelConnectors_0" <?=(isset($settings->labelConnectors)&&$settings->labelConnectors==0 ? 'checked="checked" ' : '')?>/>
-							<label for="labelConnectors_0">None</label>
+							<?$checked = (isset($settings->showNullNodes)&&$settings->showNullNodes ? 'checked="checked" ' : '');?>
+							<input type="radio"
+									class="floatLeft"
+									name="showNullNodes"
+									value="1"
+									id="showNullNodes_1"
+									<?=$checked?> />
+							<label for="showNullNodes_1">Yes</label>
 							<div class="clear"></div>
-
-							<input type="radio" class="floatLeft" name="labelConnectors" value="1" id="labelConnectors_1" <?=(!isset($settings->labelConnectors)||$settings->labelConnectors==1 ? 'checked="checked" ' : '')?>/>
-							<label for="labelConnectors_1">Some</label>
+							<?$checked = (!isset($settings->showNullNodes)||!$settings->showNullNodes ? 'checked="checked" ' : '');?>
+							<input type="radio"
+									class="floatLeft"
+									name="showNullNodes"
+									value="0"
+									id="showNullNodes_0"
+									<?=$checked?> />
+							<label for="showNullNodes_0">No</label>
 							<div class="clear"></div>
-
-							<input type="radio" class="floatLeft" name="labelConnectors" value="2" id="labelConnectors_2" <?=(isset($settings->labelConnectors)&&$settings->labelConnectors==2 ? 'checked="checked" ' : '')?>/>
-							<label for="labelConnectors_2">All</label>
-							<div class="clear"></div>
-
 						</div>
 					</div>
 					<div class="floatLeft" style="height:10px;width:20px;"></div>
@@ -63,11 +102,22 @@
 							<span>Color Scheme</span>
 							<div class="clear"></div>
 
-							<input type="radio" class="floatLeft" name="colorScheme" value="light" id="colorScheme_light" <?=(!isset($settings->colorScheme)||$settings->colorScheme=='light' ? 'checked="checked" ' : '')?>/>
+							<?$checked = (!isset($settings->colorScheme)||$settings->colorScheme=='light' ? 'checked="checked" ' : '');?>
+							<input type="radio"
+									class="floatLeft"
+									name="colorScheme"
+									value="light"
+									id="colorScheme_light"
+									<?=$checked?> />
 							<label for="colorScheme_light">Light</label>
 							<div class="clear"></div>
-
-							<input type="radio" class="floatLeft" name="colorScheme" value="dark" id="colorScheme_dark" <?=(isset($settings->colorScheme)&&$settings->colorScheme=='dark' ? 'checked="checked" ' : '')?>/>
+							<?$checked = (isset($settings->colorScheme)&&$settings->colorScheme=='dark' ? 'checked="checked" ' : '');?>
+							<input type="radio"
+									class="floatLeft"
+									name="colorScheme"
+									value="dark"
+									id="colorScheme_dark"
+									<?=$checked?> />
 							<label for="colorScheme_dark">Dark</label>
 							<div class="clear"></div>
 						</div>
