@@ -1,3 +1,9 @@
+// Not sure why prototype doesn't include this...
+Event.KEY_CONTROL = 17;
+Event.KEY_COMMAND1 = 91;
+Event.KEY_COMMAND2 = 93;
+Event.KEY_COMMAND3 = 224;
+
 // Set up everything only after the page loads
 Event.observe(window, 'load', function(){
 	var adhoc = {};
@@ -11,12 +17,14 @@ Event.observe(window, 'load', function(){
 		,projectName: 'New Project'
 	};
 	adhoc.canvas = null;
+	adhoc.selectedNode = null;
 	adhoc.textColor = '#000000';
 	adhoc.textColorDark = '#EEEEEE';
 	adhoc.display_scale = 1.0;
 	adhoc.display_x = 0;
 	adhoc.display_y = 0;
 	adhoc.lastId = 0;
+	adhoc.alternateKeys = false;
 
 	// Hold the autocomplete listener so we can remove it later... javascript
 	adhoc.autocompleteListener = null;
@@ -914,6 +922,7 @@ Event.observe(window, 'load', function(){
 		butt.addClassName('disabled');
 		butt.update('Select');
 		butt.observe('click', function(){
+			if(butt.hasClassName('disabled')) return;
 			$('theLightbox').hide();
 			callBack(parseInt($$('#theLightbox input:checked')[0].value));
 		});
@@ -1000,6 +1009,7 @@ Event.observe(window, 'load', function(){
 		butt.addClassName('disabled');
 		butt.update('Select');
 		butt.observe('click', function(){
+			if(butt.hasClassName('disabled')) return;
 			callBack(inp.value);
 			$('theLightbox').hide();
 		});
@@ -1017,8 +1027,9 @@ Event.observe(window, 'load', function(){
 	adhoc.removeAutocomplete = function(){
 		if(!adhoc.autocompleteListener) return;
 		$$('#theLightbox input').each(function(elem){
+			elem.blur();
 			elem.stopObserving('keyup', adhoc.autocompleteListener);
-		})
+		});
 	}
 	// Function to attach and operate the autocomplete
 	adhoc.attachAutocomplete = function(input, list, acSearchFunc, acLoadFunc, validate, acSorryText){
@@ -1030,6 +1041,7 @@ Event.observe(window, 'load', function(){
 		function acInput(evt){
 			// Get the keycode from the event
 			var key = evt.which || window.event.keyCode;
+			Event.stop(evt);
 
 			// Get the search term from the input, close the list if none
 			var term = $F(input);
@@ -1239,6 +1251,7 @@ Event.observe(window, 'load', function(){
 				if(val == 1) return;
 				adhoc.setting('projectName', 'New Project');
 				$('projectName').value = adhoc.setting('projectName');
+				adhoc.selectedNode = null;
 				adhoc.display_scale = 1.0;
 				adhoc.display_x = 0;
 				adhoc.display_y = 0;
@@ -1405,6 +1418,7 @@ console.log(t.responseText);
 		}
 
 		// Ready the canvas
+		// Handle mouse down
 		var downFunc = function(e){
 			// Handle touch
 			if(e.touches && e.touches.length) e = e.touches[0];
@@ -1430,12 +1444,16 @@ console.log(t.responseText);
 				adhoc.canvas.setAttribute('data-startpy', Event.pointerY(e));
 			}
 		};
+		// Handle mouse up
 		var upFunc = function(e){
+			// We're done moving the canvas
+			if(adhoc.canvas.hasClassName('moving')){
+				adhoc.canvas.removeClassName('moving');
+				return;
+			}
+
 			// Handle touch
 			if(e.touches && e.touches.length) e = e.touches[0];
-
-			// We're done moving the canvas
-			adhoc.canvas.removeClassName('moving');
 
 			// Get the scaled location of the click
 			var offset = adhoc.canvas.positionedOffset();
@@ -1609,8 +1627,18 @@ adhoc.createNode(prnt, repl, type, which, childType);
 						createNodeWithType(roleOptions[val]);
 					});
 				}
+			}else if(clickedNode){
+				if(adhoc.selectedNode) adhoc.selectedNode.selected = false;
+				clickedNode.selected = true;
+				adhoc.selectedNode = clickedNode;
+				adhoc.refreshRender();
+			}else if(adhoc.selectedNode){
+				adhoc.selectedNode.selected = false;
+				adhoc.selectedNode = null;
+				adhoc.refreshRender();
 			}
 		};
+		// Handle mouse move
 		var moveFunc = function(e){
 			// Handle touch
 			if(e.touches && e.touches.length) e = e.touches[0];
@@ -1636,12 +1664,58 @@ adhoc.createNode(prnt, repl, type, which, childType);
 			adhoc.display_y = starty + startpy - Event.pointerY(e);
 			adhoc.refreshRender();
 		};
+		// Handle key down
+		var keyDownFunc = function(e){
+			var key = e.which || window.event.keyCode;
+			switch(key){
+			// If various CTRL or CMD keys, set alternamte key mode off
+			case Event.KEY_CONTROL:
+			case Event.KEY_COMMAND1:
+			case Event.KEY_COMMAND2:
+			case Event.KEY_COMMAND3:
+				adhoc.alternateKeys = true;
+				break;
+
+			// Do nothing if the key is unknown
+			default:
+				break;
+			}
+		}
+		// Handle key up
+		var keyUpFunc = function(e){
+			var key = e.which || window.event.keyCode;
+			switch(key){
+			// If various CTRL or CMD keys, set alternamte key mode off
+			case Event.KEY_CONTROL:
+			case Event.KEY_COMMAND1:
+			case Event.KEY_COMMAND2:
+			case Event.KEY_COMMAND3:
+				adhoc.alternateKeys = false;
+				break;
+
+			// If DEL, remove the selected node and it's children
+			case Event.KEY_DELETE:
+				if(adhoc.selectedNode){
+					adhoc.selectedNode.selected = false;
+					adhoc.deleteNode(adhoc.selectedNode);
+					adhoc.selectedNode = null;
+					adhoc.refreshRender();
+				}
+				break;
+
+			// Do nothing if the key is unknown
+			default:
+console.log(key);
+			}
+		}
 		adhoc.canvas.observe('mousedown', downFunc);
 		adhoc.canvas.observe('touchstart', downFunc);
 		adhoc.canvas.observe('mouseup', upFunc);
 		adhoc.canvas.observe('touchend', upFunc);
 		adhoc.canvas.observe('mousemove', moveFunc);
 		adhoc.canvas.observe('touchmove', moveFunc);
+		Event.observe(window, 'keydown', keyDownFunc);
+		Event.observe(window, 'keyup', keyUpFunc);
 
 		// Ready the zoom buttons
 		$('zoomIn').observe('click', function(){
@@ -1849,6 +1923,9 @@ adhoc.rootNode = adhoc.createNode(
 		ctx.lineWidth = (6.0*adhoc.display_scale)<<0;
 		ctx.font = ((20.0*adhoc.display_scale)<<0)+'px Arial';
 		ctx.fillStyle = adhoc.setting('colorScheme')=='dark' ? adhoc.textColorDark : adhoc.textColor;
+		if(n.selected){
+			ctx.setLineDash([3*adhoc.display_scale, 3*adhoc.display_scale]);
+		}
 
 		switch(n.nodeType){
 		case adhoc.nodeTypes.TYPE_NULL:
@@ -1903,7 +1980,9 @@ adhoc.rootNode = adhoc.createNode(
 
 			// Draw box border
 			ctx.strokeStyle = nodeColor;
-			ctx.setLineDash([10*adhoc.display_scale, 7*adhoc.display_scale]);
+			if(!n.selected){
+				ctx.setLineDash([10*adhoc.display_scale, 7*adhoc.display_scale]);
+			}
 			ctx.strokeRect(
 				(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
 				,(n.y-(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
@@ -2165,6 +2244,7 @@ adhoc.rootNode = adhoc.createNode(
 				ctx.restore();
 			}
 		}
+		ctx.setLineDash([]);
 	}
 
 	// Recursively determine whether the click landed in a node
@@ -2275,6 +2355,31 @@ adhoc.rootNode = adhoc.createNode(
 		if(n.package == oldP) n.package = newP;
 		for(var i=0; i<n.children.length; ++i){
 			adhoc.updatePackageName(n.children[i], oldP, newP);
+		}
+	}
+
+	// Deletes one node and its children
+	adhoc.deleteNode = function(n){
+		// If this is the top-most node, then it cannot be deleted
+		if(!n.parent){
+			adhoc.error("You cannot delete the project root.");
+			return;
+		}
+
+		// Call on the children first
+		for(var i=0; i<n.children.length; ++i){
+			adhoc.deleteNode(n.children[i]);
+		}
+
+		// Remove this node from its parent, its scope, and the action registry
+		if(n.scope){
+			n.scope.scopeVars.splice(n.scope.scopeVars.indexOf(n), 1);
+		}
+		if(n.parent){
+			n.parent.children.splice(n.parent.children.indexOf(n), 1);
+		}
+		if(n.which == adhoc.nodeWhich.ACTION_DEFIN){
+			adhoc.registeredActions.splice(adhoc.registeredActions.indexOf(n), 1);
 		}
 	}
 
