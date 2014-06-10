@@ -25,6 +25,7 @@ Event.observe(window, 'load', function(){
 	adhoc.display_y = 0;
 	adhoc.lastId = 0;
 	adhoc.alternateKeys = false;
+	adhoc.history = null;
 
 	// Hold the autocomplete listener so we can remove it later... javascript
 	adhoc.autocompleteListener = null;
@@ -808,6 +809,8 @@ Event.observe(window, 'load', function(){
 	];
 	// List of user-defined actions
 	adhoc.registeredActions = [];
+	// List of all nodes
+	adhoc.allNodes = [];
 
 	// Convert an int to a 3-byte string
 	adhoc.intTo3Byte = function(i){
@@ -1028,7 +1031,10 @@ Event.observe(window, 'load', function(){
 		if(!adhoc.autocompleteListener) return;
 		$$('#theLightbox input').each(function(elem){
 			elem.blur();
+			elem.setAttribute('disabled', 'disabled');
+			elem.setAttribute('readonly', 'readonly');
 			elem.stopObserving('keyup', adhoc.autocompleteListener);
+			adhoc.canvas.focus();
 		});
 	}
 	// Function to attach and operate the autocomplete
@@ -1223,6 +1229,129 @@ Event.observe(window, 'load', function(){
 		});
 	}
 
+	// Initialize history manager
+	adhoc.resetHistory = function(){
+		adhoc.history = {
+			index: 0
+			,history: []
+			,record: function(action, target, prnt){
+				// Determine whether serialization needs to be deep or shallow
+				var serializeDeep = false;
+				switch(action){
+				case 'rename':
+					break;
+
+				case 'add':
+				case 'delete':
+				default:
+					serializeDeep = true;
+				}
+
+				// Replace all history items moving forward with this new one
+				adhoc.history.history.splice(
+					adhoc.history.index
+					,adhoc.history.index - adhoc.history.history.length
+					,{
+						action: action
+						,target: target
+						,parentId: prnt.id
+						,serial: adhoc.serializeComplete(prnt, serializeDeep)
+						,bind: false
+					}
+				);
+
+				// Some actions need to be bound to the previous ones
+				if(false){
+					adhoc.history.history[adhoc.history.index].bind = true;
+				}
+
+				// Move up the history index
+				++adhoc.history.index;
+			}
+			,undo: function(){
+				// Get the item to be undone unless there are none
+				if(adhoc.history.index <= 0) return;
+				var item = adhoc.history.history[--adhoc.history.index];
+
+				// Undo different types of actions
+				switch(item.action){
+				// Undo an addition
+				case 'add':
+					// Edge cases
+					var n = adhoc.allNodes[item.target];
+					if(!n){
+						adhoc.error("Unable to undo node addition");
+						break;
+					}
+					if(n == adhoc.rootNode){
+						adhoc.error("You cannot un-add the project root");
+					}
+					// Deselect the node and delete it
+					if(adhoc.selectedNode == n){
+						n.selected = false;
+						adhoc.selectedNode = null;
+					}
+					adhoc.deleteNode(n);
+					adhoc.refreshRender();
+					break;
+
+				// Undo a rename
+				case 'rename':
+				// Undo a deletion
+				case 'delete':
+				// Undo a general action
+				default:
+					adhoc.restoreNode(adhoc.allNodes[item.parentId], item.serial);
+					adhoc.refreshRender();
+				}
+
+				// If the next item is bound to this one, do it as well
+				if(item.bind) adhoc.history.undo();
+			}
+			,redo: function(){
+				// Get the item to be redone unless there are none
+				if(adhoc.history.index == adhoc.history.history.length) return;
+				var item = adhoc.history.history[adhoc.history.index];
+
+				// Redo different types of actions
+				switch(item.action){
+				// Redo an add
+				case 'add':
+					adhoc.restoreNode(adhoc.allNodes[item.parentId], item.serial);
+					adhoc.refreshRender();
+					break;
+
+				// Redo a rename
+				case 'rename':
+					break;
+
+				// Redo a deletion
+				case 'delete':
+					// Edge cases
+					var n = adhoc.allNodes[item.target];
+					if(!n){
+						adhoc.error("Unable to redo deletion");
+						break;
+					}
+					if(n == adhoc.rootNode){
+						adhoc.error("You cannot delete the project root");
+						break;
+					}
+					// Deselect the node and delete it
+					if(adhoc.selectedNode == n){
+						n.selected = false;
+						adhoc.selectedNode = null;
+					}
+					adhoc.deleteNode(n);
+					adhoc.refreshRender();
+				}
+
+				// If the next item is bound to this one, do it as well
+				if(adhoc.history.history[adhoc.history.index++].bind) adhoc.history.redo();
+			}
+		};
+	}
+
 	// Initialize the GUI editor
 	adhoc.init = function(){
 		// Load settings from cookie
@@ -1257,6 +1386,7 @@ Event.observe(window, 'load', function(){
 				adhoc.display_y = 0;
 				adhoc.lastId = 0;
 				adhoc.registeredActions = [];
+				adhoc.allNodes = [];
 				adhoc.rootNode = null;
 				adhoc.rootNode = adhoc.createNode(
 					null
@@ -1268,6 +1398,8 @@ Event.observe(window, 'load', function(){
 					,'New Action'
 					,null
 				);
+				adhoc.allNodes[adhoc.rootNode.id] = adhoc.rootNode;
+				adhoc.resetHistory();
 				adhoc.refreshRender();
 			});
 		});
@@ -1676,6 +1808,16 @@ adhoc.createNode(prnt, repl, type, which, childType);
 				adhoc.alternateKeys = true;
 				break;
 
+			// Handle CTRL+z (undo)
+			case 90:
+				if(adhoc.alternateKeys) adhoc.history.undo();
+				break;
+
+			// Handle CTRL+y (redo)
+			case 89:
+				if(adhoc.alternateKeys) adhoc.history.redo();
+				break;
+
 			// Do nothing if the key is unknown
 			default:
 				break;
@@ -1695,17 +1837,27 @@ adhoc.createNode(prnt, repl, type, which, childType);
 
 			// If DEL, remove the selected node and it's children
 			case Event.KEY_DELETE:
-				if(adhoc.selectedNode){
-					adhoc.selectedNode.selected = false;
-					adhoc.deleteNode(adhoc.selectedNode);
-					adhoc.selectedNode = null;
-					adhoc.refreshRender();
+				// Edge cases
+				if(!adhoc.selectedNode) break;
+				if(adhoc.selectedNode == adhoc.rootNode){
+					adhoc.error("You cannot delete the project root.");
+					break;
 				}
+				// Deselect the node, record a deletion and actually delete
+				adhoc.selectedNode.selected = false;
+				adhoc.history.record(
+					'delete'
+					,adhoc.selectedNode.id
+					,adhoc.selectedNode.parent
+				);
+				adhoc.deleteNode(adhoc.selectedNode);
+				adhoc.selectedNode = null;
+				adhoc.refreshRender();
 				break;
 
 			// Do nothing if the key is unknown
 			default:
-console.log(key);
+				console.log(key);
 			}
 		}
 		adhoc.canvas.observe('mousedown', downFunc);
@@ -1739,6 +1891,10 @@ adhoc.rootNode = adhoc.createNode(
 	,'Print 99 Bottles'
 	,null
 );
+adhoc.allNodes[adhoc.rootNode.id] = adhoc.rootNode;
+
+		// Initialize the history manager
+		adhoc.resetHistory();
 
 		// Draw the initial canvas
 		adhoc.refreshRender();
@@ -1775,6 +1931,9 @@ adhoc.rootNode = adhoc.createNode(
 			,height: null
 			,subTreeHeight: 100
 		};
+
+		// Add to the list of all nodes and record in the history
+		if(t != adhoc.nodeTypes.TYPE_NULL) adhoc.allNodes[newNode.id] = newNode;
 
 		// Assign to the parent if present
 		if(p){
@@ -1843,8 +2002,9 @@ adhoc.rootNode = adhoc.createNode(
 			}
 		}
 
-		// Refresh the canvas with the new node
-		if(t != adhoc.nodeTypes.TYPE_NULL){
+		// Record the addition and refresh the canvas
+		if(p && t!=adhoc.nodeTypes.TYPE_NULL){
+			adhoc.history.record('add', newNode.id, p);
 			adhoc.refreshRender();
 		}
 
@@ -2358,31 +2518,6 @@ adhoc.rootNode = adhoc.createNode(
 		}
 	}
 
-	// Deletes one node and its children
-	adhoc.deleteNode = function(n){
-		// If this is the top-most node, then it cannot be deleted
-		if(!n.parent){
-			adhoc.error("You cannot delete the project root.");
-			return;
-		}
-
-		// Call on the children first
-		for(var i=0; i<n.children.length; ++i){
-			adhoc.deleteNode(n.children[i]);
-		}
-
-		// Remove this node from its parent, its scope, and the action registry
-		if(n.scope){
-			n.scope.scopeVars.splice(n.scope.scopeVars.indexOf(n), 1);
-		}
-		if(n.parent){
-			n.parent.children.splice(n.parent.children.indexOf(n), 1);
-		}
-		if(n.which == adhoc.nodeWhich.ACTION_DEFIN){
-			adhoc.registeredActions.splice(adhoc.registeredActions.indexOf(n), 1);
-		}
-	}
-
 	// Function to serialize a node and its children for binary
 	adhoc.serialize = function(n){
 		var out =
@@ -2398,6 +2533,150 @@ adhoc.rootNode = adhoc.createNode(
 			out += adhoc.serialize(n.children[i]);
 		}
 		return out;
+	}
+
+	// Function to serialize a node and its children for the history manager
+	adhoc.serializeComplete = function(n, deep){
+		var out = {
+			id: n.id
+			,parentId: (n.parent ? n.parent.id : null)
+			,scopeId: (n.scope ? n.scope.id : null)
+			,nodeType: n.nodeType
+			,which: n.which
+			,childType: n.childType
+			,dataType: n.dataType
+			,package: n.package
+			,name: n.name
+			,value: n.value
+			,childIds: []
+			,x: n.x
+			,y: n.y
+			,width: n.width
+			,height: n.height
+			,subTreeHeight: n.subTreeHeight
+		};
+		var children = [];
+		for(var i=0; i<n.children.length; ++i){
+			out.childIds.push(n.children[i].id);
+			if(deep) children.push(adhoc.serializeComplete(n.children[i], deep));
+		}
+		return {
+			data: Object.toJSON(out)
+			,children: children
+		};
+	}
+
+	// Deletes one node and its children
+	adhoc.deleteNode = function(n){
+		// Call on the children first
+		for(var i=n.children.length-1; i>=0; --i){
+			adhoc.deleteNode(n.children[i]);
+		}
+
+		// Remove this node from its parent and its scope
+		if(n.scope){
+			n.scope.scopeVars.splice(n.scope.scopeVars.indexOf(n), 1);
+		}
+		if(n.parent){
+			n.parent.children.splice(n.parent.children.indexOf(n), 1);
+		}
+
+		// Remove this node from the action registry and the list of all nodes
+		if(n.which == adhoc.nodeWhich.ACTION_DEFIN){
+			adhoc.registeredActions.splice(adhoc.registeredActions.indexOf(n), 1);
+		}
+		adhoc.allNodes[n.id] = null;
+		return true;
+	}
+
+	// Restore a node from a serialized string
+	adhoc.restoreNode = function(n, serial){
+		// Unwrap the node itself
+		var newNode = serial.data.evalJSON();
+
+		// If the node to be restored already exists, then reset its properties
+		if(n){
+			n.id = newNode.id
+			n.parent = adhoc.allNodes[newNode.parentId];
+			n.scope = adhoc.allNodes[newNode.scopeId];
+			n.nodeType = newNode.nodeType;
+			n.which = newNode.which;
+			n.childType = newNode.childType;
+			n.dataType = newNode.dataType;
+			n.package = newNode.package;
+			n.name = newNode.name;
+			n.value = newNode.value;
+			n.x = newNode.x;
+			n.y = newNode.y;
+			n.width = newNode.width;
+			n.height = newNode.height;
+			n.subTreeHeight = newNode.subTreeHeight;
+
+			// Restore the node's children
+			for(var i=0; i<serial.children.length; ++i){
+				adhoc.restoreNode(
+					n.children[i]
+					,serial.children[i]
+				);
+			}
+
+		// If it does not exist, rebuild it
+		}else{
+			n = newNode;
+
+			// Restore the parent
+			if(n.parentId){
+				n.parent = adhoc.allNodes[n.parentId];
+				var pp=0
+					,pc=0
+					,reached=false
+					,neededChildren=adhoc.nodeWhichChildren[n.parent.nodeType][adhoc.nodeWhichIndices[n.parent.which][1]]
+					;
+				while(true){
+					if(pc >= n.parent.children.length){
+						n.parent.children.push(n);
+						break;
+					}
+					if(neededChildren[pp].childType == n.childType){
+						reached = true;
+					}
+					if(neededChildren[pp].childType == n.parent.children[pc].childType){
+						++pc;
+						continue;
+					}
+					if(!reached){
+						++pp;
+						continue;
+					}
+					n.parent.children.splice(pc, 0, n);
+					break;
+				}
+			}
+
+			// Restore the scope
+			if(n.scopeId){
+				n.scope = adhoc.allNodes[n.scopeId];
+				n.scopeVars.push(n);
+			}
+
+			// Add to the list of all nodes and the action registry
+			adhoc.allNodes[newNode.id] = n;
+			if(n.which == adhoc.nodeWhich.ACTION_DEFIN){
+				adhoc.registeredActions.push(n);
+			}
+
+			// Restore the node's children
+			newNode.children = [];
+			for(var i=0; i<serial.children.length; ++i){
+				adhoc.restoreNode(
+					adhoc.allNodes[newNode.childIds[i]]
+					,serial.children[i]
+				);
+			}
+		}
+
+		// Return the node itself for recursive calls
+		return newNode;
 	}
 
 	// Initialize the application
