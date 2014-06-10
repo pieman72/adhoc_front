@@ -1398,7 +1398,6 @@ Event.observe(window, 'load', function(){
 					,'New Action'
 					,null
 				);
-				adhoc.allNodes[adhoc.rootNode.id] = adhoc.rootNode;
 				adhoc.resetHistory();
 				adhoc.refreshRender();
 			});
@@ -1891,7 +1890,6 @@ adhoc.rootNode = adhoc.createNode(
 	,'Print 99 Bottles'
 	,null
 );
-adhoc.allNodes[adhoc.rootNode.id] = adhoc.rootNode;
 
 		// Initialize the history manager
 		adhoc.resetHistory();
