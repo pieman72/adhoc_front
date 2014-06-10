@@ -983,6 +983,16 @@ Event.observe(window, 'load', function(){
 		});
 		holder.appendChild(inp);
 
+		// Create and add another input for the reminder text
+		var rem = $(document.createElement('input'));
+		rem.setAttribute('type', 'hidden');
+		holder.appendChild(rem);
+
+		// Create and add another input for the hidden value
+		var hid = $(document.createElement('input'));
+		hid.setAttribute('type', 'hidden');
+		holder.appendChild(hid);
+
 		// If a search function is provided, attach an autocomplete
 		if(searchFunc){
 			// Create the autocomplete list
@@ -992,7 +1002,7 @@ Event.observe(window, 'load', function(){
 			holder.appendChild(acList);
 
 			// Attach the autocomplete functions to the input
-			adhoc.attachAutocomplete(inp, acList, searchFunc, function(){}, vldt, sorryText);
+			adhoc.attachAutocomplete(inp, rem, hid, acList, searchFunc, function(){}, vldt, sorryText);
 		}
 
 		// Add a break
@@ -1038,7 +1048,7 @@ Event.observe(window, 'load', function(){
 		});
 	}
 	// Function to attach and operate the autocomplete
-	adhoc.attachAutocomplete = function(input, list, acSearchFunc, acLoadFunc, validate, acSorryText){
+	adhoc.attachAutocomplete = function(input, reminder, hidden, list, acSearchFunc, acLoadFunc, validate, acSorryText){
 		// Autocomplete globals
 		var acLock = null;
 		var acOpen = false;
@@ -1075,6 +1085,8 @@ Event.observe(window, 'load', function(){
 				// Otherwise, if there is a selected item, complete its value
 				if(selectedItem){
 					input.value = selectedItem.getAttribute('data-value');
+					reminder.value = selectedItem.getAttribute('data-reminder');
+					hidden.value = selectedItem.getAttribute('data-hidden');
 				}
 				break;
 
@@ -1096,6 +1108,8 @@ Event.observe(window, 'load', function(){
 					}
 					// Update the autocomplete's input field
 					input.value = selectedItem.getAttribute('data-value');
+					reminder.value = selectedItem.getAttribute('data-reminder');
+					hidden.value = selectedItem.getAttribute('data-hidden');
 				}
 				break;
 
@@ -1117,6 +1131,8 @@ Event.observe(window, 'load', function(){
 					}
 					// Update the autocomplete's input field
 					input.value = selectedItem.getAttribute('data-value');
+					reminder.value = selectedItem.getAttribute('data-reminder');
+					hidden.value = selectedItem.getAttribute('data-hidden');
 				}
 				break;
 
@@ -1170,8 +1186,10 @@ Event.observe(window, 'load', function(){
 
 					// Set the element's values from the result
 					elem.setAttribute('data-value', item.value);
+					elem.setAttribute('data-reminder', item.reminder);
+					elem.setAttribute('data-hidden', item.hidden);
 					elem.update(
-						item.display.replace(acRxp, '<span class="match">$1</span>')
+						item.value.replace(acRxp, '<span class="match">$1</span>')
 						+ ' <span class="reminder">'
 						+ item.reminder
 						+ '</span>'
@@ -1185,6 +1203,8 @@ Event.observe(window, 'load', function(){
 						selectedItem = elem;
 						selectedItem.addClassName('selected');
 						input.value = selectedItem.getAttribute('data-value');
+						reminder.value = selectedItem.getAttribute('data-reminder');
+						hidden.value = selectedItem.getAttribute('data-hidden');
 						acLoad();
 						acClose();
 					});
@@ -1208,7 +1228,7 @@ Event.observe(window, 'load', function(){
 		// Perform the provided action on the selected result
 		function acLoad(){
 			input.blur();
-			acLoadFunc(input.value);
+			acLoadFunc(input.value, reminder.value, hidden.value);
 		}
 
 		// Close the autocomplete list
@@ -1394,7 +1414,7 @@ Event.observe(window, 'load', function(){
 					,adhoc.nodeTypes.ACTION
 					,adhoc.nodeWhich.ACTION_DEFIN
 					,adhoc.nodeChildType.STATEMENT
-					,adhoc.setting('projectName')
+					,null
 					,'New Action'
 					,null
 				);
@@ -1568,7 +1588,7 @@ console.log(t.responseText);
 
 			// Otherwise, we're trying to move the canvas
 			}else{
-				adhoc.canvas.addClassName('moving');
+				adhoc.canvas.addClassName('willMove');
 				adhoc.canvas.setAttribute('data-startx', adhoc.display_x);
 				adhoc.canvas.setAttribute('data-starty', adhoc.display_y);
 				adhoc.canvas.setAttribute('data-startpx', Event.pointerX(e));
@@ -1578,6 +1598,9 @@ console.log(t.responseText);
 		// Handle mouse up
 		var upFunc = function(e){
 			// We're done moving the canvas
+			if(adhoc.canvas.hasClassName('willMove')){
+				adhoc.canvas.removeClassName('willMove');
+			}
 			if(adhoc.canvas.hasClassName('moving')){
 				adhoc.canvas.removeClassName('moving');
 				return;
@@ -1650,18 +1673,18 @@ console.log(t.responseText);
 
 					case adhoc.nodeWhich.ACTION_CALL:
 						// Prompt for an action name
-						adhoc.promptValue('Enter an action name:', adhoc.validateActionName, false, function(val){
+						adhoc.promptValue('Enter an action name:', adhoc.validateActionName, false, function(val, rem, hid){
 							adhoc.deactivateAllTools();
-							adhoc.createNode(prnt, repl, type, which, childType, null, val);
+							adhoc.createNode(prnt, repl, type, which, childType, rem, val, hid?hid:null);
 						}, adhoc.actionSearch, 'New action');
 						break;
 
 					case adhoc.nodeWhich.VARIABLE_ASIGN:
 					case adhoc.nodeWhich.VARIABLE_EVAL:
 						// Prompt for a variable name
-						adhoc.promptValue('Enter a variable name:', adhoc.validateIdentifier, false, function(val){
+						adhoc.promptValue('Enter a variable name:', adhoc.validateIdentifier, false, function(val, rem, hid){
 							adhoc.deactivateAllTools();
-							adhoc.createNode(prnt, repl, type, which, childType, null, val);
+							adhoc.createNode(prnt, repl, type, which, childType, null, val, hid?hid:null);
 						}, adhoc.genScopeSearch(prnt, false), 'New variable');
 						break;
 
@@ -1775,6 +1798,10 @@ adhoc.createNode(prnt, repl, type, which, childType);
 			if(e.touches && e.touches.length) e = e.touches[0];
 
 			// If the canvas isn't moving, just return
+			if(adhoc.canvas.hasClassName('willMove')){
+				adhoc.canvas.removeClassName('willMove');
+				adhoc.canvas.addClassName('moving');
+			}
 			if(!adhoc.canvas.hasClassName('moving')) return;
 
 			// Get the scaled location of the cursor
@@ -1856,7 +1883,7 @@ adhoc.createNode(prnt, repl, type, which, childType);
 
 			// Do nothing if the key is unknown
 			default:
-				console.log(key);
+				//console.log(key);
 			}
 		}
 		adhoc.canvas.observe('mousedown', downFunc);
@@ -1886,7 +1913,7 @@ adhoc.rootNode = adhoc.createNode(
 	,adhoc.nodeTypes.ACTION
 	,adhoc.nodeWhich.ACTION_DEFIN
 	,adhoc.nodeChildType.STATEMENT
-	,adhoc.setting('projectName')
+	,null
 	,'Print 99 Bottles'
 	,null
 );
@@ -1903,7 +1930,7 @@ adhoc.rootNode = adhoc.createNode(
 		return ++adhoc.lastId;
 	}
 	// Create a new node with just a type and empty contents
-	adhoc.createNode = function(p, r, t, w, c, k, n, v){
+	adhoc.createNode = function(p, r, t, w, c, k, n, v, f){
 		// Set the type, which, and childType if they're not passed
 		if(!t) t = adhoc.nodeTypes.TYPE_NULL;
 		if(!w) w = adhoc.nodeWhich.WHICH_NULL;
@@ -1914,15 +1941,17 @@ adhoc.rootNode = adhoc.createNode(
 			id: adhoc.nextId()
 			,parent: p
 			,scope: null
+			,referenceId: f ? f.id : null
 			,nodeType: t
 			,which: w
 			,childType: c
 			,dataType: null
-			,package: k
+			,package: k ? k : adhoc.setting('projectName')
 			,name: n
 			,value: v
 			,children: []
 			,scopeVars: []
+			,references: []
 			,x: 0
 			,y: 0
 			,width: null
@@ -1977,6 +2006,9 @@ adhoc.rootNode = adhoc.createNode(
 					scope.scopeVars.push(newNode);
 				}
 			}
+
+			// Assign this node to any other that it references
+			if(f) f.references.push(newNode.id);
 		}
 
 		// Register actions for later use
@@ -2442,8 +2474,8 @@ adhoc.rootNode = adhoc.createNode(
 					if(n.indexOf(part)===0 && (!exact || n.length==part.length)){
 						out.push({
 							value: n
-							,display: n
 							,reminder: myScope.name
+							,hidden: myScope.scopeVars[i].id
 						});
 					}
 				}
@@ -2456,7 +2488,7 @@ adhoc.rootNode = adhoc.createNode(
 			return out;
 		};
 	}
-	// Generate a function to find actions by name
+	// Find actions by name
 	adhoc.actionSearch = function(part){
 		// Create an empty list of actions to return
 		var out = [];
@@ -2468,8 +2500,8 @@ adhoc.rootNode = adhoc.createNode(
 			if(n.indexOf(part)===0){
 				out.push({
 					value: n
-					,display: n
 					,reminder: adhoc.registeredActions[i].package
+					,hidden: adhoc.registeredActions[i].id
 				});
 			}
 		}
@@ -2510,9 +2542,13 @@ adhoc.rootNode = adhoc.createNode(
 
 	// Function to change the package name of all children
 	adhoc.updatePackageName = function(n, oldP, newP){
+		if(n.package == newP) return;
 		if(n.package == oldP) n.package = newP;
 		for(var i=0; i<n.children.length; ++i){
 			adhoc.updatePackageName(n.children[i], oldP, newP);
+		}
+		for(var i=0; i<n.references.length; ++i){
+			adhoc.updatePackageName(n.references[i], oldP, newP);
 		}
 	}
 
@@ -2539,6 +2575,7 @@ adhoc.rootNode = adhoc.createNode(
 			id: n.id
 			,parentId: (n.parent ? n.parent.id : null)
 			,scopeId: (n.scope ? n.scope.id : null)
+			,referenceId: n.referenceId
 			,nodeType: n.nodeType
 			,which: n.which
 			,childType: n.childType
@@ -2547,6 +2584,7 @@ adhoc.rootNode = adhoc.createNode(
 			,name: n.name
 			,value: n.value
 			,childIds: []
+			,references: n.references
 			,x: n.x
 			,y: n.y
 			,width: n.width
@@ -2571,7 +2609,16 @@ adhoc.rootNode = adhoc.createNode(
 			adhoc.deleteNode(n.children[i]);
 		}
 
-		// Remove this node from its parent and its scope
+		// Remove this node from its parent, scope, and references
+		for(var i=0; i<n.references.length; ++i){
+			adhoc.allNodes[n.references[i]].referenceId = null;
+		}
+		if(n.referenceId && adhoc.allNodes[n.referenceId]){
+			adhoc.allNodes[n.referenceId].references.splice(
+				adhoc.allNodes[n.referenceId].references.indexOf(n.id)
+				,1
+			);
+		}
 		if(n.scope){
 			n.scope.scopeVars.splice(n.scope.scopeVars.indexOf(n), 1);
 		}
@@ -2597,6 +2644,7 @@ adhoc.rootNode = adhoc.createNode(
 			n.id = newNode.id
 			n.parent = adhoc.allNodes[newNode.parentId];
 			n.scope = adhoc.allNodes[newNode.scopeId];
+			n.referenceId = newNode.referenceId;
 			n.nodeType = newNode.nodeType;
 			n.which = newNode.which;
 			n.childType = newNode.childType;
@@ -2604,6 +2652,7 @@ adhoc.rootNode = adhoc.createNode(
 			n.package = newNode.package;
 			n.name = newNode.name;
 			n.value = newNode.value;
+			n.references = newNode.references;
 			n.x = newNode.x;
 			n.y = newNode.y;
 			n.width = newNode.width;
@@ -2671,6 +2720,15 @@ adhoc.rootNode = adhoc.createNode(
 					,serial.children[i]
 				);
 			}
+		}
+
+		// Restore this node as a reference
+		var ref = n.referenceId ? adhoc.allNodes[n.referenceId] : null;
+		if(ref && ref.references.indexOf(n.id)<0){
+			ref.references.push(n);
+		}
+		for(var i=0; i<n.references.length; ++i){
+			adhoc.allNodes[n.references[i]].referenceId = n.id;
 		}
 
 		// Return the node itself for recursive calls
