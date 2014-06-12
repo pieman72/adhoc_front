@@ -1263,7 +1263,7 @@ Event.observe(window, 'load', function(){
 		adhoc.history = {
 			index: 0
 			,history: []
-			,record: function(action, target, prnt){
+			,record: function(action, target, prnt, bind){
 				// Determine whether serialization needs to be deep or shallow
 				var serializeDeep = false;
 				switch(action){
@@ -1285,14 +1285,9 @@ Event.observe(window, 'load', function(){
 						,target: target
 						,parentId: prnt.id
 						,serial: adhoc.serializeComplete(prnt, serializeDeep)
-						,bind: false
+						,bind: bind
 					}
 				);
-
-				// Some actions need to be bound to the previous ones
-				if(false){
-					adhoc.history.history[adhoc.history.index].bind = true;
-				}
 
 				// Move up the history index
 				++adhoc.history.index;
@@ -1352,7 +1347,14 @@ Event.observe(window, 'load', function(){
 
 				// Redo a rename
 				case 'rename':
-					adhoc.allNodes[item.parentId].name = item.target;
+					if(!isNaN(parseFloat(item.target)) && isFinite(item.target)){
+						var ref = adhoc.allNodes[item.target];
+						adhoc.allNodes[item.parentId].package = ref.package;
+						adhoc.allNodes[item.parentId].name = ref.name;
+					}else{
+						adhoc.allNodes[item.parentId].package = adhoc.setting('projectName');
+						adhoc.allNodes[item.parentId].name = item.target;
+					}
 					adhoc.refreshRender();
 					break;
 
@@ -1378,7 +1380,10 @@ Event.observe(window, 'load', function(){
 				}
 
 				// If the next item is bound to this one, do it as well
-				if(adhoc.history.history[adhoc.history.index++].bind) adhoc.history.redo();
+				++adhoc.history.index;
+				if(adhoc.history.index < adhoc.history.history.length
+						&& adhoc.history.history[adhoc.history.index].bind)
+					adhoc.history.redo();
 			}
 		};
 	}
@@ -1801,6 +1806,7 @@ adhoc.createNode(prnt, repl, type, which, childType);
 					// Rename a defined action
 					case adhoc.nodeWhich.ACTION_DEFIN:
 						adhoc.promptValue('Rename this action:', adhoc.validateActionDefName, false, function(val, rem, hid){
+							adhoc.history.record('rename', (hid?parseInt(hid):val), clickedNode);
 							adhoc.renameNode(clickedNode, rem, val, hid);
 							adhoc.refreshRender();
 						});
@@ -1809,6 +1815,7 @@ adhoc.createNode(prnt, repl, type, which, childType);
 					//Change an action call
 					case adhoc.nodeWhich.ACTION_CALL:
 						adhoc.promptValue('Call a different action:', adhoc.validateActionName, false, function(val, rem, hid){
+							adhoc.history.record('rename', (hid?parseInt(hid):val), clickedNode);
 							adhoc.renameNode(clickedNode, rem, val, hid);
 							adhoc.refreshRender();
 						}, adhoc.actionSearch, 'Not found in loaded projects');
@@ -1818,8 +1825,8 @@ adhoc.createNode(prnt, repl, type, which, childType);
 					case adhoc.nodeWhich.VARIABLE_ASIGN:
 					case adhoc.nodeWhich.VARIABLE_EVAL:
 						adhoc.promptValue('Enter a variable name:', adhoc.validateIdentifier, false, function(val, rem, hid){
-console.log(clickedNode);
 							var nodeToRename = clickedNode.referenceId ? adhoc.allNodes[clickedNode.referenceId] : clickedNode;
+							adhoc.history.record('rename', (hid?parseInt(hid):val), nodeToRename);
 							adhoc.renameNode(nodeToRename, rem, val, hid);
 							adhoc.refreshRender();
 						}, adhoc.genScopeSearch(clickedNode.parent, false), 'New variable');
@@ -2697,48 +2704,51 @@ adhoc.rootNode = adhoc.createNode(
 	}
 
 	// Renames a single node
-	adhoc.renameNode = function(n, pkg, name, ref){
+	adhoc.renameNode = function(n, pkg, name, ref, recursive){
 		// Default the package name to the current package
 		pkg = pkg || adhoc.setting('projectName');
 
 		// Keep references to integers
 		ref = ref ? parseInt(ref) : null;
 
-		// Remove node from current reference
-		if(n.referenceId && adhoc.allNodes[n.referenceId]){
-			adhoc.allNodes[n.referenceId].references.splice(
-				adhoc.allNodes[n.referenceId].references.indexOf(n.id)
-				,1
-			);
-		}
-
-		// Add to new reference
-		if(ref && adhoc.allNodes[ref]){
-			adhoc.allNodes[ref].references.push(n.id);
-			n.scope = adhoc.allNodes[ref].scope;
-
-		// If there's no reference (new variable name), assign a scope
-		}else if(n.which == adhoc.nodeWhich.VARIABLE_ASIGN){
-			var searchFunc = adhoc.genScopeSearch(n.parent, true);
-			if(!searchFunc(n.name).length){
-				n.scope = n.parent;
-				while(n.scope.which != adhoc.nodeWhich.ACTION_DEFIN
-						&& n.scope.which != adhoc.nodeWhich.CONTROL_LOOP){
-					n.scope = n.scope.parent;
-				}
-				n.scope.scopeVars.push(n);
+		// If given a new reference
+		if(n.referenceId != ref){
+			// Remove node from current reference
+			if(n.referenceId && adhoc.allNodes[n.referenceId]){
+				adhoc.allNodes[n.referenceId].references.splice(
+					adhoc.allNodes[n.referenceId].references.indexOf(n.id)
+					,1
+				);
 			}
-		}
 
-		// Update references to this node
-		for(var i=0; i<n.references.length; ++i){
-			adhoc.allNodes[n.references[i]].package = pkg;
-			adhoc.allNodes[n.references[i]].name = name;
+			// Add to new reference
+			if(ref && adhoc.allNodes[ref]){
+				adhoc.allNodes[ref].references.push(n.id);
+				n.scope = adhoc.allNodes[ref].scope;
+
+			// If there's no reference (new variable name), assign a scope
+			}else if(n.which == adhoc.nodeWhich.VARIABLE_ASIGN){
+				var searchFunc = adhoc.genScopeSearch(n.parent, true);
+				if(!searchFunc(n.name).length){
+					n.scope = n.parent;
+					while(n.scope.which != adhoc.nodeWhich.ACTION_DEFIN
+							&& n.scope.which != adhoc.nodeWhich.CONTROL_LOOP){
+						n.scope = n.scope.parent;
+					}
+					n.scope.scopeVars.push(n);
+				}
+			}
 		}
 
 		// Update this node
 		n.package = pkg;
 		n.name = name;
+
+		// Update references to this node
+		for(var i=0; i<n.references.length; ++i){
+			adhoc.history.record('rename', n.id, adhoc.allNodes[n.references[i]], true);
+			adhoc.renameNode(adhoc.allNodes[n.references[i]], pkg, name, n.id, true);
+		}
 	}
 	// Changes the package name of all children
 	adhoc.updatePackageName = function(n, oldP, newP){
@@ -2895,7 +2905,7 @@ adhoc.rootNode = adhoc.createNode(
 		// Restore this node as a reference
 		var ref = n.referenceId ? adhoc.allNodes[n.referenceId] : null;
 		if(ref && ref.references.indexOf(n.id)<0){
-			ref.references.push(n);
+			ref.references.push(n.id);
 		}
 		for(var i=0; i<n.references.length; ++i){
 			adhoc.allNodes[n.references[i]].referenceId = n.id;
