@@ -1546,7 +1546,7 @@ console.log(t.responseText);
 				if(j+passed == 32) continue;
 				if(j+passed == 34) continue;
 				if(j+passed == 45) continue;
-				
+
 				// Item
 				item = $(document.createElement('div'));
 				item.addClassName('toolboxItem');
@@ -1686,7 +1686,7 @@ console.log(t.responseText);
 						// Prompt for an action name
 						adhoc.promptValue('Enter an action name:', adhoc.validateActionName, false, function(val, rem, hid){
 							adhoc.deactivateAllTools();
-							adhoc.createNode(prnt, repl, type, which, childType, rem, val, null, hid?hid:null);
+							adhoc.createNode(prnt, repl, type, which, childType, rem, val, null, hid);
 						}, adhoc.actionSearch, 'Not found in loaded projects');
 						break;
 
@@ -1695,7 +1695,7 @@ console.log(t.responseText);
 						// Prompt for a variable name
 						adhoc.promptValue('Enter a variable name:', adhoc.validateIdentifier, false, function(val, rem, hid){
 							adhoc.deactivateAllTools();
-							adhoc.createNode(prnt, repl, type, which, childType, null, val, null, hid?hid:null);
+							adhoc.createNode(prnt, repl, type, which, childType, null, val, null, hid);
 						}, adhoc.genScopeSearch(prnt, false), 'New variable');
 						break;
 
@@ -1801,7 +1801,7 @@ adhoc.createNode(prnt, repl, type, which, childType);
 					// Rename a defined action
 					case adhoc.nodeWhich.ACTION_DEFIN:
 						adhoc.promptValue('Rename this action:', adhoc.validateActionDefName, false, function(val, rem, hid){
-							adhoc.renameNode(clickedNode, rem, val, hid?hid:null);
+							adhoc.renameNode(clickedNode, rem, val, hid);
 							adhoc.refreshRender();
 						});
 						break;
@@ -1809,17 +1809,18 @@ adhoc.createNode(prnt, repl, type, which, childType);
 					//Change an action call
 					case adhoc.nodeWhich.ACTION_CALL:
 						adhoc.promptValue('Call a different action:', adhoc.validateActionName, false, function(val, rem, hid){
-							adhoc.renameNode(clickedNode, rem, val, hid?hid:null);
+							adhoc.renameNode(clickedNode, rem, val, hid);
 							adhoc.refreshRender();
 						}, adhoc.actionSearch, 'Not found in loaded projects');
 						break;
 
 					// Rename a variable
 					case adhoc.nodeWhich.VARIABLE_ASIGN:
-					// Use a different variable
 					case adhoc.nodeWhich.VARIABLE_EVAL:
 						adhoc.promptValue('Enter a variable name:', adhoc.validateIdentifier, false, function(val, rem, hid){
-							adhoc.renameNode(clickedNode, rem, val, hid?hid:null);
+console.log(clickedNode);
+							var nodeToRename = clickedNode.referenceId ? adhoc.allNodes[clickedNode.referenceId] : clickedNode;
+							adhoc.renameNode(nodeToRename, rem, val, hid);
 							adhoc.refreshRender();
 						}, adhoc.genScopeSearch(clickedNode.parent, false), 'New variable');
 						break;
@@ -1996,7 +1997,7 @@ adhoc.rootNode = adhoc.createNode(
 			id: (t == adhoc.nodeTypes.TYPE_NULL) ? null : adhoc.nextId()
 			,parent: p
 			,scope: null
-			,referenceId: f ? f.id : null
+			,referenceId: f ? parseInt(f) : null
 			,nodeType: t
 			,which: w
 			,childType: c
@@ -2209,7 +2210,7 @@ adhoc.rootNode = adhoc.createNode(
 				title
 				,(n.x-(size.width/(2.0*adhoc.display_scale))) * adhoc.display_scale - adhoc.display_x
 				,(n.y+(size.height/2.0)-3) * adhoc.display_scale - adhoc.display_y
-			); 
+			);
 
 			// Draw box border
 			ctx.strokeStyle = nodeColor;
@@ -2313,7 +2314,7 @@ adhoc.rootNode = adhoc.createNode(
 				title
 				,(n.x-(size.width/(2.0*adhoc.display_scale))) * adhoc.display_scale - adhoc.display_x
 				,(n.y+(size.height/2.0)) * adhoc.display_scale - adhoc.display_y
-			); 
+			);
 
 			// Draw box border
 			ctx.strokeStyle = nodeColor;
@@ -2343,7 +2344,7 @@ adhoc.rootNode = adhoc.createNode(
 				title
 				,(n.x-(size.width/2.0)) * adhoc.display_scale - adhoc.display_x
 				,(n.y+(size.height/2.0)-3) * adhoc.display_scale - adhoc.display_y
-			); 
+			);
 			break;
 
 		case adhoc.nodeTypes.LITERAL:
@@ -2363,7 +2364,7 @@ adhoc.rootNode = adhoc.createNode(
 					title
 					,(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
 					,(n.y+(n.height/2.0)-3) * adhoc.display_scale - adhoc.display_y
-				); 
+				);
 				break;
 
 			case adhoc.nodeWhich.LITERAL_INT:
@@ -2384,7 +2385,7 @@ adhoc.rootNode = adhoc.createNode(
 					title
 					,(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
 					,(n.y+(n.height/2.0)-3) * adhoc.display_scale - adhoc.display_y
-				); 
+				);
 				break;
 
 			case adhoc.nodeWhich.LITERAL_ARRAY:
@@ -2508,7 +2509,7 @@ adhoc.rootNode = adhoc.createNode(
 				n.package
 				,(n.x-(n.width/2.0)+5) * adhoc.display_scale - adhoc.display_x
 				,(n.y-(n.height/2.0)+16) * adhoc.display_scale - adhoc.display_y
-			); 
+			);
 			ctx.strokeRect(
 				(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
 				,(n.y-(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
@@ -2528,7 +2529,7 @@ adhoc.rootNode = adhoc.createNode(
 				n.id
 				,(n.x+(n.width/2.0)-(size.width+5)) * adhoc.display_scale - adhoc.display_x
 				,(n.y+(n.height/2.0)-6) * adhoc.display_scale - adhoc.display_y
-			); 
+			);
 			ctx.strokeRect(
 				(n.x+(n.width/2.0)-(size.width+10)) * adhoc.display_scale - adhoc.display_x
 				,(n.y+(n.height/2.0)-20) * adhoc.display_scale - adhoc.display_y
@@ -2699,6 +2700,9 @@ adhoc.rootNode = adhoc.createNode(
 	adhoc.renameNode = function(n, pkg, name, ref){
 		// Default the package name to the current package
 		pkg = pkg || adhoc.setting('projectName');
+
+		// Keep references to integers
+		ref = ref ? parseInt(ref) : null;
 
 		// Remove node from current reference
 		if(n.referenceId && adhoc.allNodes[n.referenceId]){
