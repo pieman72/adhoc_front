@@ -839,12 +839,19 @@ Event.observe(window, 'load', function(){
 			return 'Not a valid variable name';
 		}
 	};
-	// Validate the name of a new action
-	adhoc.validateActionName = function(v){
+	// Validate the name of an action, and possibly check that it is not already defined
+	adhoc.validateActionName = function(v, notExist){
 		if(!v.match(/^[_a-zA-Z][ _a-zA-Z0-9]*$/)){
 			return 'Not a valid action name';
 		}
+		if(notExist && adhoc.actionSearch(v, true, true).length){
+			return 'Action name already used in project "'+adhoc.setting('projectName')+'"';
+		}
 	};
+	// Validate the name of an action, and check that it is not already defined
+	adhoc.validateActionDefName = function(v){
+		return adhoc.validateActionName(v, true);
+	}
 	// Validate the name of a new paclage
 	adhoc.validatePackageName = function(v){
 		if(!v.match(/^[_a-zA-Z][ _a-zA-Z0-9]*$/)){
@@ -953,6 +960,8 @@ Event.observe(window, 'load', function(){
 
 		// Create and add the input field
 		var inp = $(document.createElement('input'));
+		var rem;
+		var hid;
 		inp.addClassName('nxj_input').addClassName(algnR ? 'textAlignRight' : 'textAlignLeft');
 		inp.observe('keyup', function(e){
 			// On keyup, validate the input
@@ -973,7 +982,7 @@ Event.observe(window, 'load', function(){
 
 				// If the key happened to be Enter, try to submit now
 				if((e.keyCode||e.which) == Event.KEY_RETURN){
-					callBack(this.value);
+					callBack(this.value, rem.value, hid.value);
 					$('theLightbox').hide();
 				// And if it happened to be Esc, then close the lightbox
 				}else if((e.keyCode||e.which) == Event.KEY_ESC){
@@ -984,12 +993,12 @@ Event.observe(window, 'load', function(){
 		holder.appendChild(inp);
 
 		// Create and add another input for the reminder text
-		var rem = $(document.createElement('input'));
+		rem = $(document.createElement('input'));
 		rem.setAttribute('type', 'hidden');
 		holder.appendChild(rem);
 
 		// Create and add another input for the hidden value
-		var hid = $(document.createElement('input'));
+		hid = $(document.createElement('input'));
 		hid.setAttribute('type', 'hidden');
 		holder.appendChild(hid);
 
@@ -1023,7 +1032,7 @@ Event.observe(window, 'load', function(){
 		butt.update('Select');
 		butt.observe('click', function(){
 			if(butt.hasClassName('disabled')) return;
-			callBack(inp.value);
+			callBack(inp.value, rem.value, hid.value);
 			$('theLightbox').hide();
 		});
 		cont.appendChild(butt);
@@ -1270,7 +1279,7 @@ Event.observe(window, 'load', function(){
 				// Replace all history items moving forward with this new one
 				adhoc.history.history.splice(
 					adhoc.history.index
-					,adhoc.history.index - adhoc.history.history.length
+					,adhoc.history.history.length - adhoc.history.index
 					,{
 						action: action
 						,target: target
@@ -1343,6 +1352,8 @@ Event.observe(window, 'load', function(){
 
 				// Redo a rename
 				case 'rename':
+					adhoc.allNodes[item.parentId].name = item.target;
+					adhoc.refreshRender();
 					break;
 
 				// Redo a deletion
@@ -1617,7 +1628,7 @@ console.log(t.responseText);
 			};
 			var clickedNode = adhoc.getClickedNode(adhoc.rootNode, click);
 
-			// A tool is active and a node was clicked, figure out what to do with it
+			// If a tool is active and a node was clicked, figure out what to do with it
 			var activeTools = $$('.toolboxItem.active');
 			if(activeTools.length && clickedNode){
 				// Get the tool's type, which, parent, and replacee
@@ -1665,7 +1676,7 @@ console.log(t.responseText);
 					switch(which){
 					case adhoc.nodeWhich.ACTION_DEFIN:
 						// Prompt for an action name
-						adhoc.promptValue('Enter an action name:', adhoc.validateActionName, false, function(val){
+						adhoc.promptValue('Enter an action name:', adhoc.validateActionDefName, false, function(val){
 							adhoc.deactivateAllTools();
 							adhoc.createNode(prnt, repl, type, which, childType, null, val);
 						});
@@ -1675,8 +1686,8 @@ console.log(t.responseText);
 						// Prompt for an action name
 						adhoc.promptValue('Enter an action name:', adhoc.validateActionName, false, function(val, rem, hid){
 							adhoc.deactivateAllTools();
-							adhoc.createNode(prnt, repl, type, which, childType, rem, val, hid?hid:null);
-						}, adhoc.actionSearch, 'New action');
+							adhoc.createNode(prnt, repl, type, which, childType, rem, val, null, hid?hid:null);
+						}, adhoc.actionSearch, 'Not found in loaded projects');
 						break;
 
 					case adhoc.nodeWhich.VARIABLE_ASIGN:
@@ -1684,7 +1695,7 @@ console.log(t.responseText);
 						// Prompt for a variable name
 						adhoc.promptValue('Enter a variable name:', adhoc.validateIdentifier, false, function(val, rem, hid){
 							adhoc.deactivateAllTools();
-							adhoc.createNode(prnt, repl, type, which, childType, null, val, hid?hid:null);
+							adhoc.createNode(prnt, repl, type, which, childType, null, val, null, hid?hid:null);
 						}, adhoc.genScopeSearch(prnt, false), 'New variable');
 						break;
 
@@ -1781,16 +1792,54 @@ adhoc.createNode(prnt, repl, type, which, childType);
 						createNodeWithType(roleOptions[val]);
 					});
 				}
+
+			// If a node is clicked with no tool active, figure out what to do
 			}else if(clickedNode){
-				if(adhoc.selectedNode) adhoc.selectedNode.selected = false;
-				clickedNode.selected = true;
-				adhoc.selectedNode = clickedNode;
-				adhoc.refreshRender();
+				// If the clicked node was already selected, try to rename it
+				if(clickedNode==adhoc.selectedNode){
+					switch(clickedNode.which){
+					// Rename a defined action
+					case adhoc.nodeWhich.ACTION_DEFIN:
+						adhoc.promptValue('Rename this action:', adhoc.validateActionDefName, false, function(val, rem, hid){
+							adhoc.renameNode(clickedNode, rem, val, hid?hid:null);
+							adhoc.refreshRender();
+						});
+						break;
+
+					//Change an action call
+					case adhoc.nodeWhich.ACTION_CALL:
+						adhoc.promptValue('Call a different action:', adhoc.validateActionName, false, function(val, rem, hid){
+							adhoc.renameNode(clickedNode, rem, val, hid?hid:null);
+							adhoc.refreshRender();
+						}, adhoc.actionSearch, 'Not found in loaded projects');
+						break;
+
+					// Rename a variable
+					case adhoc.nodeWhich.VARIABLE_ASIGN:
+					// Use a different variable
+					case adhoc.nodeWhich.VARIABLE_EVAL:
+						adhoc.promptValue('Enter a variable name:', adhoc.validateIdentifier, false, function(val, rem, hid){
+							adhoc.renameNode(clickedNode, rem, val, hid?hid:null);
+							adhoc.refreshRender();
+						}, adhoc.genScopeSearch(clickedNode.parent, false), 'New variable');
+						break;
+
+					default:
+					}
+
+				// If not, select it
+				}else{
+					if(adhoc.selectedNode) adhoc.selectedNode.selected = false;
+					clickedNode.selected = true;
+					adhoc.selectedNode = clickedNode;
+				}
+
+			// Empty space was clicked, deselect the selected node
 			}else if(adhoc.selectedNode){
 				adhoc.selectedNode.selected = false;
 				adhoc.selectedNode = null;
-				adhoc.refreshRender();
 			}
+			adhoc.refreshRender();
 		};
 		// Handle mouse move
 		var moveFunc = function(e){
@@ -1881,9 +1930,15 @@ adhoc.createNode(prnt, repl, type, which, childType);
 				adhoc.refreshRender();
 				break;
 
+			// Toggle the debugger with 'k'
+			case 75:
+				adhoc.setting('dbg', !adhoc.setting('dbg'));
+				adhoc.refreshRender();
+				break;
+
 			// Do nothing if the key is unknown
 			default:
-				//console.log(key);
+				if(adhoc.setting('dbg')) console.log(key);
 			}
 		}
 		adhoc.canvas.observe('mousedown', downFunc);
@@ -1938,7 +1993,7 @@ adhoc.rootNode = adhoc.createNode(
 
 		// Create the object with its params
 		var newNode = {
-			id: adhoc.nextId()
+			id: (t == adhoc.nodeTypes.TYPE_NULL) ? null : adhoc.nextId()
 			,parent: p
 			,scope: null
 			,referenceId: f ? f.id : null
@@ -1946,7 +2001,7 @@ adhoc.rootNode = adhoc.createNode(
 			,which: w
 			,childType: c
 			,dataType: null
-			,package: k ? k : adhoc.setting('projectName')
+			,package: (t == adhoc.nodeTypes.TYPE_NULL) ? null : (k ? k : adhoc.setting('projectName'))
 			,name: n
 			,value: v
 			,children: []
@@ -2008,7 +2063,7 @@ adhoc.rootNode = adhoc.createNode(
 			}
 
 			// Assign this node to any other that it references
-			if(f) f.references.push(newNode.id);
+			if(f) adhoc.allNodes[f].references.push(newNode.id);
 		}
 
 		// Register actions for later use
@@ -2067,8 +2122,10 @@ adhoc.rootNode = adhoc.createNode(
 		var childrenFound = false;
 		for(var i=0; i<n.children.length; ++i){
 			// Skip null placeholders when setting is disabled
-			if(n.children[i].nodeType==adhoc.nodeTypes.TYPE_NULL &&
-					!adhoc.setting('showNullNodes')) continue;
+			if(n.children[i].nodeType==adhoc.nodeTypes.TYPE_NULL
+					&& !adhoc.setting('showNullNodes')
+					&& !adhoc.setting('dbg'))
+				continue;
 
 			childrenFound = true;
 			n.subTreeHeight += adhoc.subTreeHeightNode(n.children[i]);
@@ -2083,8 +2140,10 @@ adhoc.rootNode = adhoc.createNode(
 		n.y = n.subTreeHeight/2 + passed;
 		for(var i=0; i<n.children.length; ++i){
 			// Skip null placeholders when setting is disabled
-			if(n.children[i].nodeType==adhoc.nodeTypes.TYPE_NULL &&
-					!adhoc.setting('showNullNodes')) continue;
+			if(n.children[i].nodeType==adhoc.nodeTypes.TYPE_NULL
+					&& !adhoc.setting('showNullNodes')
+					&& !adhoc.setting('dbg'))
+				continue;
 
 			n.children[i].y = passed;
 			passed += n.children[i].subTreeHeight;
@@ -2101,8 +2160,10 @@ adhoc.rootNode = adhoc.createNode(
 			c = n.children[i];
 
 			// Skip null placeholders when setting is disabled
-			if(c.nodeType==adhoc.nodeTypes.TYPE_NULL &&
-					!adhoc.setting('showNullNodes')) continue;
+			if(c.nodeType==adhoc.nodeTypes.TYPE_NULL
+					&& !adhoc.setting('showNullNodes')
+					&& !adhoc.setting('dbg'))
+				continue;
 
 			adhoc.renderNode(c);
 			if(c.width > maxWidth) maxWidth = c.width;
@@ -2286,6 +2347,7 @@ adhoc.rootNode = adhoc.createNode(
 			break;
 
 		case adhoc.nodeTypes.LITERAL:
+			nodeColor = '#FF8700';
 			ctx.fillStyle = '#FF8700';
 			switch(n.which){
 			case adhoc.nodeWhich.LITERAL_BOOL:
@@ -2326,9 +2388,6 @@ adhoc.rootNode = adhoc.createNode(
 				break;
 
 			case adhoc.nodeWhich.LITERAL_ARRAY:
-				// Determine the color for the brackets
-				nodeColor = '#000000';
-
 				// Set the node's dimensions
 				n.width = 100;
 				n.height = 100;
@@ -2337,7 +2396,7 @@ adhoc.rootNode = adhoc.createNode(
 // TODO: draw shorthand for array items
 
 				// Draw the brackets
-				ctx.strokeStyle = nodeColor;
+				ctx.strokeStyle = '#000000';
 				ctx.beginPath();
 				ctx.moveTo(
 					(n.x-(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
@@ -2374,8 +2433,6 @@ adhoc.rootNode = adhoc.createNode(
 					,(n.y+(n.height/2.0+5)-10) * adhoc.display_scale - adhoc.display_y
 				);
 				ctx.stroke();
-
-				ctx.strokeStyle = nodeColor;
 				break;
 
 			case adhoc.nodeWhich.LITERAL_HASH:
@@ -2397,8 +2454,10 @@ adhoc.rootNode = adhoc.createNode(
 			c = n.children[i];
 
 			// Skip null placeholders when setting is disabled
-			if(c.nodeType==adhoc.nodeTypes.TYPE_NULL &&
-					!adhoc.setting('showNullNodes')) continue;
+			if(c.nodeType==adhoc.nodeTypes.TYPE_NULL
+					&& !adhoc.setting('showNullNodes')
+					&& !adhoc.setting('dbg'))
+				continue;
 
 			ctx.strokeStyle = nodeColor;
 			ctx.beginPath();
@@ -2421,6 +2480,7 @@ adhoc.rootNode = adhoc.createNode(
 			// Label the connector for certain child types
 			var childInfo = adhoc.nodeChildTypeInfo[c.childType];
 			var labelSetting = adhoc.setting('labelConnectors');
+			if(adhoc.setting('dbg')) labelSetting=2;
 			if(labelSetting && (labelSetting==2 || childInfo.useLabel)){
 				ctx.font = "" + (14*adhoc.display_scale) + "px Arial";
 				var rise = arrowTo[1] - arrowFrom[1];
@@ -2434,6 +2494,50 @@ adhoc.rootNode = adhoc.createNode(
 				ctx.restore();
 			}
 		}
+
+		// In debug mode, show the node's ID
+		if(adhoc.setting('dbg')
+				|| n.nodeType == adhoc.nodeTypes.ACTION
+				|| n.nodeType == adhoc.nodeTypes.VARIABLE){
+			ctx.strokeStyle = nodeColor;
+			ctx.fillStyle = adhoc.setting('colorScheme')=='dark' ? adhoc.textColorDark : adhoc.textColor;
+			ctx.lineWidth = (2.0*adhoc.display_scale)<<0;
+			ctx.font = ((12.0*adhoc.display_scale)<<0)+'px Arial';
+			var size = ctx.measureText(n.package);
+			ctx.fillText(
+				n.package
+				,(n.x-(n.width/2.0)+5) * adhoc.display_scale - adhoc.display_x
+				,(n.y-(n.height/2.0)+16) * adhoc.display_scale - adhoc.display_y
+			); 
+			ctx.strokeRect(
+				(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+				,(n.y-(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
+				,(size.width+10) * adhoc.display_scale
+				,20 * adhoc.display_scale
+			);
+		}
+
+		// In debug mode, show the node's ID
+		if(adhoc.setting('dbg')){
+			ctx.strokeStyle = nodeColor;
+			ctx.fillStyle = adhoc.setting('colorScheme')=='dark' ? adhoc.textColorDark : adhoc.textColor;
+			ctx.lineWidth = (2.0*adhoc.display_scale)<<0;
+			ctx.font = ((12.0*adhoc.display_scale)<<0)+'px Arial';
+			var size = ctx.measureText(n.id);
+			ctx.fillText(
+				n.id
+				,(n.x+(n.width/2.0)-(size.width+5)) * adhoc.display_scale - adhoc.display_x
+				,(n.y+(n.height/2.0)-6) * adhoc.display_scale - adhoc.display_y
+			); 
+			ctx.strokeRect(
+				(n.x+(n.width/2.0)-(size.width+10)) * adhoc.display_scale - adhoc.display_x
+				,(n.y+(n.height/2.0)-20) * adhoc.display_scale - adhoc.display_y
+				,(size.width+10) * adhoc.display_scale
+				,20 * adhoc.display_scale
+			);
+		}
+
+		// Reset line dashes
 		ctx.setLineDash([]);
 	}
 
@@ -2489,7 +2593,7 @@ adhoc.rootNode = adhoc.createNode(
 		};
 	}
 	// Find actions by name
-	adhoc.actionSearch = function(part){
+	adhoc.actionSearch = function(part, exact, packageOnly){
 		// Create an empty list of actions to return
 		var out = [];
 
@@ -2497,7 +2601,7 @@ adhoc.rootNode = adhoc.createNode(
 		for(var i=0; i<adhoc.registeredActions.length; ++i){
 			// If one matches, add it to the output array
 			var n = adhoc.registeredActions[i].name;
-			if(n.indexOf(part)===0){
+			if((exact && n==part) || (!exact && n.indexOf(part)===0)){
 				out.push({
 					value: n
 					,reminder: adhoc.registeredActions[i].package
@@ -2505,16 +2609,18 @@ adhoc.rootNode = adhoc.createNode(
 				});
 			}
 		}
+		// If only checking package, return early
+		if(packageOnly) return out;
 
 		// Then search system actions
 		for(var i=0; i<adhoc.systemActions.length; ++i){
 			// If one matches, add it to the output array
 			var n = adhoc.systemActions[i].name;
-			if(n.indexOf(part)===0){
+			if((exact && n==part) || (!exact && n.indexOf(part)===0)){
 				out.push({
 					value: n
-					,display: n
 					,reminder: 'system'
+					,hidden: null
 				});
 			}
 		}
@@ -2540,18 +2646,6 @@ adhoc.rootNode = adhoc.createNode(
 		return null;
 	}
 
-	// Function to change the package name of all children
-	adhoc.updatePackageName = function(n, oldP, newP){
-		if(n.package == newP) return;
-		if(n.package == oldP) n.package = newP;
-		for(var i=0; i<n.children.length; ++i){
-			adhoc.updatePackageName(n.children[i], oldP, newP);
-		}
-		for(var i=0; i<n.references.length; ++i){
-			adhoc.updatePackageName(n.references[i], oldP, newP);
-		}
-	}
-
 	// Function to serialize a node and its children for binary
 	adhoc.serialize = function(n){
 		var out =
@@ -2568,7 +2662,6 @@ adhoc.rootNode = adhoc.createNode(
 		}
 		return out;
 	}
-
 	// Function to serialize a node and its children for the history manager
 	adhoc.serializeComplete = function(n, deep){
 		var out = {
@@ -2602,16 +2695,89 @@ adhoc.rootNode = adhoc.createNode(
 		};
 	}
 
+	// Renames a single node
+	adhoc.renameNode = function(n, pkg, name, ref){
+		// Default the package name to the current package
+		pkg = pkg || adhoc.setting('projectName');
+
+		// Remove node from current reference
+		if(n.referenceId && adhoc.allNodes[n.referenceId]){
+			adhoc.allNodes[n.referenceId].references.splice(
+				adhoc.allNodes[n.referenceId].references.indexOf(n.id)
+				,1
+			);
+		}
+
+		// Add to new reference
+		if(ref && adhoc.allNodes[ref]){
+			adhoc.allNodes[ref].references.push(n.id);
+			n.scope = adhoc.allNodes[ref].scope;
+
+		// If there's no reference (new variable name), assign a scope
+		}else if(n.which == adhoc.nodeWhich.VARIABLE_ASIGN){
+			var searchFunc = adhoc.genScopeSearch(n.parent, true);
+			if(!searchFunc(n.name).length){
+				n.scope = n.parent;
+				while(n.scope.which != adhoc.nodeWhich.ACTION_DEFIN
+						&& n.scope.which != adhoc.nodeWhich.CONTROL_LOOP){
+					n.scope = n.scope.parent;
+				}
+				n.scope.scopeVars.push(n);
+			}
+		}
+
+		// Update references to this node
+		for(var i=0; i<n.references.length; ++i){
+			adhoc.allNodes[n.references[i]].package = pkg;
+			adhoc.allNodes[n.references[i]].name = name;
+		}
+
+		// Update this node
+		n.package = pkg;
+		n.name = name;
+	}
+	// Changes the package name of all children
+	adhoc.updatePackageName = function(n, oldP, newP){
+		if(n.package == newP) return;
+		if(n.package == oldP) n.package = newP;
+		for(var i=0; i<n.children.length; ++i){
+			adhoc.updatePackageName(n.children[i], oldP, newP);
+		}
+		for(var i=0; i<n.references.length; ++i){
+			adhoc.updatePackageName(n.references[i], oldP, newP);
+		}
+	}
 	// Deletes one node and its children
 	adhoc.deleteNode = function(n){
 		// Call on the children first
 		for(var i=n.children.length-1; i>=0; --i){
+			if(!n.children[i] || n.children[i].nodeType==adhoc.nodeTypes.TYPE_NULL) continue;
 			adhoc.deleteNode(n.children[i]);
 		}
 
 		// Remove this node from its parent, scope, and references
-		for(var i=0; i<n.references.length; ++i){
-			adhoc.allNodes[n.references[i]].referenceId = null;
+		if(n.parent){
+			// Remove from the parent and replace with a placeholder as needed
+			n.parent.children.splice(n.parent.children.indexOf(n), 1);
+			var pType = n.parent.nodeType;
+			var pWhich = adhoc.nodeWhichIndices[n.parent.which][1];
+			var neededChildren = adhoc.nodeWhichChildren[pType][pWhich];
+			for(var i=0; i<neededChildren.length; ++i){
+				if(neededChildren[i].childType != n.childType) continue;
+				if(adhoc.countChildrenOfType(n.parent, n.childType) < neededChildren[i].min){
+					adhoc.createNode(
+						n.parent
+						,null
+						,adhoc.nodeTypes.TYPE_NULL
+						,adhoc.nodeWhich.WHICH_NULL
+						,neededChildren[i].childType
+					);
+				}
+				break;
+			}
+		}
+		if(n.scope){
+			n.scope.scopeVars.splice(n.scope.scopeVars.indexOf(n), 1);
 		}
 		if(n.referenceId && adhoc.allNodes[n.referenceId]){
 			adhoc.allNodes[n.referenceId].references.splice(
@@ -2619,11 +2785,8 @@ adhoc.rootNode = adhoc.createNode(
 				,1
 			);
 		}
-		if(n.scope){
-			n.scope.scopeVars.splice(n.scope.scopeVars.indexOf(n), 1);
-		}
-		if(n.parent){
-			n.parent.children.splice(n.parent.children.indexOf(n), 1);
+		for(var i=0; i<n.references.length; ++i){
+			adhoc.allNodes[n.references[i]].referenceId = null;
 		}
 
 		// Remove this node from the action registry and the list of all nodes
@@ -2633,7 +2796,6 @@ adhoc.rootNode = adhoc.createNode(
 		adhoc.allNodes[n.id] = null;
 		return true;
 	}
-
 	// Restore a node from a serialized string
 	adhoc.restoreNode = function(n, serial){
 		// Unwrap the node itself
@@ -2658,6 +2820,9 @@ adhoc.rootNode = adhoc.createNode(
 			n.width = newNode.width;
 			n.height = newNode.height;
 			n.subTreeHeight = newNode.subTreeHeight;
+
+			// Add to the list of all nodes and the action registry
+			adhoc.allNodes[newNode.id] = n;
 
 			// Restore the node's children
 			for(var i=0; i<serial.children.length; ++i){
@@ -2714,6 +2879,7 @@ adhoc.rootNode = adhoc.createNode(
 
 			// Restore the node's children
 			newNode.children = [];
+			newNode.scopeVars = [];
 			for(var i=0; i<serial.children.length; ++i){
 				adhoc.restoreNode(
 					adhoc.allNodes[newNode.childIds[i]]
