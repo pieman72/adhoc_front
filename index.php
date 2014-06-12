@@ -8,6 +8,7 @@
 	<link rel="shortcut icon" href="static/img/fav.png"/>
 	<link rel="stylesheet" href="static/css/ui.css" type="text/css"/>
 	<link rel="stylesheet" href="static/css/style.css" type="text/css"/>
+	<link rel="stylesheet" href="static/css/prism.css" type="text/css"/>
 </head>
 <body class="<?=(isset($settings->colorScheme) ? $settings->colorScheme : 'light')?>">
 	<div id="page">
@@ -170,7 +171,8 @@
 			</div>
 		</div>
 
-		<div id="output">
+		<div id="output" style="display:none;">
+			<pre><code id="generatedCode"></code></pre>
 		</div>
 	</div>
 
@@ -178,5 +180,6 @@
 	<script src="static/js/scriptaculous.js"></script>
 	<script src="static/js/ui.js"></script>
 	<script src="static/js/adhoc.js"></script>
+	<script src="static/js/prism.js" data-manual></script>
 </body>
 </html>

@@ -9,6 +9,27 @@ Event.observe(window, 'load', function(){
 	var adhoc = {};
 
 	// Certain class globals
+	adhoc.languageHighlightClasses = {
+		'asp.net':			'aspnet'
+		,'c':				'c'
+		,'c++':				'cpp'
+		,'c#':				'csharp'
+		,'clike':			'clike'
+		,'coffeescript':	'coffeescript'
+		,'golang':			'go'
+		,'html':			'markup'
+		,'http':			'http'
+		,'java':			'java'
+		,'javascript':		'javascript'
+		,'markup':			'markup'
+		,'php':				'php'
+		,'python':			'python'
+		,'ruby':			'ruby'
+		,'sass':			'scss'
+		,'scala':			'scala'
+		,'shell':			'bash'
+		,'sql':				'sql'
+	};
 	adhoc.settings = {
 		dbg: false
 		,colorScheme: 'light'
@@ -870,10 +891,10 @@ Event.observe(window, 'load', function(){
 		return v;
 	}
 
-	// Display errors to the user
-	adhoc.error = function(s){
+	// Display general messages to the user
+	adhoc.message = function(t, s){
 		// Add a title
-		$$('#theLightbox .nxj_lightboxTitle')[0].update('Error');
+		$$('#theLightbox .nxj_lightboxTitle')[0].update(t);
 
 		// Create the new lightbox content
 		var cont = $(document.createElement('div'));
@@ -886,6 +907,10 @@ Event.observe(window, 'load', function(){
 		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
 		$('theLightbox').show();
 		return false;
+	}
+	// Display errors to the user
+	adhoc.error = function(s){
+		adhoc.message('Error', s);
 	}
 	// Prompt the user for an option
 	adhoc.promptFlag = function(prmpt, opts, callBack){
@@ -1194,9 +1219,9 @@ Event.observe(window, 'load', function(){
 					}
 
 					// Set the element's values from the result
-					elem.setAttribute('data-value', item.value);
-					elem.setAttribute('data-reminder', item.reminder);
-					elem.setAttribute('data-hidden', item.hidden);
+					elem.setAttribute('data-value', item.value || '');
+					elem.setAttribute('data-reminder', item.reminder || '');
+					elem.setAttribute('data-hidden', item.hidden || '');
 					elem.update(
 						item.value.replace(acRxp, '<span class="match">$1</span>')
 						+ ' <span class="reminder">'
@@ -1481,8 +1506,16 @@ Event.observe(window, 'load', function(){
 					adhoc.error("Unable to send request to server. Make sure you're online.");
 				}
 				,onSuccess: function(t){
-// TODO: Display generated code nicely
-console.log(t.responseText);
+					var results = t.responseText.evalJSON();
+					if(results.error.length){
+						adhoc.error(results.error.join('<br/>'));
+					}
+					$('generatedCode').update(results.code);
+					$('generatedCode').addClassName(
+						'language-'+adhoc.languageHighlightClasses[$F('languageChoice_input')]
+					);
+					Prism.highlightElement($('generatedCode'));
+					$('output').show();
 				}
 			});
 		});

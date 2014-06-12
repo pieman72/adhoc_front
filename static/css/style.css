@@ -318,9 +318,21 @@ label {
 	}
 
 #output {
+	background:rgba(255,255,255,0.90);
 	height:100%;
 	position:absolute;
 	right:0;
 	top:0;
+	width:100%;
 	z-index:3;
+	}
+.dark #output {
+	background:rgba(0,0,0,0.90);
+	}
+#output pre {
+	box-sizing:padding-box;
+	height:100%;
+	overflow:auto;
+	padding:10px;
+	width:100%;
 	}
