@@ -329,9 +329,27 @@ label {
 .dark #output {
 	background:rgba(0,0,0,0.90);
 	}
+#output .close {
+	background:url('../img/close.png') no-repeat;
+	cursor:pointer;
+	height:22px;
+	position:absolute;
+	right:13px;
+	top:10px;
+	width:22px;
+	}
+#output .close:hover {
+	background-position:0 -22px;
+	}
+#output .outputControls {
+	bottom:10px;
+	position:absolute;
+	right:10px;
+	}
 #output pre {
 	box-sizing:padding-box;
 	height:100%;
+	margin:0;
 	overflow:auto;
 	padding:10px;
 	width:100%;

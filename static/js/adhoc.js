@@ -1282,6 +1282,20 @@ Event.observe(window, 'load', function(){
 			active.removeClassName('active');
 		});
 	}
+	// Selects the contents of an element
+	adhoc.selectText = function(elem){
+		if(document.body.createTextRange){ // ms
+			var range = document.body.createTextRange();
+			range.moveToElementText(elem);
+			range.select();
+		} else if (window.getSelection) { // moz, opera, webkit
+			var selection = window.getSelection();
+			var range = document.createRange();
+			range.selectNodeContents(elem);
+			selection.removeAllRanges();
+			selection.addRange(range);
+		}
+	}
 
 	// Initialize history manager
 	adhoc.resetHistory = function(){
@@ -1506,10 +1520,17 @@ Event.observe(window, 'load', function(){
 					adhoc.error("Unable to send request to server. Make sure you're online.");
 				}
 				,onSuccess: function(t){
+					// Parse out the results and display any errors
 					var results = t.responseText.evalJSON();
 					if(results.error.length){
 						adhoc.error(results.error.join('<br/>'));
 					}
+// TODO: highlight results.nodeId, if present
+
+					// Populate a download link
+					$('downloadButton').setAttribute('href', 'generate/'+results.hash+'.'+results.ext);
+
+					// Render and hightlight the generated code itself
 					$('generatedCode').update(results.code);
 					$('generatedCode').addClassName(
 						'language-'+adhoc.languageHighlightClasses[$F('languageChoice_input')]
@@ -1523,6 +1544,13 @@ Event.observe(window, 'load', function(){
 		// Activate the top control panel toggle
 		$('controlsToggle').observe('click', function(){
 			$('controls').toggleClassName('collapsed');
+		});
+
+		// Activate the output viewer's close button
+		$$('#output .close').each(function(elem){
+			elem.observe('click', function(){
+				$('output').hide();
+			});
 		});
 
 		// Initialize drawing canvas
@@ -1916,7 +1944,7 @@ adhoc.createNode(prnt, repl, type, which, childType);
 		var keyDownFunc = function(e){
 			var key = e.which || window.event.keyCode;
 			switch(key){
-			// If various CTRL or CMD keys, set alternamte key mode off
+			// If various CTRL or CMD keys, set alternamte key mode on
 			case Event.KEY_CONTROL:
 			case Event.KEY_COMMAND1:
 			case Event.KEY_COMMAND2:
@@ -1924,14 +1952,28 @@ adhoc.createNode(prnt, repl, type, which, childType);
 				adhoc.alternateKeys = true;
 				break;
 
-			// Handle CTRL+z (undo)
-			case 90:
-				if(adhoc.alternateKeys) adhoc.history.undo();
+			// (CTRL+a) select generated code
+			case 65:
+				if(!adhoc.alternateKeys || !$('output').visible()) break;
+				Event.stop(e);
+				adhoc.selectText($('generatedCode'));
+
+			// (CTRL+k) Toggle the debugger
+			case 75:
+				if(adhoc.alternateKeys){
+					adhoc.setting('dbg', !adhoc.setting('dbg'));
+					adhoc.refreshRender();
+				}
 				break;
 
-			// Handle CTRL+y (redo)
+			// (CTRL+y) Redo
 			case 89:
 				if(adhoc.alternateKeys) adhoc.history.redo();
+				break;
+
+			// (CTRL+z) Undo
+			case 90:
+				if(adhoc.alternateKeys) adhoc.history.undo();
 				break;
 
 			// Do nothing if the key is unknown
@@ -1968,12 +2010,6 @@ adhoc.createNode(prnt, repl, type, which, childType);
 				);
 				adhoc.deleteNode(adhoc.selectedNode);
 				adhoc.selectedNode = null;
-				adhoc.refreshRender();
-				break;
-
-			// Toggle the debugger with 'k'
-			case 75:
-				adhoc.setting('dbg', !adhoc.setting('dbg'));
 				adhoc.refreshRender();
 				break;
 

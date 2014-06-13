@@ -172,6 +172,10 @@
 		</div>
 
 		<div id="output" style="display:none;">
+			<div class="close"></div>
+			<div class="outputControls">
+				<a id="downloadButton" class="nxj_button nxj_cssButton floatRight" href="javascript:void(0);">Download Code</a>
+			</div>
 			<pre><code id="generatedCode"></code></pre>
 		</div>
 	</div>
