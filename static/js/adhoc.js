@@ -894,7 +894,12 @@ Event.observe(window, 'load', function(){
 	// Display general messages to the user
 	adhoc.message = function(t, s){
 		// Add a title
-		$$('#theLightbox .nxj_lightboxTitle')[0].update(t);
+		var LBtitle = $$('#theLightbox .nxj_lightboxTitle')[0];
+		if(t == 'Error') LBtitle.addClassName('LBTitleError');
+		else LBtitle.removeClassName('LBTitleError');
+		if(t == 'Warning') LBtitle.addClassName('LBTitleWarn');
+		else LBtitle.removeClassName('LBTitleWarn');
+		LBtitle.update(t);
 
 		// Create the new lightbox content
 		var cont = $(document.createElement('div'));
@@ -1523,9 +1528,18 @@ Event.observe(window, 'load', function(){
 					// Parse out the results and display any errors
 					var results = t.responseText.evalJSON();
 					if(results.error.length){
-						adhoc.error(results.error.join('<br/>'));
-					}
+						// Get the error data
+						var erRxp = /\u001B\[([0-9]+;)*[0-9]+m((Error)|(Warning)):\u001B\[([0-9]+;)*[0-9]+m /g;
+						var erMsg = results.error.join('<br/>');
+						var erStatus = erMsg.match(erRxp)[0].match(/Error|Warning/)[0];
+						erMsg = erMsg.replace(erRxp, '');
+						adhoc.message(erStatus, erMsg);
+
 // TODO: highlight results.nodeId, if present
+
+						// If the errors are fatal, return;
+						if(erStatus == 'Error') return;
+					}
 
 					// Populate a download link
 					$('downloadButton').setAttribute('href', 'generate/'+results.hash+'.'+results.ext);

@@ -44,6 +44,12 @@ label {
 	width:380px;
 	z-index:0;
 	}
+.nxj_lightboxTitle.LBTitleError {
+	color:#D70000;
+	}
+.nxj_lightboxTitle.LBTitleWarn {
+	color:#E77F00;
+	}
 #lb_input_acList {
 	background:#FFFFFF;
 	border:1px solid #999999;

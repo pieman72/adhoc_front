@@ -48,8 +48,8 @@ $ext = isset($extensions[$language]) ? $extensions[$language] : $language;
 file_put_contents("$hash.adh", $binary);
 
 // Execute ADHOC!
-$command = "adhoc -l $language -o $hash.$ext ".($executable ? '-e ' : '').($dbg ? '-d ' : '')."$hash.adh 2>&1";
-exec($command, &$error_output, &$return_var);
+$command = "timeout --preserve-status 2 adhoc -l $language -o $hash.$ext ".($executable ? '-e ' : '').($dbg ? '-d ' : '')."$hash.adh 2>&1";
+exec($command, $error_output, $return_var);
 
 // Determine if it was successful
 echo json_encode((object) array(

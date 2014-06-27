@@ -162,10 +162,10 @@
 			<canvas id="canvas" class="floatLeft"></canvas>
 
 			<div id="viewControls">
-			    <div id="zoomIn" class="zoomHolder">
+				<div id="zoomIn" class="zoomHolder">
 					<div class="icon"></div>
 				</div>
-			    <div id="zoomOut" class="zoomHolder">
+				<div id="zoomOut" class="zoomHolder">
 					<div class="icon"></div>
 				</div>
 			</div>
