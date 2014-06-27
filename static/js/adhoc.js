@@ -920,7 +920,8 @@ Event.observe(window, 'load', function(){
 	// Prompt the user for an option
 	adhoc.promptFlag = function(prmpt, opts, callBack){
 		// Add the prompt text as the title
-		$$('#theLightbox .nxj_lightboxTitle')[0].update(prmpt);
+		var LBtitle = $$('#theLightbox .nxj_lightboxTitle')[0];
+		LBtitle.removeClassName('LBTitleError').removeClassName('LBTitleWarn').update(prmpt);
 
 		// Create the new lightbox content
 		var cont = $(document.createElement('div'));
@@ -977,7 +978,8 @@ Event.observe(window, 'load', function(){
 	// Prompt the user for a value
 	adhoc.promptValue = function(prmpt, vldt, algnR, callBack, searchFunc, sorryText){
 		// Add the prompt text as the title
-		$$('#theLightbox .nxj_lightboxTitle')[0].update(prmpt);
+		var LBtitle = $$('#theLightbox .nxj_lightboxTitle')[0];
+		LBtitle.removeClassName('LBTitleError').removeClassName('LBTitleWarn').update(prmpt);
 
 		// Create the new lightbox content
 		var cont = $(document.createElement('div'));
@@ -1808,6 +1810,7 @@ Event.observe(window, 'load', function(){
 					case adhoc.nodeWhich.LITERAL_STRNG:
 						// Prompt for a string value
 						adhoc.promptValue('Enter a string:', adhoc.validateString, false, function(val){
+							val = val.replace(/(^|[^\\])"/g, '$1\\"');
 							adhoc.deactivateAllTools();
 							adhoc.createNode(prnt, repl, type, which, childType, null, null, val);
 						});
