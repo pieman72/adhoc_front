@@ -48,7 +48,7 @@ $ext = isset($extensions[$language]) ? $extensions[$language] : $language;
 file_put_contents("$hash.adh", $binary);
 
 // Execute ADHOC!
-$command = "timeout --preserve-status 2 adhoc -l $language -o $hash.$ext ".($executable ? '-e ' : '').($dbg ? '-d ' : '')."$hash.adh 2>&1";
+$command = "timeout --preserve-status 2 adhoc -l $language -o ../download/$hash.$ext ".($executable ? '-e ' : '').($dbg ? '-d ' : '')."$hash.adh 2>&1";
 exec($command, $error_output, $return_var);
 
 // Determine if it was successful
@@ -57,5 +57,5 @@ echo json_encode((object) array(
 	,'nodeId' => $return_var
 	,'hash'	=> $hash
 	,'ext' => $ext
-	,'code' => htmlspecialchars(file_get_contents("$hash.$ext"))
+	,'code' => htmlspecialchars(file_get_contents("../download/$hash.$ext"))
 ));

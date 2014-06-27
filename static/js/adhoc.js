@@ -1542,7 +1542,9 @@ Event.observe(window, 'load', function(){
 					}
 
 					// Populate a download link
-					$('downloadButton').setAttribute('href', 'generate/'+results.hash+'.'+results.ext);
+					$('download_ext').setAttribute('value', results.ext);
+					$('download_hash').setAttribute('value', results.hash);
+					$('download_rename').setAttribute('value', adhoc.setting('projectName'));
 
 					// Render and hightlight the generated code itself
 					$('generatedCode').update(results.code);

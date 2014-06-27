@@ -174,7 +174,12 @@
 		<div id="output" style="display:none;">
 			<div class="close"></div>
 			<div class="outputControls">
-				<a id="downloadButton" class="nxj_button nxj_cssButton floatRight" href="javascript:void(0);">Download Code</a>
+				<form id="downloadForm" action="download/" method="post">
+					<input type="hidden" id="download_ext" name="ext" />
+					<input type="hidden" id="download_hash" name="hash" />
+					<input type="hidden" id="download_rename" name="rename" />
+					<a id="downloadButton" class="nxj_button nxj_cssButton floatRight" href="javascript:void(0);" onclick="$('downloadForm').submit();">Download Code</a>
+				</form>
 			</div>
 			<pre><code id="generatedCode"></code></pre>
 		</div>

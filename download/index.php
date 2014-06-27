@@ -8,4 +8,4 @@ $rename = $_POST['rename'];
 header('Content-Type: application/octet-stream');
 header("Content-Disposition: attachment; filename=\"$rename.$ext\"");
 header('Content-Transfer-Encoding: binary');
-file_get_contents("$hash.$ext");
+echo file_get_contents("$hash.$ext");
