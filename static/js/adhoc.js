@@ -47,6 +47,8 @@ Event.observe(window, 'load', function(){
 	adhoc.lastId = 0;
 	adhoc.alternateKeys = false;
 	adhoc.history = null;
+	adhoc.movingNode = null;
+	adhoc.movingNodeTimeout = null;
 
 	// Hold the autocomplete listener so we can remove it later... javascript
 	adhoc.autocompleteListener = null;
@@ -852,6 +854,11 @@ Event.observe(window, 'load', function(){
 	}
 	// Validate string values
 	adhoc.validateString = function(v){
+		var escaped = v.replace(/\\./g, '');
+		if(escaped.indexOf('"') >= 0)
+			return 'Must escape double-quotes: \\"';
+		if(escaped.length>=0 && escaped[escaped.length-1]=='\\')
+			return 'Cannot end with single backslash';
 		return false;
 	}
 	// Validate the name of a new identifier
@@ -1663,7 +1670,6 @@ Event.observe(window, 'load', function(){
 			passed += lenj;
 		}
 
-		// Ready the canvas
 		// Handle mouse down
 		var downFunc = function(e){
 			// Handle touch
@@ -1677,9 +1683,16 @@ Event.observe(window, 'load', function(){
 			};
 			var clickedNode = adhoc.getClickedNode(adhoc.rootNode, click);
 
+			// Restore any detached nodes
+			if(adhoc.movingNodeTimeout) clearTimeout(adhoc.movingNodeTimeout);
+			if(adhoc.movingNode) adhoc.reattachNode(click);
+
 			// If a node was clicked, figure out what to do with it
 			if(clickedNode){
-				// nothing?
+				// Detatch the clicked node
+				adhoc.movingNodeTimeout = setTimeout(function(){
+					adhoc.detachNode(click, clickedNode);
+				}, 300);
 
 			// Otherwise, we're trying to move the canvas
 			}else{
@@ -1711,6 +1724,10 @@ Event.observe(window, 'load', function(){
 				,y: (Event.pointerY(e) - offset.top + adhoc.display_y) / adhoc.display_scale
 			};
 			var clickedNode = adhoc.getClickedNode(adhoc.rootNode, click);
+
+			// Restore any detached nodes
+			if(adhoc.movingNodeTimeout) clearTimeout(adhoc.movingNodeTimeout);
+			if(adhoc.movingNode) adhoc.reattachNode(click);
 
 			// If a tool is active and a node was clicked, figure out what to do with it
 			var activeTools = $$('.toolboxItem.active');
@@ -1810,7 +1827,6 @@ Event.observe(window, 'load', function(){
 					case adhoc.nodeWhich.LITERAL_STRNG:
 						// Prompt for a string value
 						adhoc.promptValue('Enter a string:', adhoc.validateString, false, function(val){
-							val = val.replace(/(^|[^\\])"/g, '$1\\"');
 							adhoc.deactivateAllTools();
 							adhoc.createNode(prnt, repl, type, which, childType, null, null, val);
 						});
@@ -1821,6 +1837,7 @@ Event.observe(window, 'load', function(){
 					case adhoc.nodeWhich.LITERAL_STRCT:
 						adhoc.deactivateAllTools();
 // TODO: Prompt for literal value
+adhoc.message('This type of literal is not yet implemented'); break;
 adhoc.createNode(prnt, repl, type, which, childType);
 						break;
 
@@ -1939,7 +1956,7 @@ adhoc.createNode(prnt, repl, type, which, childType);
 				adhoc.canvas.removeClassName('willMove');
 				adhoc.canvas.addClassName('moving');
 			}
-			if(!adhoc.canvas.hasClassName('moving')) return;
+			if(!adhoc.canvas.hasClassName('moving') && !adhoc.movingNode) return;
 
 			// Get the scaled location of the cursor
 			var offset = adhoc.canvas.positionedOffset();
@@ -1947,6 +1964,9 @@ adhoc.createNode(prnt, repl, type, which, childType);
 				x: (Event.pointerX(e) - offset.left + adhoc.display_x) / adhoc.display_scale
 				,y: (Event.pointerY(e) - offset.top + adhoc.display_y) / adhoc.display_scale
 			};
+
+			// If there is a detached node, move that instead
+			if(adhoc.movingNode) return adhoc.moveDetatchedNode(click);
 
 			// Get the canvas' move coordinates
 			var startx = parseFloat(adhoc.canvas.getAttribute('data-startx'));
@@ -2037,6 +2057,8 @@ adhoc.createNode(prnt, repl, type, which, childType);
 				if(adhoc.setting('dbg')) console.log(key);
 			}
 		}
+
+		// Attach event listeners
 		adhoc.canvas.observe('mousedown', downFunc);
 		adhoc.canvas.observe('touchstart', downFunc);
 		adhoc.canvas.observe('mouseup', upFunc);
@@ -2105,6 +2127,12 @@ adhoc.rootNode = adhoc.createNode(
 			,references: []
 			,x: 0
 			,y: 0
+			,detatched: false
+			,moveClick: null
+			,movePos: {
+				x: 0
+				,y: 0
+			}
 			,width: null
 			,height: null
 			,subTreeHeight: 100
@@ -2205,8 +2233,6 @@ adhoc.rootNode = adhoc.createNode(
 		if(!adhoc.rootNode) return;
 		var ctx = adhoc.canvas.getContext('2d');
 		ctx.clearRect(0, 0, adhoc.canvas.width, adhoc.canvas.height);
-		ctx.lineWidth = 6;
-		ctx.font = "20px Arial";
 		adhoc.subTreeHeightNode(adhoc.rootNode);
 		adhoc.positionNode(adhoc.rootNode, 0);
 		adhoc.renderNode(adhoc.rootNode);
@@ -2223,6 +2249,12 @@ adhoc.rootNode = adhoc.createNode(
 					&& !adhoc.setting('dbg'))
 				continue;
 
+			// Skip any detatched nodes
+			if(n.children[i].detatched){
+				adhoc.subTreeHeightNode(n.children[i]);
+				continue;
+			}
+
 			childrenFound = true;
 			n.subTreeHeight += adhoc.subTreeHeightNode(n.children[i]);
 		}
@@ -2230,10 +2262,10 @@ adhoc.rootNode = adhoc.createNode(
 		return n.subTreeHeight;
 	}
 	// Recursively determine each node's display position
-	adhoc.positionNode = function(n, d){
+	adhoc.positionNode = function(n, d, m){
 		var passed = d ? n.y : 0;
-		n.x = d*200 + 100;
-		n.y = n.subTreeHeight/2 + passed;
+		n.x = d*200 + 100 + (m ? adhoc.movingNode.movePos.x : 0);
+		n.y = n.subTreeHeight/2 + passed + (m ? adhoc.movingNode.movePos.y : 0);
 		for(var i=0; i<n.children.length; ++i){
 			// Skip null placeholders when setting is disabled
 			if(n.children[i].nodeType==adhoc.nodeTypes.TYPE_NULL
@@ -2241,9 +2273,14 @@ adhoc.rootNode = adhoc.createNode(
 					&& !adhoc.setting('dbg'))
 				continue;
 
+			// Figure out how much vertical space has passed
 			n.children[i].y = passed;
-			passed += n.children[i].subTreeHeight;
-			adhoc.positionNode(n.children[i], d+(n.nodeType==adhoc.nodeTypes.GROUP ? 0 : 1));
+			if(!n.children[i].detatched) passed += n.children[i].subTreeHeight;
+			adhoc.positionNode(
+				n.children[i]
+				,d + (n.nodeType==adhoc.nodeTypes.GROUP?0:1)
+				,(m||n.detatched) ? true : false
+			);
 		}
 	}
 
@@ -2273,6 +2310,9 @@ adhoc.rootNode = adhoc.createNode(
 		if(n.selected){
 			ctx.setLineDash([3*adhoc.display_scale, 3*adhoc.display_scale]);
 		}
+
+		n.x += n.movePos.x;
+		n.y += n.movePos.y;
 
 		switch(n.nodeType){
 		case adhoc.nodeTypes.TYPE_NULL:
@@ -2555,6 +2595,9 @@ adhoc.rootNode = adhoc.createNode(
 					&& !adhoc.setting('dbg'))
 				continue;
 
+			// Skip child if detatched
+			if(c.detatched) continue;
+
 			ctx.strokeStyle = nodeColor;
 			ctx.beginPath();
 			var arrowFrom = [
@@ -2591,7 +2634,7 @@ adhoc.rootNode = adhoc.createNode(
 			}
 		}
 
-		// In debug mode, show the node's ID
+		// In debug mode, show the node's package
 		if(adhoc.setting('dbg')
 				|| n.nodeType == adhoc.nodeTypes.ACTION
 				|| n.nodeType == adhoc.nodeTypes.VARIABLE){
@@ -2633,6 +2676,9 @@ adhoc.rootNode = adhoc.createNode(
 			);
 		}
 
+		n.x -= n.movePos.x;
+		n.y -= n.movePos.y;
+
 		// Reset line dashes
 		ctx.setLineDash([]);
 	}
@@ -2654,6 +2700,32 @@ adhoc.rootNode = adhoc.createNode(
 
 		// If we've gotten here, then the click was on the canvas
 		return null;
+	}
+	// Function to detach a node from its parent
+	adhoc.detachNode = function(click, n){
+		adhoc.movingNode = n;
+		adhoc.movingNode.detatched = true;
+		adhoc.movingNode.moveClick = click;
+		adhoc.movingNode.movePos = {
+			x: 0
+			,y: 0
+		};
+	}
+	// Function to attach a node to a (possibly new) parent
+	adhoc.reattachNode = function(click){
+		adhoc.movingNode.detatched = false;
+		adhoc.movingNode.moveClick = null;
+		adhoc.movingNode.movePos = {
+			x: 0
+			,y: 0
+		};
+		adhoc.movingNode = null;
+	}
+	// Function to move a detached node on the canvas
+	adhoc.moveDetatchedNode = function(click){
+		adhoc.movingNode.movePos.x = (click.x - adhoc.movingNode.moveClick.x)/adhoc.display_scale;
+		adhoc.movingNode.movePos.y = (click.y - adhoc.movingNode.moveClick.y)/adhoc.display_scale;
+		adhoc.refreshRender();
 	}
 
 	// Generate a function to find variables by name in a given scope

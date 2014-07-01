@@ -26,12 +26,10 @@ $extensions = array(
 $binary = str_replace(
 	array(
 		'\0'
-		,'\n'
 		,"\r\n"
 	)
 	,array(
 		"\0"
-		,"\n"
 		,"\n"
 	)
 	,$_POST['binary']
