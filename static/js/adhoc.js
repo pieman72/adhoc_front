@@ -1608,42 +1608,20 @@ Event.observe(window, 'load', function(){
 		ctx.fillStyle = adhoc.textColor;
 
 		// Ready the toolbox categories
-		var cat, head, body, item, icon, text, clear, passed=0, toolbox=$('toolbox');
+		var tab, item, icon, text, clear, passed=0, toolbox=$('toolbox'), toolboxTabs=$('toolboxTabs'), toolboxItems=$('toolboxItems');
 		for(var i=0,leni=adhoc.nodeTypeNames.length; i<leni; ++i){
 			// Print section headings (except null and assignment)
 			if(i!=0 && i!=5){
-				// Category
-				cat = $(document.createElement('div'));
-				cat.addClassName('toolboxCategory');
-				if(i!=1) cat.addClassName('collapsed');
-
 				// Heading
-				head = $(document.createElement('div'));
-				head.addClassName('toolboxCategoryHeading').update(adhoc.nodeTypeNames[i]);
-				head.observe('click', function(){
-					var alreadyOpen = !this.up().hasClassName('collapsed');
-					$$('.toolboxCategory').each(function(category){
-						category.addClassName('collapsed');
-					});
-					if(!alreadyOpen) this.up().removeClassName('collapsed');
+				tab = $(document.createElement('div'));
+				tab.addClassName('toolboxTab').update(adhoc.nodeTypeNames[i]);
+				tab.setAttribute('data-target', adhoc.nodeTypeNames[i]);
+				tab.observe('click', function(){
+					$('toolbox').className = this.getAttribute('data-target');
 				});
-				cat.appendChild(head);
-
-				// Body
-				body = $(document.createElement('div'));
-				body.addClassName('toolboxCategoryBody');
-				cat.appendChild(body);
-
-				// Spacers
-				clear = $(document.createElement('div'));
-				clear.addClassName('clear').setStyle({height:'40px'});
-				body.appendChild(clear);
-				clear = $(document.createElement('div'));
-				clear.addClassName('clear');
-				cat.appendChild(clear);
 
 				// Add
-				toolbox.appendChild(cat);
+				toolboxTabs.appendChild(tab);
 			}
 
 			// Print toolbox items
@@ -1656,7 +1634,7 @@ Event.observe(window, 'load', function(){
 
 				// Item
 				item = $(document.createElement('div'));
-				item.addClassName('toolboxItem');
+				item.addClassName('toolboxItem').addClassName(adhoc.nodeTypeNames[i]);
 				item.setAttribute('data-type', i);
 				item.setAttribute('data-which', j+passed);
 				item.observe('click', function(){
@@ -1676,12 +1654,12 @@ Event.observe(window, 'load', function(){
 				item.appendChild(text);
 
 				// Add
-				body.appendChild(item);
+				toolboxItems.appendChild(item);
 
 				// Spacer
 				clear = $(document.createElement('div'));
 				clear.addClassName('clear');
-				body.appendChild(clear);
+				toolboxItems.appendChild(clear);
 			}
 			passed += lenj;
 		}

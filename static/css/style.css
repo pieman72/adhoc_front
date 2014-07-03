@@ -149,6 +149,7 @@ label {
 
 #toolbox {
 	box-shadow:inset -3px 0px 4px 0px #BBBBBB;
+	float:left;
 	height:100%;
 	overflow-x:visible;
 	overflow-y:auto;
@@ -163,48 +164,42 @@ label {
 	text-align:center;
 	width:100%;
 	}
-.toolboxCategory {
-	height:62%;
-	max-height:62%;
-	min-height:24px;
-	overflow:hidden;
-	position:relative;
-	transition:height 0.4s, max-height 0.4s;
+.toolboxTabs {
+	float:left;
+	width:100%;
 	}
-.toolboxCategory.collapsed {
-	height:6%;
-	max-height:40px;
+.toolboxItems {
+	float:left;
+	width:100%;
 	}
-.toolboxCategoryHeading {
+.toolboxTab {
 	background:#EEEEEE;
-	box-shadow:inset 0px 0px 4px 3px #BBBBBB;
+	border:1px solid transparent;
+	box-shadow:0 0 4px 3px #BBBBBB inset;
 	cursor:pointer;
+	float:left;
 	font-size:18px;
 	height:40px;
-	left:0;
 	line-height:40px;
 	min-height:24px;
-	position:absolute;
-	top:0;
-	width:100%;
-	z-index:1;
+	padding:0 8px;
 	}
-.toolboxCategoryHeading:before {
-	content:"\00A0\00A0";
+.Action .toolboxTab[data-target=Action],
+.Group .toolboxTab[data-target=Group],
+.Control .toolboxTab[data-target=Control],
+.Operator .toolboxTab[data-target=Operator],
+.Variable .toolboxTab[data-target=Variable],
+.Literal .toolboxTab[data-target=Literal] {
+	border:1px solid #6FdF00;
+	color:#6FdF00;
 	}
-.dark .toolboxCategoryHeading {
+.dark .toolboxTab {
 	background:#333333;
 	box-shadow:0 0 4px 3px #111111 inset;
 	}
-.toolboxCategoryBody {
-	height:100%;
-	overflow-y:auto;
-	}
-.toolboxCategory.collapsed .toolboxCategoryBody {
-	overflow-y:hidden;
-	}
 .toolboxItem {
 	cursor:pointer;
+	display:none;
 	height:50px;
 	width:100%;
 	}
@@ -216,6 +211,14 @@ label {
 .toolboxItem:hover {
 	background:#5FD7FF;
 	color:#000000;
+	}
+.Action .toolboxItem.Action ,
+.Group .toolboxItem.Group ,
+.Control .toolboxItem.Control ,
+.Operator .toolboxItem.Operator ,
+.Variable .toolboxItem.Variable ,
+.Literal .toolboxItem.Literal {
+	display:block;
 	}
 .toolboxItemIcon {
 	background:url('../img/tools.png');

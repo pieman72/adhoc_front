@@ -155,8 +155,11 @@
 		</div>
 
 		<div id="workspace">
-			<div id="toolbox" class="floatLeft">
+			<div id="toolbox" class="Action">
 				<div class="toolboxTitle">ToolBox</div>
+				<div id="toolboxTabs"></div>
+				<div class="clear"></div>
+				<div id="toolboxItems"></div>
 			</div>
 
 			<canvas id="canvas" class="floatLeft"></canvas>
