@@ -1321,6 +1321,7 @@ Event.observe(window, 'load', function(){
 				var serializeDeep = false;
 				switch(action){
 				case 'rename':
+				case 'move':
 					break;
 
 				case 'add':
@@ -1372,6 +1373,14 @@ Event.observe(window, 'load', function(){
 					adhoc.refreshRender();
 					break;
 
+				// Undo a move
+				case 'move':
+					var oldP = adhoc.allNodes[item.parentId].parent
+					adhoc.restoreNode(adhoc.allNodes[item.parentId], item.serial);
+					adhoc.moveNode(adhoc.allNodes[item.parentId], oldP, adhoc.allNodes[item.parentId].parent);
+					adhoc.refreshRender();
+					break;
+
 				// Undo a rename
 				case 'rename':
 				// Undo a deletion
@@ -1408,6 +1417,13 @@ Event.observe(window, 'load', function(){
 						adhoc.allNodes[item.parentId].package = adhoc.setting('projectName');
 						adhoc.allNodes[item.parentId].name = item.target;
 					}
+					adhoc.refreshRender();
+					break;
+
+				// Redo a move
+				case 'move':
+					adhoc.allNodes[item.parentId].childType = item.target[1];
+					adhoc.moveNode(adhoc.allNodes[item.parentId], adhoc.allNodes[item.parentId].parent, adhoc.allNodes[item.target[0]]);
 					adhoc.refreshRender();
 					break;
 
@@ -1555,7 +1571,7 @@ Event.observe(window, 'load', function(){
 					$('download_hash').setAttribute('value', results.hash);
 					$('download_rename').setAttribute('value', adhoc.setting('projectName'));
 
-					// Render and hightlight the generated code itself
+					// Render and highlight the generated code itself
 					$('generatedCode').update(results.code);
 					$('generatedCode').addClassName(
 						'language-'+adhoc.languageHighlightClasses[$F('languageChoice_input')]
@@ -1689,7 +1705,7 @@ Event.observe(window, 'load', function(){
 
 			// If a node was clicked, figure out what to do with it
 			if(clickedNode){
-				// Detatch the clicked node
+				// Detach the clicked node
 				adhoc.movingNodeTimeout = setTimeout(function(){
 					adhoc.detachNode(click, clickedNode);
 				}, 300);
@@ -1727,7 +1743,7 @@ Event.observe(window, 'load', function(){
 
 			// Restore any detached nodes
 			if(adhoc.movingNodeTimeout) clearTimeout(adhoc.movingNodeTimeout);
-			if(adhoc.movingNode) adhoc.reattachNode(click);
+			if(adhoc.movingNode) return  adhoc.reattachNode(click);
 
 			// If a tool is active and a node was clicked, figure out what to do with it
 			var activeTools = $$('.toolboxItem.active');
@@ -1762,7 +1778,7 @@ Event.observe(window, 'load', function(){
 					}
 				}
 
-				// Make a callback that takes a childtype and does the rest of node creation
+				// Make a callback that takes a childType and does the rest of node creation
 				var createNodeWithType = function(childType){
 					// Make sure the child type is ok with the which
 					if(adhoc.nodeChildTypeInfo[childType].nodeTypes.indexOf(type) < 0
@@ -1966,7 +1982,7 @@ adhoc.createNode(prnt, repl, type, which, childType);
 			};
 
 			// If there is a detached node, move that instead
-			if(adhoc.movingNode) return adhoc.moveDetatchedNode(click);
+			if(adhoc.movingNode) return adhoc.moveDetachedNode(click);
 
 			// Get the canvas' move coordinates
 			var startx = parseFloat(adhoc.canvas.getAttribute('data-startx'));
@@ -2127,8 +2143,10 @@ adhoc.rootNode = adhoc.createNode(
 			,references: []
 			,x: 0
 			,y: 0
-			,detatched: false
+			,highlighted: false
+			,detached: false
 			,moveClick: null
+			,moveTarget: null
 			,movePos: {
 				x: 0
 				,y: 0
@@ -2249,8 +2267,8 @@ adhoc.rootNode = adhoc.createNode(
 					&& !adhoc.setting('dbg'))
 				continue;
 
-			// Skip any detatched nodes
-			if(n.children[i].detatched){
+			// Skip any detached nodes
+			if(n.children[i].detached){
 				adhoc.subTreeHeightNode(n.children[i]);
 				continue;
 			}
@@ -2275,11 +2293,11 @@ adhoc.rootNode = adhoc.createNode(
 
 			// Figure out how much vertical space has passed
 			n.children[i].y = passed;
-			if(!n.children[i].detatched) passed += n.children[i].subTreeHeight;
+			if(!n.children[i].detached) passed += n.children[i].subTreeHeight;
 			adhoc.positionNode(
 				n.children[i]
 				,d + (n.nodeType==adhoc.nodeTypes.GROUP?0:1)
-				,(m||n.detatched) ? true : false
+				,(m||n.detached) ? true : false
 			);
 		}
 	}
@@ -2595,8 +2613,8 @@ adhoc.rootNode = adhoc.createNode(
 					&& !adhoc.setting('dbg'))
 				continue;
 
-			// Skip child if detatched
-			if(c.detatched) continue;
+			// Skip child if detached
+			if(c.detached) continue;
 
 			ctx.strokeStyle = nodeColor;
 			ctx.beginPath();
@@ -2676,11 +2694,24 @@ adhoc.rootNode = adhoc.createNode(
 			);
 		}
 
-		n.x -= n.movePos.x;
-		n.y -= n.movePos.y;
-
 		// Reset line dashes
 		ctx.setLineDash([]);
+
+		// Handle node highlighting
+		if(n.highlighted){
+			ctx.lineWidth = (6.0*adhoc.display_scale)<<0;
+			ctx.strokeStyle = adhoc.setting('colorScheme')=='dark' ? '#FFFF00' : '#FFFF00';
+			ctx.strokeRect(
+				(n.x-(n.width/2.0)-7) * adhoc.display_scale - adhoc.display_x
+				,(n.y-(n.height/2.0)-7) * adhoc.display_scale - adhoc.display_y
+				,(n.width+14) * adhoc.display_scale
+				,(n.height+14) * adhoc.display_scale
+			);
+		}
+
+		// Reset the moving position
+		n.x -= n.movePos.x;
+		n.y -= n.movePos.y;
 	}
 
 	// Recursively determine whether the click landed in a node
@@ -2701,30 +2732,133 @@ adhoc.rootNode = adhoc.createNode(
 		// If we've gotten here, then the click was on the canvas
 		return null;
 	}
+	// Recursively determine which node (if any) the click landed near
+	adhoc.getClosestNode = function(n, best, click){
+		// Skip detached blocks
+		if(!n.detached){
+			// Get the distance of this node
+			var dist = Math.min(Math.abs(click.x-n.x)-(n.width/2.0), Math.abs(click.y-n.y)-(n.height/2.0));
+			if(dist < best[1]){
+				best[0] = n;
+				best[1] = dist;
+			}
+
+			// Check the children
+			for(var i=0; i<n.children.length; ++i){
+				best = adhoc.getClosestNode(n.children[i], best, click);
+			}
+		}
+
+		// Return the best found
+		return best;
+	}
 	// Function to detach a node from its parent
 	adhoc.detachNode = function(click, n){
+		// Can't move the root node
+		if(n == adhoc.rootNode) return;
+
+		// Begin the detached state
 		adhoc.movingNode = n;
-		adhoc.movingNode.detatched = true;
+		adhoc.movingNode.detached = true;
 		adhoc.movingNode.moveClick = click;
 		adhoc.movingNode.movePos = {
 			x: 0
 			,y: 0
 		};
+		adhoc.movingNode.moveTarget = adhoc.movingNode.parent;
+		adhoc.movingNode.moveTarget.highlighted = true;
 	}
 	// Function to attach a node to a (possibly new) parent
 	adhoc.reattachNode = function(click){
-		adhoc.movingNode.detatched = false;
+		// If no detached node, return
+		if(!adhoc.movingNode) return;
+
+		// One final position update
+		adhoc.moveDetachedNode(click);
+
+		// If there's a target and it's not the current parent, attach to target
+		if(adhoc.movingNode.moveTarget != adhoc.movingNode.parent){
+			// Function to do the move if child types check out
+			function moveNodeWithType(childType){
+				adhoc.history.record(
+					'move'
+					,[adhoc.movingNode.moveTarget.id, childType]
+					,adhoc.movingNode
+				);
+				adhoc.movingNode.childType = childType;
+				adhoc.moveNode(adhoc.movingNode, adhoc.movingNode.parent, adhoc.movingNode.moveTarget);
+				adhoc.refreshRender();
+			}
+
+			// Get the child roles this node can fill
+			var prnt = adhoc.movingNode.moveTarget;
+			var type = adhoc.movingNode.nodeType;
+			var which = adhoc.movingNode.which;
+			var neededChildren = adhoc.nodeWhichChildren[prnt.nodeType][adhoc.nodeWhichIndices[prnt.which][1]];
+			var roleOptions = [];
+			var roleOptionNames = [];
+			var someOk = false;
+			// Loop over the types of children the parent needs
+			for(var i=0; i<neededChildren.length; ++i){
+				var role = neededChildren[i];
+				// Skip if the child's type is not allowed
+				if(adhoc.nodeChildTypeInfo[role.childType].nodeTypes.indexOf(type) < 0) continue;
+				// Skip if the child's sub-type is not allowed
+				if(adhoc.nodeChildTypeInfo[role.childType].nodeNotWhich.indexOf(which) >= 0) continue;
+				// The child type is allowed for at least one role
+				someOk = true;
+				// Skip if the parent has already maxed the child's type
+				if(role.max!=null && adhoc.countChildrenOfType(prnt, role.childType, true) >= role.max) continue;
+
+				// If we make it here, the child type is viable
+				roleOptions.push(role.childType);
+				roleOptionNames.push(adhoc.nodeChildTypeInfo[role.childType].label);
+			}
+
+			// Report errors if there are no roles available
+			if(!roleOptions.length){
+				var parentName = adhoc.nodeWhichNames[adhoc.nodeWhichIndices[prnt.which][0]][adhoc.nodeWhichIndices[prnt.which][1]][0];
+				var childName = adhoc.nodeWhichNames[type][adhoc.nodeWhichIndices[which][1]][0];
+				adhoc.error(someOk
+					? "The parent node cannot directly hold any more children of this type."
+					: "A '"+parentName+"' node cannot hold a '"+childName+"' node directly."
+				);
+
+			// If no errors, but only one option, then just use that
+			}else if(roleOptions.length == 1){
+				moveNodeWithType(roleOptions[0]);
+
+			// If multiple roles available, prompt for which role will be filled
+			}else{
+				adhoc.promptFlag('Select a role for the new node:', roleOptionNames, function(val){
+					moveNodeWithType(roleOptions[val]);
+				});
+			}
+		}
+
+		// End the attached state
+		adhoc.movingNode.moveTarget.highlighted = false;
+		adhoc.movingNode.moveTarget = null;
+		adhoc.movingNode.detached = false;
 		adhoc.movingNode.moveClick = null;
 		adhoc.movingNode.movePos = {
 			x: 0
 			,y: 0
 		};
 		adhoc.movingNode = null;
+		adhoc.refreshRender();
 	}
 	// Function to move a detached node on the canvas
-	adhoc.moveDetatchedNode = function(click){
-		adhoc.movingNode.movePos.x = (click.x - adhoc.movingNode.moveClick.x)/adhoc.display_scale;
-		adhoc.movingNode.movePos.y = (click.y - adhoc.movingNode.moveClick.y)/adhoc.display_scale;
+	adhoc.moveDetachedNode = function(click){
+		// If no detached node, return
+		if(!adhoc.movingNode) return;
+
+		// Update the position and find the new target
+		adhoc.movingNode.movePos.x = click.x - adhoc.movingNode.moveClick.x;
+		adhoc.movingNode.movePos.y = click.y - adhoc.movingNode.moveClick.y;
+		if(adhoc.movingNode.moveTarget) adhoc.movingNode.moveTarget.highlighted = false;
+		adhoc.movingNode.moveTarget = adhoc.getClosestNode(adhoc.rootNode, [adhoc.rootNode, Infinity], click)[0];
+		if(adhoc.movingNode.moveTarget) adhoc.movingNode.moveTarget.highlighted = true;
 		adhoc.refreshRender();
 	}
 
@@ -2848,6 +2982,11 @@ adhoc.rootNode = adhoc.createNode(
 			,references: n.references
 			,x: n.x
 			,y: n.y
+			,highlighted: n.highlighted
+			,detached: n.false
+			,moveClick: n.null
+			,moveTarget: n.null
+			,movePos: {x:0,y:0}
 			,width: n.width
 			,height: n.height
 			,subTreeHeight: n.subTreeHeight
@@ -2921,6 +3060,79 @@ adhoc.rootNode = adhoc.createNode(
 			adhoc.updatePackageName(n.references[i], oldP, newP);
 		}
 	}
+	// Moves a node from one parent to another
+	adhoc.moveNode = function(n, p1, p2){
+		// Remove this node from its old parent and scope
+		if(p1){
+			// Remove from the parent and replace with a placeholder as needed
+			p1.children.splice(p1.children.indexOf(n), 1);
+			var pType = p1.nodeType;
+			var pWhich = adhoc.nodeWhichIndices[p1.which][1];
+			var neededChildren = adhoc.nodeWhichChildren[pType][pWhich];
+			for(var i=0; i<neededChildren.length; ++i){
+				if(neededChildren[i].childType != n.childType) continue;
+				if(adhoc.countChildrenOfType(p1, n.childType) < neededChildren[i].min){
+					adhoc.createNode(
+						p1
+						,null
+						,adhoc.nodeTypes.TYPE_NULL
+						,adhoc.nodeWhich.WHICH_NULL
+						,neededChildren[i].childType
+					);
+				}
+				break;
+			}
+			if(n.scope){
+				n.scope.scopeVars.splice(n.scope.scopeVars.indexOf(n), 1);
+			}
+		}
+
+		// Add to the new parent (assume validity has been checked)
+		n.parent = p2;
+		var r = adhoc.getFirstNullChildByType(p2, n.childType);
+		// Replace null if possible
+		if(r) p2.children[p2.children.indexOf(r)] = n;
+		// Otherwise, find proper location
+		else{
+			var pp=0
+				,pc=0
+				,reached=false
+				,neededChildren=adhoc.nodeWhichChildren[p2.nodeType][adhoc.nodeWhichIndices[p2.which][1]]
+				;
+			while(true){
+				if(pc >= p2.children.length){
+					p2.children.push(n);
+					break;
+				}
+				if(neededChildren[pp].childType == n.childType){
+					reached = true;
+				}
+				if(neededChildren[pp].childType == p2.children[pc].childType){
+					++pc;
+					continue;
+				}
+				if(!reached){
+					++pp;
+					continue;
+				}
+				p2.children.splice(pc, 0, n);
+				break;
+			}
+		}
+
+		// If a variable, and not a reference, assign to the appropriate scope
+		if(n.which == adhoc.nodeWhich.VARIABLE_ASIGN && !n.referenceId){
+			var searchFunc = adhoc.genScopeSearch(p2, true);
+			if(!searchFunc(n.name).length){
+				var scope = p2;
+				while(scope.which != adhoc.nodeWhich.ACTION_DEFIN
+						&& scope.which != adhoc.nodeWhich.CONTROL_LOOP){
+					scope = scope.parent;
+				}
+				scope.scopeVars.push(n);
+			}
+		}
+	}
 	// Deletes one node and its children
 	adhoc.deleteNode = function(n){
 		// Call on the children first
@@ -2991,6 +3203,11 @@ adhoc.rootNode = adhoc.createNode(
 			n.references = newNode.references;
 			n.x = newNode.x;
 			n.y = newNode.y;
+			n.highlighted = newNode.highlighted
+			n.detached = newNode.detached
+			n.moveClick = newNode.moveClick
+			n.moveTarget = newNode.moveTarget
+			n.movePos = newNode.movePos
 			n.width = newNode.width;
 			n.height = newNode.height;
 			n.subTreeHeight = newNode.subTreeHeight;

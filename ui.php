@@ -209,7 +209,7 @@ class Nxj_UI {
             $output .= "
         <div class=\"nxj_selectOption\"
                     data-value=\"".$oneOption->value."\"
-                    ".($params['callback'] ? "onclick=\"".$params['callback']."($(this).getAttribute('data-value'), $(this).innerHTML);\"" : "")."
+                    ".(isset($params['callback']) ? "onclick=\"".$params['callback']."($(this).getAttribute('data-value'), $(this).innerHTML);\"" : "")."
                     ".(isset($oneOption->default)&&$oneOption->default ? ' data-default="true"' : '')."
             >
             ".$oneOption->display."
