@@ -1900,6 +1900,10 @@ adhoc.createNode(prnt, repl, type, which, childType);
 						: "A '"+parentName+"' node cannot hold a '"+childName+"' node directly."
 					);
 
+				// If the parent is a variable assignment, but is acting as 'STORAGE', then fail
+				}else if(prnt.which==adhoc.nodeWhich.VARIABLE_ASIGN && prnt.childType==adhoc.nodeChildType.STORAGE){
+					adhoc.error("You cannot directly assign a value to a variable that belongs to an assignment node.");
+
 				// If no errors, but only one option, then just use that
 				}else if(roleOptions.length == 1){
 					createNodeWithType(roleOptions[0]);
