@@ -4,6 +4,10 @@ Event.KEY_COMMAND1 = 91;
 Event.KEY_COMMAND2 = 93;
 Event.KEY_COMMAND3 = 224;
 
+// Not sure why JavaScript doesn't include this...
+String.prototype.ltrim = function(s){ return this.replace(new RegExp("^"+s+"+", "")); }
+String.prototype.rtrim = function(s){ return this.replace(new RegExp(s+"+$", "")); }
+
 // Set up everything only after the page loads
 Event.observe(window, 'load', function(){
 	var adhoc = {};
@@ -838,10 +842,14 @@ Event.observe(window, 'load', function(){
 	// Convert an int to a 3-byte string
 	adhoc.intTo3Byte = function(i){
 		var out = String.fromCharCode(i%256);
-		i = (i/256)>>0;
+		i >>= 8;
 		out = String.fromCharCode(i%256) + out;
-		i = (i/256)>>0;
+		i >>= 8;
 		return String.fromCharCode(i%256) + out;
+	}
+	// Convert a 3-byte string to an int
+	adhoc.intFrom3Byte = function(s){
+		return (((s.charCodeAt(0)<<8)+s.charCodeAt(1))<<8)+s.charCodeAt(2);
 	}
 
 	// Validate integer values
@@ -894,7 +902,7 @@ Event.observe(window, 'load', function(){
 
 		// Set the value in memory, and in the cookie, then return it
 		adhoc.settings[s] = v;
-		document.cookie = 'adhocSettings='+Object.toJSON(adhoc.settings);
+		document.cookie = 'adhocSettings='+Object.toJSON(adhoc.settings)+';path=/adhoc_demo/';
 		return v;
 	}
 
@@ -1467,7 +1475,7 @@ Event.observe(window, 'load', function(){
 				adhoc.setting(i, loadedSettings[i]);
 			}
 		}else{
-			document.cookie = 'adhocSettings='+Object.toJSON(adhoc.settings);
+			document.cookie = 'adhocSettings='+Object.toJSON(adhoc.settings)+';path=/adhoc_demo/';
 		}
 
 		// Activate package name input
@@ -1495,6 +1503,7 @@ Event.observe(window, 'load', function(){
 				adhoc.rootNode = null;
 				adhoc.rootNode = adhoc.createNode(
 					null
+					,null
 					,null
 					,adhoc.nodeTypes.ACTION
 					,adhoc.nodeWhich.ACTION_DEFIN
@@ -1773,7 +1782,7 @@ Event.observe(window, 'load', function(){
 						// Prompt for an action name
 						adhoc.promptValue('Enter an action name:', adhoc.validateActionDefName, false, function(val){
 							adhoc.deactivateAllTools();
-							adhoc.createNode(prnt, repl, type, which, childType, null, val);
+							adhoc.createNode(null, prnt, repl, type, which, childType, null, val);
 						});
 						break;
 
@@ -1781,7 +1790,7 @@ Event.observe(window, 'load', function(){
 						// Prompt for an action name
 						adhoc.promptValue('Enter an action name:', adhoc.validateActionName, false, function(val, rem, hid){
 							adhoc.deactivateAllTools();
-							adhoc.createNode(prnt, repl, type, which, childType, rem, val, null, hid);
+							adhoc.createNode(null, prnt, repl, type, which, childType, rem, val, null, hid);
 						}, adhoc.actionSearch, 'Not found in loaded projects');
 						break;
 
@@ -1790,7 +1799,7 @@ Event.observe(window, 'load', function(){
 						// Prompt for a variable name
 						adhoc.promptValue('Enter a variable name:', adhoc.validateIdentifier, false, function(val, rem, hid){
 							adhoc.deactivateAllTools();
-							adhoc.createNode(prnt, repl, type, which, childType, null, val, null, hid);
+							adhoc.createNode(null, prnt, repl, type, which, childType, null, val, null, hid);
 						}, adhoc.genScopeSearch(prnt, false), 'New variable');
 						break;
 
@@ -1798,7 +1807,7 @@ Event.observe(window, 'load', function(){
 						// Prompt for a boolean value
 						adhoc.promptFlag('Select a boolean value:', ['true', 'false'], function(val){
 							adhoc.deactivateAllTools();
-							adhoc.createNode(prnt, repl, type, which, childType, null, null, !val);
+							adhoc.createNode(null, prnt, repl, type, which, childType, null, null, !val);
 						});
 						break;
 
@@ -1806,7 +1815,7 @@ Event.observe(window, 'load', function(){
 						// Prompt for an integer value
 						adhoc.promptValue('Enter an integer:', adhoc.validateInt, true, function(val){
 							adhoc.deactivateAllTools();
-							adhoc.createNode(prnt, repl, type, which, childType, null, null, parseInt(val));
+							adhoc.createNode(null, prnt, repl, type, which, childType, null, null, parseInt(val));
 						});
 						break;
 
@@ -1814,7 +1823,7 @@ Event.observe(window, 'load', function(){
 						// Prompt for a float value
 						adhoc.promptValue('Enter a float:', adhoc.validateFloat, true, function(val){
 							adhoc.deactivateAllTools();
-							adhoc.createNode(prnt, repl, type, which, childType, null, null, parseFloat(val));
+							adhoc.createNode(null, prnt, repl, type, which, childType, null, null, parseFloat(val));
 						});
 						break;
 
@@ -1822,7 +1831,7 @@ Event.observe(window, 'load', function(){
 						// Prompt for a string value
 						adhoc.promptValue('Enter a string:', adhoc.validateString, false, function(val){
 							adhoc.deactivateAllTools();
-							adhoc.createNode(prnt, repl, type, which, childType, null, null, val);
+							adhoc.createNode(null, prnt, repl, type, which, childType, null, null, val);
 						});
 						break;
 
@@ -1832,12 +1841,12 @@ Event.observe(window, 'load', function(){
 						adhoc.deactivateAllTools();
 // TODO: Prompt for literal value
 adhoc.message('This type of literal is not yet implemented'); break;
-adhoc.createNode(prnt, repl, type, which, childType);
+adhoc.createNode(null, prnt, repl, type, which, childType);
 						break;
 
 					default:
 						adhoc.deactivateAllTools();
-						adhoc.createNode(prnt, repl, type, which, childType);
+						adhoc.createNode(null, prnt, repl, type, which, childType);
 					}
 				}
 
@@ -2003,6 +2012,25 @@ adhoc.createNode(prnt, repl, type, which, childType);
 				}
 				break;
 
+// (CTRL+m) Test unserialize
+case 77:
+adhoc.rootNode = null;
+adhoc.lastId = 0;
+adhoc.allNodes = [];
+new Ajax.Request('load/', {
+	parameters: {
+		hash: 'bfb850ee4a0f106496df865a247383ef'
+	}
+	,onSuccess: function(t){
+try{
+		adhoc.rootNode = adhoc.unserialize(t.responseText);
+console.log(adhoc.rootNode);
+		adhoc.refreshRender();
+}catch(e){ console.log("Line "+e.lineNumber+"\n"+e); }
+	}
+});
+break;
+
 			// (CTRL+y) Redo
 			case 89:
 				if(adhoc.alternateKeys) adhoc.history.redo();
@@ -2022,7 +2050,7 @@ adhoc.createNode(prnt, repl, type, which, childType);
 		var keyUpFunc = function(e){
 			var key = e.which || window.event.keyCode;
 			switch(key){
-			// If various CTRL or CMD keys, set alternamte key mode off
+			// (CTRL/CMD) Set alternamte key mode off
 			case Event.KEY_CONTROL:
 			case Event.KEY_COMMAND1:
 			case Event.KEY_COMMAND2:
@@ -2030,7 +2058,7 @@ adhoc.createNode(prnt, repl, type, which, childType);
 				adhoc.alternateKeys = false;
 				break;
 
-			// If DEL, remove the selected node and it's children
+			// (DEL) Remove the selected node and it's children
 			case Event.KEY_DELETE:
 				// Edge cases
 				if(!adhoc.selectedNode) break;
@@ -2050,7 +2078,7 @@ adhoc.createNode(prnt, repl, type, which, childType);
 				adhoc.refreshRender();
 				break;
 
-			// Do nothing if the key is unknown
+			// (Unknown) Do nothing
 			default:
 				if(adhoc.setting('dbg')) console.log(key);
 			}
@@ -2081,6 +2109,7 @@ adhoc.createNode(prnt, repl, type, which, childType);
 adhoc.rootNode = adhoc.createNode(
 	null
 	,null
+	,null
 	,adhoc.nodeTypes.ACTION
 	,adhoc.nodeWhich.ACTION_DEFIN
 	,adhoc.nodeChildType.STATEMENT
@@ -2101,7 +2130,7 @@ adhoc.rootNode = adhoc.createNode(
 		return ++adhoc.lastId;
 	}
 	// Create a new node with just a type and empty contents
-	adhoc.createNode = function(p, r, t, w, c, k, n, v, f){
+	adhoc.createNode = function(i, p, r, t, w, c, k, n, v, f){
 		// Set the type, which, and childType if they're not passed
 		if(!t) t = adhoc.nodeTypes.TYPE_NULL;
 		if(!w) w = adhoc.nodeWhich.WHICH_NULL;
@@ -2109,7 +2138,7 @@ adhoc.rootNode = adhoc.createNode(
 
 		// Create the object with its params
 		var newNode = {
-			id: (t == adhoc.nodeTypes.TYPE_NULL) ? null : adhoc.nextId()
+			id: (i ? i : ((t == adhoc.nodeTypes.TYPE_NULL) ? null : adhoc.nextId()))
 			,parent: p
 			,scope: null
 			,referenceId: f ? parseInt(f) : null
@@ -2201,7 +2230,8 @@ adhoc.rootNode = adhoc.createNode(
 			for(var i=0; i<neededChildren.length; ++i){
 				for(var j=0; j<neededChildren[i].min; ++j){
 					adhoc.createNode(
-						newNode
+						null
+						,newNode
 						,null
 						,adhoc.nodeTypes.TYPE_NULL
 						,adhoc.nodeWhich.WHICH_NULL
@@ -2946,6 +2976,48 @@ adhoc.rootNode = adhoc.createNode(
 		}
 		return out;
 	}
+	// Function to unserialize binary into a node
+	adhoc.unserialize = function(s){
+		// Get the node parts from the input string
+		var tempNode = {};
+		tempNode.id = adhoc.intFrom3Byte(s.substr(0, 3));
+		tempNode.parentId = adhoc.intFrom3Byte(s.substr(3, 3));
+		tempNode.nodeType = adhoc.intFrom3Byte(s.substr(6, 3));
+		tempNode.which = adhoc.intFrom3Byte(s.substr(9, 3));
+		tempNode.childType = adhoc.intFrom3Byte(s.substr(12, 3));
+		var found = 1;
+		var offset = 16;
+		while(found<6){
+			offset = s.indexOf('"', offset+1);
+			if(s.charAt(offset-1) == "\\") continue;
+			++found;
+		}
+		var parts = s.substring(16, offset).split('""');
+		tempNode.package = (parts[0]=="NULL" ? null : parts[0]);
+		tempNode.name = (parts[1]=="NULL" ? null : parts[1]);
+		tempNode.value = (parts[2]=="NULL" ? null : parts[2]);
+
+		// Create a new node from the parts
+		var newNode = adhoc.createNode(
+			tempNode.id
+			,tempNode.parentId ? adhoc.allNodes[tempNode.parentId] : null
+			,null
+			,tempNode.nodeType
+			,tempNode.which
+			,tempNode.childType
+			,tempNode.package
+			,tempNode.name
+			,tempNode.value
+			//,f  // Reference Id
+		);
+		adhoc.lastId = Math.max(newNode.id+1, adhoc.lastId);
+
+		// Continue until we've exhaused the string
+		s = s.substr(offset+1);
+		if(!s) return newNode;
+		adhoc.unserialize(s);
+		return newNode;
+	}
 	// Function to serialize a node and its children for the history manager
 	adhoc.serializeComplete = function(n, deep){
 		var out = {
@@ -3055,7 +3127,8 @@ adhoc.rootNode = adhoc.createNode(
 				if(neededChildren[i].childType != n.childType) continue;
 				if(adhoc.countChildrenOfType(p1, n.childType) < neededChildren[i].min){
 					adhoc.createNode(
-						p1
+						null
+						,p1
 						,null
 						,adhoc.nodeTypes.TYPE_NULL
 						,adhoc.nodeWhich.WHICH_NULL
@@ -3134,7 +3207,8 @@ adhoc.rootNode = adhoc.createNode(
 				if(neededChildren[i].childType != n.childType) continue;
 				if(adhoc.countChildrenOfType(n.parent, n.childType) < neededChildren[i].min){
 					adhoc.createNode(
-						n.parent
+						null
+						,n.parent
 						,null
 						,adhoc.nodeTypes.TYPE_NULL
 						,adhoc.nodeWhich.WHICH_NULL

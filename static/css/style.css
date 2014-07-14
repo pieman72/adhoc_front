@@ -184,19 +184,17 @@ label {
 	min-height:24px;
 	padding:0 8px;
 	}
-.Action .toolboxTab[data-target=Action],
-.Group .toolboxTab[data-target=Group],
-.Control .toolboxTab[data-target=Control],
-.Operator .toolboxTab[data-target=Operator],
-.Variable .toolboxTab[data-target=Variable],
-.Literal .toolboxTab[data-target=Literal] {
-	border:1px solid #6FdF00;
-	color:#6FdF00;
-	}
 .dark .toolboxTab {
 	background:#333333;
 	box-shadow:0 0 4px 3px #111111 inset;
 	}
+.Action .toolboxTab[data-target=Action] { border:1px solid #6FdF00; color:#6FdF00; }
+.Group .toolboxTab[data-target=Group] { border:1px solid #808080; color:#808080; }
+.Control .toolboxTab[data-target=Control] { border:1px solid #D7005F; color:#D7005F; }
+.Operator .toolboxTab[data-target=Operator] { border:1px solid #AF5FFF; color:#AF5FFF; }
+.Variable .toolboxTab[data-target=Variable] { border:1px solid #000000; }
+.dark .Variable .toolboxTab[data-target=Variable] { border:1px solid #EEEEEE; }
+.Literal .toolboxTab[data-target=Literal] { border:1px solid #FF8700; color:#FF8700; }
 .toolboxItem {
 	cursor:pointer;
 	display:none;
@@ -216,6 +214,7 @@ label {
 .Group .toolboxItem.Group ,
 .Control .toolboxItem.Control ,
 .Operator .toolboxItem.Operator ,
+.Operator .toolboxItem.Assignment ,
 .Variable .toolboxItem.Variable ,
 .Literal .toolboxItem.Literal {
 	display:block;
