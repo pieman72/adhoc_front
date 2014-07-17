@@ -115,11 +115,29 @@ label {
 #controls span {
 	float:left;
 	}
-#savePackageButton .nxj_tipContent {
+.nxj_cssButton .nxj_tipContent {
 	font-size:14px;
 	line-height:20px;
 	text-align:left;
 	text-transform:none;
+	}
+#projectSelect .nxj_selectOption {
+	line-height:20px;
+	}
+#projectSelect .nxj_selectOption {
+	box-sizing:border-box;
+	float:left;
+	width:100%;
+	}
+#projectSelect .projectOption {
+	float:left;
+	font-size:16px;
+	margin-right:10px;
+	}
+#projectSelect .projectDate {
+	color:#808080;
+	float:left;
+	font-size:11px;
 	}
 #generateButton {
 	bottom:20px;
@@ -368,6 +386,7 @@ label {
 	padding:10px;
 	width:100%;
 	}
+
 
 
 .registrationForm {

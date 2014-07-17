@@ -1520,6 +1520,19 @@ Event.observe(window, 'load', function(){
 			});
 		});
 
+		// Activate load package button
+		$('loadPackageButton').observe('click', function(){
+			$('projectLightbox').show();
+		});
+
+		// Activate load project options
+		$$('#projectSelect .nxj_selectOption').each(function(option){
+			$(option).observe('click', function(){
+				$('projectLightbox').hide();
+				adhoc.loadProject(this.getAttribute('data-value'));
+			});
+		});
+
 		// Activate connector label toggles
 		$$('#controls input[name=labelConnectors]').each(function(elem){
 			elem.observe('change', function(){
@@ -2015,24 +2028,10 @@ adhoc.createNode(null, prnt, repl, type, which, childType);
 				}
 				break;
 
-// (CTRL+m) Test unserialize
-case 77:
-adhoc.rootNode = null;
-adhoc.lastId = 0;
-adhoc.allNodes = [];
-new Ajax.Request('load/', {
-	parameters: {
-		hash: 'bfb850ee4a0f106496df865a247383ef'
-	}
-	,onSuccess: function(t){
-try{
-		adhoc.rootNode = adhoc.unserialize(t.responseText);
-console.log(adhoc.rootNode);
-		adhoc.refreshRender();
-}catch(e){ console.log("Line "+e.lineNumber+"\n"+e); }
-	}
-});
-break;
+			// (CTRL+m) Test unserialize
+			case 77:
+				adhoc.loadProject(1);
+				break;
 
 			// (CTRL+y) Redo
 			case 89:
@@ -3349,6 +3348,25 @@ adhoc.rootNode = adhoc.createNode(
 
 		// Return the node itself for recursive calls
 		return newNode;
+	}
+
+	// Load a package from storage
+	adhoc.loadProject = function(projectId){
+		adhoc.rootNode = null;
+		adhoc.lastId = 0;
+		adhoc.allNodes = [];
+		new Ajax.Request('load/', {
+			parameters: {
+				projectid: projectId
+			}
+			,onSuccess: function(t){
+				adhoc.rootNode = adhoc.unserialize(t.responseText);
+				adhoc.refreshRender();
+			}
+			,onFailure: function(t){
+				adhoc.error(t.responseText);
+			}
+		});
 	}
 
 	// Initialize the application

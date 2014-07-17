@@ -92,8 +92,56 @@ if(!count($errors)
 }
 
 // If the user was found, try to load their projects
+$projects = array();
 if(!count($errors) && $_SESSION['username']){
-	// TODO
+	if(!($query = mysqli_stmt_init($dbConn))){
+		$errors[] = "Could not initializedatabase statement: ".$dbConn->error;
+	}
+	if(!count($errors) && !mysqli_stmt_prepare($query, "
+		SELECT
+			p.id
+			,p.project_name
+			,LOWER(HEX(p.project_hash))
+			,p.datetime_created
+			,p.datetime_updated
+		FROM
+			front_projects p
+			JOIN front_users u
+				ON u.id = p.user
+		WHERE
+			u.username = ?
+		ORDER BY
+			p.datetime_updated; ")){
+		$errors[] = "Could not prepare database statement: ".$dbConn->error;
+	}
+	if(!count($errors) && !mysqli_stmt_bind_param($query, 's'
+			,$_SESSION['username']
+		)){
+		$errors[] = "Could not bind database parameters: ".$query->error;
+	}
+	if(!count($errors) && !mysqli_stmt_execute($query)){
+		$errors[] = "Query failed: ".$query->error;
+	}
+	if(!count($errors) && !mysqli_stmt_bind_result($query
+			,$projectId
+			,$projectName
+			,$projectHash
+			,$projectCreated
+			,$projectUpdated
+		)){
+		$errors[] = "Query failed: ".$query->error;
+	}
+	if(!count($errors)){
+		while($query->fetch()){
+			$projects[] = (object) array(
+				'id'				=> $projectId
+				,'project_name'		=> $projectName
+				,'project_hash'		=> $projectHash
+				,'datetime_created'	=> strtotime($projectCreated)
+				,'datetime_updated'	=> strtotime($projectUpdated)
+			);
+		}
+	}
 }
 ?><!DOCTYPE html>
 <html>
@@ -113,6 +161,26 @@ if(!count($errors) && $_SESSION['username']){
 			,'content'      => '<ul><li>'.implode('</li><li>', $errors).'</li></ul>'
 			,'visible'		=> count($errors)
 		))?>
+		<?$projectOptions = array();?>
+		<?foreach($projects as $i=>$oneProject){?>
+			<?$projectOptions[] = (object) array(
+				'value'		=> $oneProject->id
+				,'display'	=> "<span class=\"projectOption\">".$oneProject->project_name."</span><span class=\"projectDate\">".Nxj_UI::timeAgo($oneProject->datetime_updated)."</span>"
+				,'default'	=> !$i
+			);?>
+		<?}?>
+		<?$projectSelect = Nxj_UI::selectbox(array(
+			'id'            => 'projectSelect'
+			,'width'        => 370
+			,'zindex'       => 1
+			,'options'      => $projectOptions
+		));?>
+		<?=Nxj_UI::lightbox(array(
+			'id'            => 'projectLightbox'
+			,'title'		=> 'Load Saved Project'
+			,'content'      => "<br/>$projectSelect"
+			,'visible'		=> count($projects)
+		))?>
 
 		<div id="controls" class="collapsed">
 			<div class="controlsLeft floatLeft">
@@ -130,24 +198,36 @@ if(!count($errors) && $_SESSION['username']){
 
 					<div class="floatLeft">
 						<div class="floatLeft">
-							<a id="newPackageButton" class="nxj_button nxj_cssButton" href="javascript:void(0);">New Package</a>
+							<span id="newPackageButton" class="nxj_button nxj_cssButton" href="javascript:void(0);" style="margin-right:6px;width:40px;">New</span>
+							<span id="loadPackageButton" class="nxj_button nxj_cssButton<?=(isset($settings->username) ? '' : ' disabled')?>" href="javascript:void(0);" style="position:relative;width:50px;">
+								Load
+								<?if(!isset($settings->username)){?>
+									<?=Nxj_UI::tooltip(array(
+										'id'            => 'saveTip'
+										,'direction'    => 'right'
+										,'width'		=> 161
+										,'height'		=> 40
+										,'content'      => 'You must <a href="register/" target="_blank">register</a> or <a href="login/" target="_blank">login</a> in order to load a project'
+									))?>
+								<?}?>
+							</span>
 							<div class="clear" style="height:20px;"></div>
 
 							<label for="projectName">Package Name</label>
 							<div class="clear"></div>
 
-							<input type="text" id="projectName" class="nxj_input" value="My Project" />
+							<input type="text" id="projectName" class="nxj_input" value="My Project" style="width:142px;"/>
 							<div class="clear" style="height:10px;"></div>
 
 							<span id="savePackageButton" class="nxj_button nxj_cssButton<?=(isset($settings->username) ? '' : ' disabled')?>" style="position:relative;">
-								Save Package
+								Save
 								<?if(!isset($settings->username)){?>
 									<?=Nxj_UI::tooltip(array(
 										'id'            => 'saveTip'
 										,'direction'    => 'right'
-										,'width'		=> 133
+										,'width'		=> 161
 										,'height'		=> 40
-										,'content'      => 'You must <a href="register/" target="_blank">register</a> or <a href="login/" target="_blank">login</a> in order to save'
+										,'content'      => 'You must <a href="register/" target="_blank">register</a> or <a href="login/" target="_blank">login</a> in order to save a project'
 									))?>
 								<?}?>
 							</span>

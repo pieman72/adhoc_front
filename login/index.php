@@ -33,6 +33,12 @@ if($dbConn->error){
 	$dbConn = null;
 }
 
+// If already logged in, go straight to homepage
+if(isset($_SESSION['username'])){
+	header('Location: /adhoc_demo/');
+	exit;
+}
+
 // If registration was submitted, try to register the user
 if(isset($_POST['submitted'])){
 	// Get the user credentials from input
@@ -112,7 +118,8 @@ if(isset($_POST['submitted'])){
 </head>
 <body class="<?=(isset($settings->colorScheme) ? $settings->colorScheme : 'light')?>">
 	<div id="page">
-		<div class="clear" style="height:1px;"></div>
+		<div style="padding:10px;">Don't have an account? <a href="../register/">Register</a> instead.</div>
+		<div class="clear"></div>
 
 		<div class="registrationForm">
 			<h2>Login to ADHOC</h2>
