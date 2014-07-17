@@ -1,4 +1,4 @@
-// Not sure why prototype doesn't include this...
+// Not sure why Prototype doesn't include this...
 Event.KEY_CONTROL = 17;
 Event.KEY_COMMAND1 = 91;
 Event.KEY_COMMAND2 = 93;
@@ -40,6 +40,9 @@ Event.observe(window, 'load', function(){
 		,showNullNodes: true
 		,labelConnectors: 1
 		,projectName: 'New Project'
+		,username: null
+		,password: null
+		,remember: false
 	};
 	adhoc.canvas = null;
 	adhoc.selectedNode = null;
@@ -902,7 +905,7 @@ Event.observe(window, 'load', function(){
 
 		// Set the value in memory, and in the cookie, then return it
 		adhoc.settings[s] = v;
-		document.cookie = 'adhocSettings='+Object.toJSON(adhoc.settings)+';path=/adhoc_demo/';
+		document.cookie = 'adhocSettings='+encodeURIComponent(Object.toJSON(adhoc.settings))+';path=/adhoc_demo/';
 		return v;
 	}
 
@@ -1470,12 +1473,12 @@ Event.observe(window, 'load', function(){
 		// Load settings from cookie
 		if(document.cookie && document.cookie.indexOf('adhocSettings=')>=0){
 			var settingsJSON = document.cookie.match(/adhocSettings=([^;]*)/);
-			var loadedSettings = settingsJSON[1].evalJSON();
+			var loadedSettings = decodeURIComponent(settingsJSON[1]).evalJSON();
 			for(var i in loadedSettings){
 				adhoc.setting(i, loadedSettings[i]);
 			}
 		}else{
-			document.cookie = 'adhocSettings='+Object.toJSON(adhoc.settings)+';path=/adhoc_demo/';
+			document.cookie = 'adhocSettings='+encodeURIComponent(Object.toJSON(adhoc.settings))+';path=/adhoc_demo/';
 		}
 
 		// Activate package name input

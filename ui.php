@@ -28,49 +28,6 @@ class Nxj_UI {
     *
     *   Required arguments:
     *
-    *   @type String 'iconURL' => '/Path/to/img/src'
-    *       The iconURL is the url that will go into the src attribute of the <img /> icon on the left hand side of the section head.
-    *
-    *   @type String 'title' => 'Text to be displayed'
-    *       Plain text to be displayed in the title section of the section head.
-    *
-    *   @type String 'subTitle' => 'Text to be displayed'
-    *       Plain text containing the subtitle of the section head. The subtitle will appear on the left hand side of the section head.
-    *
-    *
-    *   Optional arguments:
-    *
-    *   @type String 'actionLeft' => 'plain text or <a> Anchor Tag </a>'
-    *       Left action item should be set as plain text or <a> Anchor Tag </a>. If is set the contents of the left action item will appear on the right hand side of the section head.
-    *
-    *   @type String 'actionRight' => 'plain text or <a> Anchor Tag </a>'
-    *       Right action item should be set as plain text or <a> Anchor Tag </a>. If is set the contents of the right action item will appear on the right hand side of the section head.
-    *
-    *   @type String 'badge' => ''
-    *       TODO.
-    *
-    * }
-    * @return String
-    */
-    public static function sectionhead($params) {
-        //Required Params
-        $iconURL = $params['iconURL'];
-        $title = $params['title'];
-        $subTitle = $params['subTitle'];
-
-        //Optional Params
-        $actionLeft = isset($params['actionLeft']) ? $params['actionLeft'] : null;
-        $actionRight = isset($params['actionRight']) ? $params['actionRight'] : null;
-        $badge = isset($params['badge']) ? $params['badge'] : null;
-
-
-    }
-
-    /**
-    * @param array $params {
-    *
-    *   Required arguments:
-    *
     *   @type String 'id' => 'lightbox'
     *       The id attribute applied to the outer-most <div> of the widget.
     *

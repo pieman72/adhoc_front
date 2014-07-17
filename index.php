@@ -1,38 +1,156 @@
-<!DOCTYPE html>
-<?php include_once('ui.php');?>
-<?$settings = (isset($_COOKIE)&&isset($_COOKIE['adhocSettings']) ? json_decode(stripslashes($_COOKIE['adhocSettings'])) : (object)array());?>
+<?// Load UI library
+include_once('ui.php');
+
+// Load application config
+$conf = parse_ini_file('config.ini');
+
+// Load user settings
+$settings = (isset($_COOKIE)&&isset($_COOKIE['adhocSettings']) ? json_decode(urldecode($_COOKIE['adhocSettings'])) : (object)array());
+
+// Start collecting errors
+$errors = array();
+
+// Start the session
+if(session_status()==PHP_SESSION_NONE){
+    session_set_cookie_params(
+        0
+        ,dirname($_SERVER['PHP_SELF']).'/'
+        ,$_SERVER['HTTP_HOST']
+    );
+    session_start();
+}
+
+// Initialize a DB connection
+$dbConn = mysqli_connect($conf['mysql_host'], $conf['mysql_user'], $conf['mysql_pass'], $conf['mysql_db']);
+if($dbConn->error){
+	$errors[] = $dbConn->error;
+	$dbConn = null;
+}
+
+// If the user is not logged in by session, try to log them in by cookie
+$username = null;
+if(!count($errors)
+		&& (
+			!isset($_SESSION['username'])
+			|| !$_SESSION['username']
+		)
+		&& isset($settings->username)
+		&& isset($settings->password)
+	){
+	if(!($query = mysqli_stmt_init($dbConn))){
+		$errors[] = "Could not initializedatabase statement: ".$dbConn->error;
+	}
+	if(!count($errors) && !mysqli_stmt_prepare($query, "
+		SELECT
+			username
+			,settings
+		FROM
+			front_users
+		WHERE
+			username = ?
+			AND password = UNHEX(?)
+		LIMIT
+			1; ")){
+		$errors[] = "Could not prepare database statement: ".$dbConn->error;
+	}
+	if(!count($errors) && !mysqli_stmt_bind_param($query, 'ss'
+			,$settings->username
+			,sha1($settings->password)
+		)){
+		$errors[] = "Could not bind database parameters: ".$query->error;
+	}
+	if(!count($errors) && !mysqli_stmt_execute($query)){
+		$errors[] = "Query failed: ".$query->error;
+	}
+	if(!count($errors) && !mysqli_stmt_bind_result($query
+			,$username
+			,$settingsTemp
+		)){
+		$errors[] = "Query failed: ".$query->error;
+	}
+	if(!count($errors) && !$query->fetch()){
+		$errors[] = "Could not load user";
+	}
+
+	// Add password back to settings (if requested) and pass settings in the cookie
+	if(!count($errors)){
+		$_SESSION['username'] = $username;
+		if($settings->remember){
+			$settingsTemp = json_decode($settingsTemp);
+			$settingsTemp->password = sha1($_POST['password']);
+			$settingsTemp = json_encode($settingsTemp);
+		}
+		$settings = $settingsTemp;
+		setcookie(
+			'adhocSettings'
+			,$settingsTemp
+			,strtotime('+1 year')
+			,'/adhoc_demo/'
+			,''
+		);
+	}
+}
+
+// If the user was found, try to load their projects
+if(!count($errors) && $_SESSION['username']){
+	// TODO
+}
+?><!DOCTYPE html>
 <html>
 <head>
 	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 	<title>ADHOC - Live Demo</title>
-	<link rel="shortcut icon" href="static/img/fav.png"/>
-	<link rel="stylesheet" href="static/css/ui.css" type="text/css"/>
-	<link rel="stylesheet" href="static/css/style.css" type="text/css"/>
-	<link rel="stylesheet" href="static/css/prism.css" type="text/css"/>
+	<link rel="shortcut icon" href="//static.harveyserv.ath.cx/adhoc/img/fav.png"/>
+	<link rel="stylesheet" href="//static.harveyserv.ath.cx/adhoc/css/ui.css" type="text/css"/>
+	<link rel="stylesheet" href="//static.harveyserv.ath.cx/adhoc/css/prism.css" type="text/css"/>
+	<link rel="stylesheet" href="style.css" type="text/css"/>
 </head>
 <body class="<?=(isset($settings->colorScheme) ? $settings->colorScheme : 'light')?>">
 	<div id="page">
-		<?php echo Nxj_UI::lightbox(array(
+		<?=Nxj_UI::lightbox(array(
 			'id'            => 'theLightbox'
-			,'title'		=> 'Lightbox'
-			,'content'      => 'This is a test'
-		));?>
+			,'title'		=> 'Login Error'
+			,'content'      => '<ul><li>'.implode('</li><li>', $errors).'</li></ul>'
+			,'visible'		=> count($errors)
+		))?>
 
 		<div id="controls" class="collapsed">
 			<div class="controlsLeft floatLeft">
 				<div class="floatLeft" style="height:100%;width:10px;"></div>
 				<div class="floatLeft">
-					<div style="height:10px;" class="clear"></div>
+					<div class="floatLeft">
+						<?if(isset($_SESSION['username'])){?>
+							Logged in as <b><?=$_SESSION['username']?></b>.&nbsp;&nbsp;
+							<a class="logoutLink" href="logout/">Log-out</a>
+						<?}else{?>
+							Hello, guest. Would you like to <a href="login/">login</a> or <a href="register/">register</a>?
+						<?}?>
+					</div>
+					<div style="height:20px;" class="clear"></div>
 
 					<div class="floatLeft">
 						<div class="floatLeft">
+							<a id="newPackageButton" class="nxj_button nxj_cssButton" href="javascript:void(0);">New Package</a>
+							<div class="clear" style="height:20px;"></div>
+
 							<label for="projectName">Package Name</label>
 							<div class="clear"></div>
 
 							<input type="text" id="projectName" class="nxj_input" value="My Project" />
-							<div class="clear" style="height:20px;"></div>
+							<div class="clear" style="height:10px;"></div>
 
-							<a id="newPackageButton" class="nxj_button nxj_cssButton" href="javascript:void(0);">New Package</a>
+							<span id="savePackageButton" class="nxj_button nxj_cssButton<?=(isset($settings->username) ? '' : ' disabled')?>" style="position:relative;">
+								Save Package
+								<?if(!isset($settings->username)){?>
+									<?=Nxj_UI::tooltip(array(
+										'id'            => 'saveTip'
+										,'direction'    => 'right'
+										,'width'		=> 133
+										,'height'		=> 40
+										,'content'      => 'You must <a href="register/" target="_blank">register</a> or <a href="login/" target="_blank">login</a> in order to save'
+									))?>
+								<?}?>
+							</span>
 						</div>
 					</div>
 					<div class="floatLeft" style="height:10px;width:20px;"></div>
@@ -76,7 +194,7 @@
 							<span>Show Placeholders</span>
 							<div class="clear"></div>
 
-							<?$checked = (isset($settings->showNullNodes)&&$settings->showNullNodes ? 'checked="checked" ' : '');?>
+							<?$checked = (!isset($settings->showNullNodes)||$settings->showNullNodes ? 'checked="checked" ' : '');?>
 							<input type="radio"
 									class="floatLeft"
 									name="showNullNodes"
@@ -85,7 +203,7 @@
 									<?=$checked?> />
 							<label for="showNullNodes_1">Yes</label>
 							<div class="clear"></div>
-							<?$checked = (!isset($settings->showNullNodes)||!$settings->showNullNodes ? 'checked="checked" ' : '');?>
+							<?$checked = (isset($settings->showNullNodes)&&!$settings->showNullNodes ? 'checked="checked" ' : '');?>
 							<input type="radio"
 									class="floatLeft"
 									name="showNullNodes"
@@ -132,7 +250,7 @@
 					<label onclick="$('languageChoice').addClassName('nxj_selectOpen'); Event.stop(event);">Target Language</label>
 					<div class="clear"></div>
 
-					<?php echo Nxj_UI::selectbox(array(
+					<?=Nxj_UI::selectbox(array(
 						'id'			=> 'languageChoice'
 						,'float'		=> 'left'
 						,'width'		=> 200
@@ -146,7 +264,7 @@
 					));?>
 				</div>
 
-				<a id="generateButton" class="nxj_button nxj_cssButton" href="javascript:void(0);">Generate Code</a>
+				<a id="generateButton" class="nxj_button nxj_cssButton green" href="javascript:void(0);">Generate Code</a>
 
 				<div id="controlsToggle" title="Show/Hide Controls">
 					<div></div>
@@ -188,10 +306,10 @@
 		</div>
 	</div>
 
-	<script src="static/js/prototype.js"></script>
-	<script src="static/js/scriptaculous.js"></script>
-	<script src="static/js/ui.js"></script>
-	<script src="static/js/adhoc.js"></script>
-	<script src="static/js/prism.js" data-manual></script>
+	<script src="//static.harveyserv.ath.cx/adhoc/js/prototype.js"></script>
+	<script src="//static.harveyserv.ath.cx/adhoc/js/scriptaculous.js"></script>
+	<script src="//static.harveyserv.ath.cx/adhoc/js/ui.js"></script>
+	<script src="//static.harveyserv.ath.cx/adhoc/js/prism.js" data-manual></script>
+	<script src="adhoc.js"></script>
 </body>
 </html>
