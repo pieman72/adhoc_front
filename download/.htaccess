@@ -1,0 +1,7 @@
+# No direct access to any files except index.php
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /adhoc_demo/download/
+    RewriteRule ^index\.php$ - [L]
+    RewriteRule . /adhoc_demo/download/index.php [L,R=302]
+</IfModule>

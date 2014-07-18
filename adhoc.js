@@ -39,6 +39,7 @@ Event.observe(window, 'load', function(){
 		,colorScheme: 'light'
 		,showNullNodes: true
 		,labelConnectors: 1
+		,projectId: 0
 		,projectName: 'New Project'
 		,username: null
 		,password: null
@@ -1331,6 +1332,7 @@ Event.observe(window, 'load', function(){
 				// Determine whether serialization needs to be deep or shallow
 				var serializeDeep = false;
 				switch(action){
+				case 'package':
 				case 'rename':
 				case 'move':
 					break;
@@ -1356,6 +1358,9 @@ Event.observe(window, 'load', function(){
 
 				// Move up the history index
 				++adhoc.history.index;
+
+				// Activate the 'save' button if user is logged in
+				if(adhoc.setting('username')) $('savePackageButton').removeClassName('disabled');
 			}
 			,undo: function(){
 				// Get the item to be undone unless there are none
@@ -1392,6 +1397,16 @@ Event.observe(window, 'load', function(){
 					adhoc.refreshRender();
 					break;
 
+				// Undo a package change
+				case 'package':
+					adhoc.restoreNode(adhoc.allNodes[item.parentId], item.serial);
+					var newP = adhoc.allNodes[item.parentId].package;
+					adhoc.allNodes[item.parentId].package = item.target;
+					adhoc.updatePackageName(adhoc.allNodes[item.parentId], item.target, newP);
+					$('projectName').value = adhoc.allNodes[item.parentId].package;
+					adhoc.refreshRender();
+					break;
+
 				// Undo a rename
 				case 'rename':
 				// Undo a deletion
@@ -1401,6 +1416,9 @@ Event.observe(window, 'load', function(){
 					adhoc.restoreNode(adhoc.allNodes[item.parentId], item.serial);
 					adhoc.refreshRender();
 				}
+
+				// Activate the 'save' button if user is logged in
+				if(adhoc.setting('username')) $('savePackageButton').removeClassName('disabled');
 
 				// If the next item is bound to this one, do it as well
 				if(item.bind) adhoc.history.undo();
@@ -1438,6 +1456,13 @@ Event.observe(window, 'load', function(){
 					adhoc.refreshRender();
 					break;
 
+				// Redo a package change
+				case 'package':
+					adhoc.updatePackageName(adhoc.allNodes[item.parentId], adhoc.allNodes[item.parentId].package, item.target);
+					$('projectName').value = item.target;
+					adhoc.refreshRender();
+					break;
+
 				// Redo a deletion
 				case 'delete':
 					// Edge cases
@@ -1459,6 +1484,9 @@ Event.observe(window, 'load', function(){
 					adhoc.refreshRender();
 				}
 
+				// Activate the 'save' button if user is logged in
+				if(adhoc.setting('username')) $('savePackageButton').removeClassName('disabled');
+
 				// If the next item is bound to this one, do it as well
 				++adhoc.history.index;
 				if(adhoc.history.index < adhoc.history.history.length
@@ -1475,27 +1503,21 @@ Event.observe(window, 'load', function(){
 			var settingsJSON = document.cookie.match(/adhocSettings=([^;]*)/);
 			var loadedSettings = decodeURIComponent(settingsJSON[1]).evalJSON();
 			for(var i in loadedSettings){
+				if(i == 'projectName') continue;
 				adhoc.setting(i, loadedSettings[i]);
 			}
 		}else{
 			document.cookie = 'adhocSettings='+encodeURIComponent(Object.toJSON(adhoc.settings))+';path=/adhoc_demo/';
 		}
 
-		// Activate package name input
-		$('projectName').observe('focus', function(){
-			adhoc.promptValue('Rename This Package', adhoc.validatePackageName, false, function(val){
-				$('projectName').value = val;
-				var oldPackage = adhoc.setting('projectName', val);
-				adhoc.updatePackageName(adhoc.rootNode, oldPackage, val);
-			});
-		});
-
 		// Activate new package button
 		$('newPackageButton').observe('click', function(){
 			adhoc.promptFlag('New Package: Are you sure?', ['Yes','No'], function(val){
 				if(val == 1) return;
+				adhoc.setting('projectId', 0);
 				adhoc.setting('projectName', 'New Project');
 				$('projectName').value = adhoc.setting('projectName');
+				$('savePackageButton').addClassName('disabled');
 				adhoc.selectedNode = null;
 				adhoc.display_scale = 1.0;
 				adhoc.display_x = 0;
@@ -1531,6 +1553,26 @@ Event.observe(window, 'load', function(){
 				$('projectLightbox').hide();
 				adhoc.loadProject(this.getAttribute('data-value'));
 			});
+		});
+
+		// Activate package name input
+		$('projectName').observe('focus', function(){
+			adhoc.promptValue('Rename This Package', adhoc.validatePackageName, false, function(val){
+				var oldPackage = adhoc.setting('projectName');
+				if(oldPackage == val) return;
+				adhoc.history.record('package', val, adhoc.rootNode);
+				adhoc.updatePackageName(adhoc.rootNode, oldPackage, val);
+				$('projectName').value = val;
+				adhoc.setting('projectName', val);
+				adhoc.refreshRender();
+			});
+		});
+
+		// Activate save package button
+		$('savePackageButton').observe('click', function(){
+			// No action if disabled, otherwise save
+			if($(this).hasClassName('disabled')) return;
+			adhoc.saveProject();
 		});
 
 		// Activate connector label toggles
@@ -2016,37 +2058,52 @@ Event.observe(window, 'load', function(){
 
 			// (CTRL+a) select generated code
 			case 65:
-				if(!adhoc.alternateKeys || !$('output').visible()) break;
-				Event.stop(e);
-				adhoc.selectText($('generatedCode'));
+				if(adhoc.alternateKeys){ Event.stop(e);
+					if($('output').visible()) adhoc.selectText($('generatedCode'));
+				}
+				break;
 
 			// (CTRL+k) Toggle the debugger
 			case 75:
-				if(adhoc.alternateKeys){
+				if(adhoc.alternateKeys){ Event.stop(e);
 					adhoc.setting('dbg', !adhoc.setting('dbg'));
 					adhoc.refreshRender();
 				}
 				break;
 
-			// (CTRL+m) Test unserialize
-			case 77:
-				adhoc.loadProject(1);
+			// (CTRL+l) Load a file
+			case 76:
+				if(adhoc.alternateKeys){ Event.stop(e);
+					$('projectLightbox').show();
+				}
+				break;
+
+			// (CTRL+s) Save a file
+			case 83:
+				if(adhoc.alternateKeys){ Event.stop(e);
+					adhoc.saveProject();
+				}
 				break;
 
 			// (CTRL+y) Redo
 			case 89:
-				if(adhoc.alternateKeys) adhoc.history.redo();
+				if(adhoc.alternateKeys){ Event.stop(e);
+					adhoc.history.redo();
+				}
 				break;
 
 			// (CTRL+z) Undo
 			case 90:
-				if(adhoc.alternateKeys) adhoc.history.undo();
+				if(adhoc.alternateKeys){ Event.stop(e);
+					adhoc.history.undo();
+				}
 				break;
 
 			// Do nothing if the key is unknown
 			default:
 				break;
 			}
+			return false;
 		}
 		// Handle key up
 		var keyUpFunc = function(e){
@@ -2106,25 +2163,27 @@ Event.observe(window, 'load', function(){
 			adhoc.refreshRender();
 		});
 
-		// Open an existing project or start a new one
-// TODO: Load an old project or initialize a new one with it's root action
-adhoc.rootNode = adhoc.createNode(
-	null
-	,null
-	,null
-	,adhoc.nodeTypes.ACTION
-	,adhoc.nodeWhich.ACTION_DEFIN
-	,adhoc.nodeChildType.STATEMENT
-	,null
-	,'Print 99 Bottles'
-	,null
-);
+		// Create a new root node
+		adhoc.rootNode = adhoc.createNode(
+			null
+			,null
+			,null
+			,adhoc.nodeTypes.ACTION
+			,adhoc.nodeWhich.ACTION_DEFIN
+			,adhoc.nodeChildType.STATEMENT
+			,null
+			,'New Action'
+			,null
+		);
 
 		// Initialize the history manager
 		adhoc.resetHistory();
 
 		// Draw the initial canvas
 		adhoc.refreshRender();
+
+		// Bind to the window if debug mode is on
+		if(adhoc.setting('dbg')) window.adhoc = adhoc;
 	}
 
 	// Generate the next available node ID
@@ -3350,17 +3409,46 @@ adhoc.rootNode = adhoc.createNode(
 		return newNode;
 	}
 
+	// Save a package to storage
+	adhoc.saveProject = function(){
+		// Call save from Ajax
+		new Ajax.Request('save/', {
+			parameters: {
+				binary: adhoc.serialize(adhoc.rootNode)
+				,projectid: adhoc.setting('projectId')
+				,projectname: adhoc.setting('projectName')
+			}
+			,onFailure: function(t){
+				adhoc.error(t.responseText);
+			}
+			,onSuccess: function(t){
+				// Disable the button until a change is made
+				adhoc.setting('projectId', t.responseText);
+				$('savePackageButton').addClassName('disabled');
+			}
+		});
+	}
 	// Load a package from storage
 	adhoc.loadProject = function(projectId){
-		adhoc.rootNode = null;
-		adhoc.lastId = 0;
-		adhoc.allNodes = [];
 		new Ajax.Request('load/', {
 			parameters: {
 				projectid: projectId
 			}
 			,onSuccess: function(t){
+				adhoc.selectedNode = null;
+				adhoc.display_scale = 1.0;
+				adhoc.display_x = 0;
+				adhoc.display_y = 0;
+				adhoc.lastId = 0;
+				adhoc.registeredActions = [];
+				adhoc.allNodes = [];
+				adhoc.rootNode = null;
 				adhoc.rootNode = adhoc.unserialize(t.responseText);
+				adhoc.setting('projectId', projectId);
+				adhoc.setting('projectName', adhoc.rootNode.package);
+				$('projectName').value = adhoc.setting('projectName');
+				$('savePackageButton').addClassName('disabled');
+				adhoc.resetHistory();
 				adhoc.refreshRender();
 			}
 			,onFailure: function(t){

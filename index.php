@@ -123,7 +123,7 @@ if(!count($errors) && $_SESSION['username']){
 		WHERE
 			u.username = ?
 		ORDER BY
-			p.datetime_updated; ")){
+			p.datetime_updated DESC; ")){
 		$errors[] = "Could not prepare database statement: ".$dbConn->error;
 	}
 	if(!count($errors) && !mysqli_stmt_bind_param($query, 's'
@@ -178,7 +178,6 @@ if(!count($errors) && $_SESSION['username']){
 			<?$projectOptions[] = (object) array(
 				'value'		=> $oneProject->id
 				,'display'	=> "<span class=\"projectOption\">".$oneProject->project_name."</span><span class=\"projectDate\">".Nxj_UI::timeAgo($oneProject->datetime_updated)."</span>"
-				,'default'	=> !$i
 			);?>
 		<?}?>
 		<?$projectSelect = Nxj_UI::selectbox(array(
@@ -186,12 +185,12 @@ if(!count($errors) && $_SESSION['username']){
 			,'width'        => 370
 			,'zindex'       => 1
 			,'options'      => $projectOptions
+			,'defaultText'	=> '(Select a Project)'
 		));?>
 		<?=Nxj_UI::lightbox(array(
 			'id'            => 'projectLightbox'
 			,'title'		=> 'Load Saved Project'
 			,'content'      => "<br/>$projectSelect"
-			,'visible'		=> count($projects)
 		))?>
 
 		<div id="controls" class="collapsed">
@@ -215,7 +214,7 @@ if(!count($errors) && $_SESSION['username']){
 								Load
 								<?if(!isset($settings->username)){?>
 									<?=Nxj_UI::tooltip(array(
-										'id'            => 'saveTip'
+										'id'            => 'loadTip'
 										,'direction'    => 'right'
 										,'width'		=> 161
 										,'height'		=> 40
@@ -228,10 +227,10 @@ if(!count($errors) && $_SESSION['username']){
 							<label for="projectName">Package Name</label>
 							<div class="clear"></div>
 
-							<input type="text" id="projectName" class="nxj_input" value="My Project" style="width:142px;"/>
+							<input type="text" id="projectName" class="nxj_input" value="New Project" style="width:142px;"/>
 							<div class="clear" style="height:10px;"></div>
 
-							<span id="savePackageButton" class="nxj_button nxj_cssButton<?=(isset($settings->username) ? '' : ' disabled')?>" style="position:relative;">
+							<span id="savePackageButton" class="nxj_button nxj_cssButton disabled" style="position:relative;">
 								Save
 								<?if(!isset($settings->username)){?>
 									<?=Nxj_UI::tooltip(array(

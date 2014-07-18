@@ -91,4 +91,7 @@ if(!count($errors)){
 }
 
 // Handle any errors
-if(count($errors)) echo implode('<br/>\n', $errors);
+if(count($errors)){
+	header('HTTP/1.0 400 Bad Request');
+	echo implode('<br/>\n', $errors);
+}
