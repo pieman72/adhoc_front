@@ -1585,7 +1585,7 @@ Event.observe(window, 'load', function(){
 						erMsg = erMsg.replace(erRxp, '');
 						adhoc.message(erStatus, erMsg);
 
-// TODO: highlight results.nodeId, if present
+						// TODO: highlight results.nodeId, if present
 
 						// If the errors are fatal, return;
 						if(erStatus == 'Error') return;
@@ -1855,9 +1855,9 @@ Event.observe(window, 'load', function(){
 					case adhoc.nodeWhich.LITERAL_HASH:
 					case adhoc.nodeWhich.LITERAL_STRCT:
 						adhoc.deactivateAllTools();
-// TODO: Prompt for literal value
-adhoc.message('This type of literal is not yet implemented'); break;
-adhoc.createNode(null, prnt, repl, type, which, childType);
+						// TODO: Prompt for literal value
+						adhoc.message('This type of literal is not yet implemented'); break;
+						adhoc.createNode(null, prnt, repl, type, which, childType);
 						break;
 
 					default:
@@ -2561,7 +2561,7 @@ adhoc.rootNode = adhoc.createNode(
 				n.height = 100;
 
 				// Darw the items
-// TODO: draw shorthand for array items
+				// TODO: draw shorthand for array items
 
 				// Draw the brackets
 				ctx.strokeStyle = '#000000';
@@ -2604,11 +2604,11 @@ adhoc.rootNode = adhoc.createNode(
 				break;
 
 			case adhoc.nodeWhich.LITERAL_HASH:
-// TODO: render a literal hash
+				// TODO: render a literal hash
 				break;
 
 			case adhoc.nodeWhich.LITERAL_STRCT:
-// TODO: render a literal struct
+				// TODO: render a literal struct
 				break;
 
 			}

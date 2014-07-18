@@ -75,12 +75,6 @@ if(!count($errors)
 	// Add password back to settings (if requested) and pass settings in the cookie
 	if(!count($errors)){
 		$_SESSION['username'] = $username;
-		if($settings->remember){
-			$settingsTemp = json_decode($settingsTemp);
-			$settingsTemp->password = sha1($_POST['password']);
-			$settingsTemp = json_encode($settingsTemp);
-		}
-		$settings = $settingsTemp;
 		setcookie(
 			'adhocSettings'
 			,$settingsTemp
@@ -88,7 +82,25 @@ if(!count($errors)
 			,'/adhoc_demo/'
 			,''
 		);
+		if($settings->remember){
+			$settingsTemp = json_decode($settingsTemp);
+			$settingsTemp->password = $settings->password;
+			$settingsTemp = json_encode($settingsTemp);
+		}
+		$settings = json_decode($settingsTemp);
 	}
+}
+
+// If the user was not loaded, clear the settings
+if(!$_SESSION['username']){
+	setcookie(
+		'adhocSettings'
+		,''
+		,strtotime('+1 year')
+		,'/adhoc_demo/'
+		,''
+	);
+	$settings = (object) array();
 }
 
 // If the user was found, try to load their projects

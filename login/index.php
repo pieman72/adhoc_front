@@ -106,6 +106,7 @@ if(isset($_POST['submitted'])){
 			,''
 		);
 		header('Location: /adhoc_demo/');
+		exit;
 	}
 }?><!DOCTYPE html>
 <html>
