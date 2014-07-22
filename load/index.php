@@ -1,4 +1,4 @@
-<?  // Load application config
+<? // Load application config
 $conf = parse_ini_file('../config.ini');
 $host = $_SERVER['HTTP_HOST'];
 $server = $_SERVER['SERVER_ADDR'];
@@ -22,12 +22,20 @@ if(session_status()==PHP_SESSION_NONE){
     );
     session_start();
 }
+if(!isset($_POST['xsrftoken'])
+		|| !isset($_SESSION['xsrftoken'])
+		|| $_POST['xsrftoken']!=$_SESSION['xsrftoken']
+	){
+	$errors[] = "XSRF Token mismatch. If this persists, try logging out and back in.";
+}
 
 // Initialize a DB connection
-$dbConn = mysqli_connect($conf['mysql_host'], $conf['mysql_user'], $conf['mysql_pass'], $conf['mysql_db']);
-if($dbConn->error){
-	$errors[] = $dbConn->error;
-	$dbConn = null;
+if(!count($errors)){
+	$dbConn = mysqli_connect($conf['mysql_host'], $conf['mysql_user'], $conf['mysql_pass'], $conf['mysql_db']);
+	if($dbConn->error){
+		$errors[] = $dbConn->error;
+		$dbConn = null;
+	}
 }
 
 // If no project id provided, throw an error

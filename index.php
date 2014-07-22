@@ -101,6 +101,10 @@ if(!$_SESSION['username']){
 		,''
 	);
 	$settings = (object) array();
+
+// If the username was loaded, set a token for XSRF
+}else if(!isset($_SESSION['xsrftoken'])){
+	$_SESSION['xsrftoken'] = sha1(rand().$_SESSION['username']);
 }
 
 // If the user was found, try to load their projects
@@ -393,6 +397,8 @@ if(!count($errors) && $_SESSION['username']){
 			<pre><code id="generatedCode"></code></pre>
 		</div>
 	</div>
+
+	<div id="xsrfToken"><?=(isset($_SESSION['xsrftoken']) ? $_SESSION['xsrftoken'] : '')?></div>
 
 	<script src="//static.harveyserv.ath.cx/adhoc/js/prototype.js"></script>
 	<script src="//static.harveyserv.ath.cx/adhoc/js/scriptaculous.js"></script>

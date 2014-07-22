@@ -3384,6 +3384,7 @@ Event.observe(window, 'load', function(){
 				binary: adhoc.serialize(adhoc.rootNode)
 				,projectid: adhoc.setting('projectId')
 				,projectname: adhoc.setting('projectName')
+				,xsrftoken: $('xsrfToken').innerHTML
 			}
 			,onFailure: function(t){
 				adhoc.error(t.responseText);
@@ -3400,6 +3401,7 @@ Event.observe(window, 'load', function(){
 		new Ajax.Request('load/', {
 			parameters: {
 				projectid: projectId
+				,xsrftoken: $('xsrfToken').innerHTML
 			}
 			,onSuccess: function(t){
 				adhoc.selectedNode = null;
@@ -3431,6 +3433,7 @@ Event.observe(window, 'load', function(){
 				,language: $F('languageChoice_input')
 				,executable: 1
 				,dbg: (adhoc.setting('dbg') ? 1 : 0)
+				,xsrftoken: $('xsrfToken').innerHTML
 			}
 			,onFailure: function(){
 				adhoc.error("Unable to send request to server. Make sure you're online.");
