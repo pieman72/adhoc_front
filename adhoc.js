@@ -2183,6 +2183,7 @@ Event.observe(window, 'load', function(){
 			,x: 0
 			,y: 0
 			,highlighted: false
+			,error: null
 			,detached: false
 			,moveClick: null
 			,moveTarget: null
@@ -2360,6 +2361,7 @@ Event.observe(window, 'load', function(){
 			if(c.width > maxWidth) maxWidth = c.width;
 		}
 
+		// Rest canvas parameters
 		var ctx = adhoc.canvas.getContext('2d');
 		var nodeColor;
 		ctx.lineWidth = (6.0*adhoc.display_scale)<<0;
@@ -2369,6 +2371,7 @@ Event.observe(window, 'load', function(){
 			ctx.setLineDash([3*adhoc.display_scale, 3*adhoc.display_scale]);
 		}
 
+		// Calculate drag-and-drop offset
 		n.x += n.movePos.x;
 		n.y += n.movePos.y;
 
@@ -2737,6 +2740,18 @@ Event.observe(window, 'load', function(){
 		// Reset line dashes
 		ctx.setLineDash([]);
 
+		// Handle node error messages
+		if(n.error){
+			ctx.lineWidth = (6.0*adhoc.display_scale)<<0;
+			ctx.strokeStyle = adhoc.setting('colorScheme')=='dark' ? '#FF0000' : '#FF0000';
+			ctx.strokeRect(
+				(n.x-(n.width/2.0)-7) * adhoc.display_scale - adhoc.display_x
+				,(n.y-(n.height/2.0)-7) * adhoc.display_scale - adhoc.display_y
+				,(n.width+14) * adhoc.display_scale
+				,(n.height+14) * adhoc.display_scale
+			);
+		}
+
 		// Handle node highlighting
 		if(n.highlighted){
 			ctx.lineWidth = (6.0*adhoc.display_scale)<<0;
@@ -2901,6 +2916,11 @@ Event.observe(window, 'load', function(){
 		if(adhoc.movingNode.moveTarget) adhoc.movingNode.moveTarget.highlighted = true;
 		adhoc.refreshRender();
 	}
+	// Pans the canvas to the specified node
+	adhoc.snapToNode = function(n){
+		adhoc.display_x = (n.x + n.width/2.0)*adhoc.display_scale - parseInt(adhoc.canvas.getAttribute('width'))/2.0;
+		adhoc.display_y = (n.y + n.height/2.0)*adhoc.display_scale - parseInt(adhoc.canvas.getAttribute('height'))/2.0;
+	}
 
 	// Generate a function to find variables by name in a given scope
 	adhoc.genScopeSearch = function(scope, exact){
@@ -2986,6 +3006,12 @@ Event.observe(window, 'load', function(){
 					&& prnt.children[i].childType==childType) return prnt.children[i];
 		}
 		return null;
+	}
+	// Clear error markings from a node and its children
+	adhoc.clearErrors = function(n){
+		if(!n) return;
+		n.error = null;
+		for(var i=0; i<n.children.length; ++i) adhoc.clearErrors(n.children[i]);
 	}
 
 	// Function to serialize a node and its children for binary
@@ -3458,6 +3484,7 @@ Event.observe(window, 'load', function(){
 	}
 	// Generate code from the current file
 	adhoc.generateCode = function(){
+		adhoc.clearErrors(adhoc.rootNode);
 		new Ajax.Request('generate/', {
 			parameters: {
 				binary: adhoc.serialize(adhoc.rootNode)
@@ -3480,11 +3507,17 @@ Event.observe(window, 'load', function(){
 					erMsg = erMsg.replace(erRxp, '');
 					adhoc.message(erStatus, erMsg);
 
-					// TODO: highlight results.nodeId, if present
+					// Highlight error nodes, if they exist
+					var errorNode = null;
+					if(results.nodeId && (errorNode=adhoc.allNodes[results.nodeId])){
+						errorNode.error = erMsg;
+						adhoc.snapToNode(errorNode);
+					}
 
 					// If the errors are fatal, return;
-					if(erStatus == 'Error') return;
+					if(erStatus == 'Error') return adhoc.refreshRender();
 				}
+				adhoc.refreshRender();
 
 				// Populate a download link
 				$('download_ext').setAttribute('value', results.ext);

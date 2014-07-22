@@ -398,7 +398,7 @@ if(!count($errors) && $_SESSION['username']){
 		</div>
 	</div>
 
-	<div id="xsrfToken"><?=(isset($_SESSION['xsrftoken']) ? $_SESSION['xsrftoken'] : '')?></div>
+	<div id="xsrfToken" style="display:none;"><?=(isset($_SESSION['xsrftoken']) ? $_SESSION['xsrftoken'] : '')?></div>
 
 	<script src="//static.harveyserv.ath.cx/adhoc/js/prototype.js"></script>
 	<script src="//static.harveyserv.ath.cx/adhoc/js/scriptaculous.js"></script>
