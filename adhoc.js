@@ -3390,8 +3390,39 @@ Event.observe(window, 'load', function(){
 				adhoc.error(t.responseText);
 			}
 			,onSuccess: function(t){
-				// Disable the button until a change is made
+				// Update the 'load' menu with any changes
 				adhoc.setting('projectId', t.responseText);
+				var projOpt = $$('#projectSelect .nxj_selectOption[data-value='+adhoc.setting('projectId')+']')
+				$$('#projectSelect .nxj_selectDisplay').each(function(display){
+					display.addClassName('default').update(display.getAttribute('placeholder'));
+				});
+
+				// The project is already in the menu
+				if(projOpt.length){
+					projOpt = projOpt[0];
+					projOpt.select('span').each(function(span){
+						if(span.hasClassName('projectOption')){
+							span.update(adhoc.setting('projectName'));
+						}else if(span.hasClassName('projectDate')){
+							span.update('Just now');
+						}
+					});
+				// It's a new project
+				}else{
+					projOpt = $(document.createElement('div'));
+					projOpt.addClassName('nxj_selectOption');
+					var span1 = $(document.createElement('div').addClassName('projectOption'));
+					var span2 = $(document.createElement('div').addClassName('projectDate'));
+					span1.update(adhoc.setting('projectName'));
+					span2.update('Just now');
+					projOpt.appendChild(span1);
+					projOpt.appendChild(span2);
+				}
+				projOpt.setAttribute('data-value', adhoc.setting('projectId'));
+				var inner = $$('#projectSelect .nxj_selectInner')[0];
+				inner.insertBefore(projOpt, inner.firstChild);
+
+				// Disable the 'save' button until a change is made
 				$('savePackageButton').addClassName('disabled');
 			}
 		});

@@ -190,7 +190,7 @@ class Nxj_UI {
 <div id=\"".$params['id']."\"
 		class=\"nxj_select".(isset($params['float']) ? ' float'.ucfirst($params['float']) : '').(isset($params['class']) ? ' '.$params['class'] : '')."\"
 		style=\"width:".($params['width']-2)."px;".(isset($params['zindex']) ? ' z-index:'.$params['zindex'].';' : '')."\">
-	<div class=\"nxj_selectDisplay default\">".(isset($params['defaultText']) ? $params['defaultText'] : '')."</div>
+	<div class=\"nxj_selectDisplay default\"".(isset($params['defaultText']) ? ' placeholder="'.$params['defaultText'].'"' : '').">".(isset($params['defaultText']) ? $params['defaultText'] : '')."</div>
 	<div class=\"nxj_selectArrow\"></div>
 	<div class=\"nxj_selectInner\">";
 
