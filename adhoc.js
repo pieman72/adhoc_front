@@ -1606,47 +1606,7 @@ Event.observe(window, 'load', function(){
 
 		// Activate the generate button
 		$('generateButton').observe('click', function(){
-			new Ajax.Request('generate/', {
-				parameters: {
-					binary: adhoc.serialize(adhoc.rootNode)
-					,language: $F('languageChoice_input')
-					,executable: 1
-					,dbg: (adhoc.setting('dbg') ? 1 : 0)
-				}
-				,onFailure: function(){
-					adhoc.error("Unable to send request to server. Make sure you're online.");
-				}
-				,onSuccess: function(t){
-					// Parse out the results and display any errors
-					var results = t.responseText.evalJSON();
-					if(results.error.length){
-						// Get the error data
-						var erRxp = /\u001B\[([0-9]+;)*[0-9]+m((Error)|(Warning)):\u001B\[([0-9]+;)*[0-9]+m /g;
-						var erMsg = results.error.join('<br/>');
-						var erStatus = erMsg.match(erRxp)[0].match(/Error|Warning/)[0];
-						erMsg = erMsg.replace(erRxp, '');
-						adhoc.message(erStatus, erMsg);
-
-						// TODO: highlight results.nodeId, if present
-
-						// If the errors are fatal, return;
-						if(erStatus == 'Error') return;
-					}
-
-					// Populate a download link
-					$('download_ext').setAttribute('value', results.ext);
-					$('download_hash').setAttribute('value', results.hash);
-					$('download_rename').setAttribute('value', adhoc.setting('projectName'));
-
-					// Render and highlight the generated code itself
-					$('generatedCode').update(results.code);
-					$('generatedCode').addClassName(
-						'language-'+adhoc.languageHighlightClasses[$F('languageChoice_input')]
-					);
-					Prism.highlightElement($('generatedCode'));
-					$('output').show();
-				}
-			});
+			adhoc.generateCode();
 		});
 
 		// Activate the top control panel toggle
@@ -2060,6 +2020,13 @@ Event.observe(window, 'load', function(){
 			case 65:
 				if(adhoc.alternateKeys){ Event.stop(e);
 					if($('output').visible()) adhoc.selectText($('generatedCode'));
+				}
+				break;
+
+			// (CTRL+g) generate code!
+			case 71:
+				if(adhoc.alternateKeys){ Event.stop(e);
+					adhoc.generateCode();
 				}
 				break;
 
@@ -2994,7 +2961,7 @@ Event.observe(window, 'load', function(){
 			if((exact && n==part) || (!exact && n.indexOf(part)===0)){
 				out.push({
 					value: n
-					,reminder: 'system'
+					,reminder: 'System'
 					,hidden: null
 				});
 			}
@@ -3453,6 +3420,50 @@ Event.observe(window, 'load', function(){
 			}
 			,onFailure: function(t){
 				adhoc.error(t.responseText);
+			}
+		});
+	}
+	// Generate code from the current file
+	adhoc.generateCode = function(){
+		new Ajax.Request('generate/', {
+			parameters: {
+				binary: adhoc.serialize(adhoc.rootNode)
+				,language: $F('languageChoice_input')
+				,executable: 1
+				,dbg: (adhoc.setting('dbg') ? 1 : 0)
+			}
+			,onFailure: function(){
+				adhoc.error("Unable to send request to server. Make sure you're online.");
+			}
+			,onSuccess: function(t){
+				// Parse out the results and display any errors
+				var results = t.responseText.evalJSON();
+				if(results.error.length){
+					// Get the error data
+					var erRxp = /\u001B\[([0-9]+;)*[0-9]+m((Error)|(Warning)):\u001B\[([0-9]+;)*[0-9]+m /g;
+					var erMsg = results.error.join('<br/>');
+					var erStatus = erMsg.match(erRxp)[0].match(/Error|Warning/)[0];
+					erMsg = erMsg.replace(erRxp, '');
+					adhoc.message(erStatus, erMsg);
+
+					// TODO: highlight results.nodeId, if present
+
+					// If the errors are fatal, return;
+					if(erStatus == 'Error') return;
+				}
+
+				// Populate a download link
+				$('download_ext').setAttribute('value', results.ext);
+				$('download_hash').setAttribute('value', results.hash);
+				$('download_rename').setAttribute('value', adhoc.setting('projectName'));
+
+				// Render and highlight the generated code itself
+				$('generatedCode').update(results.code);
+				$('generatedCode').addClassName(
+					'language-'+adhoc.languageHighlightClasses[$F('languageChoice_input')]
+				);
+				Prism.highlightElement($('generatedCode'));
+				$('output').show();
 			}
 		});
 	}

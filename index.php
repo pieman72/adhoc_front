@@ -346,11 +346,8 @@ if(!count($errors) && $_SESSION['username']){
 						,'float'		=> 'left'
 						,'width'		=> 200
 						,'options'		=> array(
-							(object) array(
-								'value'		=> 'c'
-								,'display'	=> 'C (ANSI C99)'
-								,'default'	=> true
-							)
+							(object) array('value' => 'c', 'display' => 'C (ANSI C99)', 'default' => true)
+							,(object) array('value' => 'javascript', 'display' => 'javascript')
 						)
 					));?>
 				</div>
