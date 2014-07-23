@@ -2894,8 +2894,8 @@ Event.observe(window, 'load', function(){
 		// One final position update
 		adhoc.moveDetachedNode(click);
 
-		// If there's a target and it's not the current parent, attach to target
-		if(adhoc.movingNode.moveTarget != adhoc.movingNode.parent){
+		// If there's a move target
+		if(adhoc.movingNode.moveTarget){
 			// Function to do the move if child types check out
 			function moveNodeWithType(childType){
 				adhoc.history.record(
@@ -2948,9 +2948,23 @@ Event.observe(window, 'load', function(){
 
 			// If multiple roles available, prompt for which role will be filled
 			}else{
+				// Prompt for which child-type to use
 				adhoc.promptFlag('Select a role for the new node:', roleOptionNames, function(val){
 					moveNodeWithType(roleOptions[val]);
+
+					// End the attached state
+					adhoc.movingNode.moveTarget.highlighted = false;
+					adhoc.movingNode.moveTarget = null;
+					adhoc.movingNode.detached = false;
+					adhoc.movingNode.moveClick = null;
+					adhoc.movingNode.movePos = {
+						x: 0
+						,y: 0
+					};
+					adhoc.movingNode = null;
+					adhoc.refreshRender();
 				});
+				return;
 			}
 		}
 
