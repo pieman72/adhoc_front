@@ -375,6 +375,7 @@ label {
 #zoomIn .icon { background-position:-26px 0; }
 #zoomOut .icon { background-position:0 0; }
 #zoomPrcent {
+	border-right:0;
 	line-height:26px;
 	width:45px;
 	}

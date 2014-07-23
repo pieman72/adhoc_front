@@ -2437,6 +2437,7 @@ Event.observe(window, 'load', function(){
 		n.x += n.movePos.x;
 		n.y += n.movePos.y;
 
+		// Display different node types
 		switch(n.nodeType){
 		case adhoc.nodeTypes.TYPE_NULL:
 			nodeColor = '#989898';
@@ -2615,13 +2616,13 @@ Event.observe(window, 'load', function(){
 				var size = ctx.measureText(title);
 				size.height = 20;
 				n.width = size.width + 30;
-				n.height = size.height + 50;
+				n.height = size.height + 80;
 
 				// Print label text
 				ctx.fillText(
 					title
-					,(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
-					,(n.y+(n.height/2.0)-3) * adhoc.display_scale - adhoc.display_y
+					,(n.x-(n.width/2.0)+15) * adhoc.display_scale - adhoc.display_x
+					,(n.y+(n.height/2.0)-40) * adhoc.display_scale - adhoc.display_y
 				);
 				break;
 
@@ -2636,13 +2637,13 @@ Event.observe(window, 'load', function(){
 				var size = ctx.measureText(title);
 				size.height = 20;
 				n.width = size.width + 30;
-				n.height = size.height + 50;
+				n.height = size.height + 80;
 
 				// Print label text
 				ctx.fillText(
 					title
-					,(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
-					,(n.y+(n.height/2.0)-3) * adhoc.display_scale - adhoc.display_y
+					,(n.x-(n.width/2.0)+15) * adhoc.display_scale - adhoc.display_x
+					,(n.y+(n.height/2.0)-50) * adhoc.display_scale - adhoc.display_y
 				);
 				break;
 
