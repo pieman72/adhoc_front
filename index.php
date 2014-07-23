@@ -374,11 +374,21 @@ if(!count($errors) && $_SESSION['username']){
 
 			<canvas id="canvas" class="floatLeft"></canvas>
 
-			<div id="viewControls">
-				<div id="zoomIn" class="zoomHolder">
+			<div id="histControls">
+				<div id="histBack" class="histHolder disabled" title="Undo">
 					<div class="icon"></div>
 				</div>
-				<div id="zoomOut" class="zoomHolder">
+				<div id="histFwd" class="histHolder disabled" title="Redo">
+					<div class="icon"></div>
+				</div>
+			</div>
+
+			<div id="zoomControls">
+				<div id="zoomIn" class="zoomHolder" title="Zoom In">
+					<div class="icon"></div>
+				</div>
+				<div id="zoomPrcent" class="zoomHolder">100</div>
+				<div id="zoomOut" class="zoomHolder" title="Zoom Out">
 					<div class="icon"></div>
 				</div>
 			</div>

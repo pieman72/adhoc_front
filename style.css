@@ -310,43 +310,80 @@ label {
 #canvas {
 	}
 
-#viewControls {
+#histControls {
+	bottom:10px;
+	position:absolute;
+	right:170px;
+	}
+#zoomControls {
 	bottom:10px;
 	position:absolute;
 	right:10px;
 	}
+.histHolder,
 .zoomHolder {
 	border:1px solid #BBBBBB;
 	cursor:pointer;
 	float:left;
 	padding:5px 8px;
 	}
+.histHolder:hover,
 .zoomHolder:hover {
 	background-color:#5FD7FF;
 	}
+.histHolder:active,
 .zoomHolder:active {
 	background-color:#7FFF00;
 	}
+#histBack.disabled:hover,
+#histFwd.disabled:hover,
+#zoomIn.disabled:hover,
+#zoomOut.disabled:hover {
+	background:none;
+	}
+.dark .histHolder,
 .dark .zoomHolder {
 	border-color:#303030;
 	}
+#histBack,
 #zoomIn {
 	border-radius:15px 0 0 15px;
 	border-right:0;
 	}
+#histFwd,
 #zoomOut {
 	border-radius:0 15px 15px 0;
+	}
+#histBack.disabled .icon,
+#histFwd.disabled .icon,
+#zoomIn.disabled .icon,
+#zoomOut.disabled .icon {
+	opacity:0.4;
+	}
+.histHolder .icon {
+	background:url('//static.harveyserv.ath.cx/adhoc/img/hist.png') no-repeat;
+	height:26px;
+	width:26px;
 	}
 .zoomHolder .icon {
 	background:url('//static.harveyserv.ath.cx/adhoc/img/zoom.png') no-repeat;
 	height:26px;
 	width:26px;
 	}
-#zoomIn .icon {
-	background-position:-26px 0;
+#histBack .icon { background-position:0 0; }
+#histFwd .icon { background-position:-26px 0; }
+#zoomIn .icon { background-position:-26px 0; }
+#zoomOut .icon { background-position:0 0; }
+#zoomPrcent {
+	line-height:26px;
+	width:45px;
 	}
-#zoomOut .icon {
-	background-position:0 0;
+#zoomPrcent:hover,
+#zoomPrcent:active {
+	background:none;
+	}
+#zoomPrcent:after {
+	content:"%";
 	}
 
 #output {

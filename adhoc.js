@@ -1361,11 +1361,19 @@ Event.observe(window, 'load', function(){
 
 				// Activate the 'save' button if user is logged in
 				if(adhoc.setting('username')) $('savePackageButton').removeClassName('disabled');
+
+				// Activate the undo button, and deactivate redo
+				$('histBack').removeClassName('disabled');
+				$('histFwd').addClassName('disabled');
 			}
 			,undo: function(){
 				// Get the item to be undone unless there are none
 				if(adhoc.history.index <= 0) return;
 				var item = adhoc.history.history[--adhoc.history.index];
+
+				// Activate the redo button, and if we've reached the oldest history item, deactivate undo
+				$('histFwd').removeClassName('disabled');
+				if(adhoc.history.index <= 0) $('histBack').addClassName('disabled');
 
 				// Undo different types of actions
 				switch(item.action){
@@ -1487,11 +1495,15 @@ Event.observe(window, 'load', function(){
 				// Activate the 'save' button if user is logged in
 				if(adhoc.setting('username')) $('savePackageButton').removeClassName('disabled');
 
-				// If the next item is bound to this one, do it as well
+				// Activate the undo button, and if we're at the newest history item, deactivate redo
 				++adhoc.history.index;
-				if(adhoc.history.index < adhoc.history.history.length
-						&& adhoc.history.history[adhoc.history.index].bind)
+				$('histBack').removeClassName('disabled');
+				if(adhoc.history.index == adhoc.history.history.length){
+					$('histFwd').addClassName('disabled');
+				// Otherwise, if the next item is bound to this one, do it as well
+				}else if(adhoc.history.history[adhoc.history.index].bind){
 					adhoc.history.redo();
+				}
 			}
 		};
 	}
@@ -2016,6 +2028,40 @@ Event.observe(window, 'load', function(){
 				adhoc.alternateKeys = true;
 				break;
 
+			// (ESC) close dialogs and deselect nodes
+			case Event.KEY_ESC:
+				$('theLightbox').hide();
+				$('projectLightbox').hide();
+				if(adhoc.selectedNode){
+					adhoc.selectedNode.selected = false;
+					adhoc.selectedNode = null;
+				}
+				adhoc.refreshRender();
+				break;
+
+			// (Enter) several behaviors
+			case Event.KEY_RETURN:
+				// Submit certain dialogs
+				if($('theLightbox').visible()){
+					// Submit prompt flag
+					var checkedRadio = false;
+					$$('#theLightbox input[name=lb_flag_opt]').each(function(radio){
+						if(radio.checked) checkedRadio = true;
+					});
+					if(checkedRadio){
+						$('lb_flag_select').click();
+						break;
+					}
+				}
+				break;
+
+			// (Up, Down, Left, Right) several behaviors
+			case Event.KEY_UP:
+			case Event.KEY_DOWN:
+			case Event.KEY_LEFT:
+			case Event.KEY_RIGHT:
+				break;
+
 			// (CTRL+a) select generated code
 			case 65:
 				if(adhoc.alternateKeys){ Event.stop(e);
@@ -2064,6 +2110,12 @@ Event.observe(window, 'load', function(){
 				if(adhoc.alternateKeys){ Event.stop(e);
 					adhoc.history.undo();
 				}
+				break;
+
+			// (`) Toggle control panel
+			case 192:
+				Event.stop(e);
+				$('controls').toggleClassName('collapsed');
 				break;
 
 			// Do nothing if the key is unknown
@@ -2122,11 +2174,17 @@ Event.observe(window, 'load', function(){
 
 		// Ready the zoom buttons
 		$('zoomIn').observe('click', function(){
-			adhoc.display_scale *= 1.2;
+			if($('zoomIn').hasClassName('disabled')) return;
+			$('zoomPrcent').update(((adhoc.display_scale *= 1.2)*100).toPrecision(3));
+			if(adhoc.display_scale > 8) $('zoomIn').addClassName('disabled');
+			$('zoomOut').removeClassName('disabled');
 			adhoc.refreshRender();
 		});
 		$('zoomOut').observe('click', function(){
-			adhoc.display_scale /= 1.2;
+			if($('zoomOut').hasClassName('disabled')) return;
+			$('zoomPrcent').update(((adhoc.display_scale /= 1.2)*100).toPrecision(3));
+			if(adhoc.display_scale < 0.12) $('zoomOut').addClassName('disabled');
+			$('zoomIn').removeClassName('disabled');
 			adhoc.refreshRender();
 		});
 
@@ -2151,6 +2209,10 @@ Event.observe(window, 'load', function(){
 
 		// Bind to the window if debug mode is on
 		if(adhoc.setting('dbg')) window.adhoc = adhoc;
+
+		// Ready the history buttons
+		$('histBack').observe('click', adhoc.history.undo);
+		$('histFwd').observe('click', adhoc.history.redo);
 	}
 
 	// Generate the next available node ID
