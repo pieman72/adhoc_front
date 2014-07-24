@@ -392,7 +392,7 @@ label {
 	}
 
 #output {
-	background:rgba(255,255,255,0.90);
+	background:url('//static.harveyserv.ath.cx/adhoc/img/code_bg_light.png') repeat #FFFFFF;
 	height:100%;
 	position:absolute;
 	right:0;
@@ -416,7 +416,7 @@ label {
 	background-position:0 -22px;
 	}
 #output .outputControls {
-	bottom:10px;
+	bottom:20px;
 	position:absolute;
 	right:10px;
 	}
