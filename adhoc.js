@@ -2343,7 +2343,7 @@ Event.observe(window, 'load', function(){
 			}
 
 			// Assign this variable to the appropriate scope as well
-			if(w == adhoc.nodeWhich.VARIABLE_ASIGN){
+			if(t == adhoc.nodeTypes.VARIABLE){
 				var searchFunc = adhoc.genScopeSearch(p, true);
 				if(!searchFunc(n).length){
 					var scope = p;
@@ -2352,6 +2352,7 @@ Event.observe(window, 'load', function(){
 						scope = scope.parent;
 					}
 					scope.scopeVars.push(newNode);
+					newNode.scope = scope;
 				}
 			}
 
@@ -3066,7 +3067,7 @@ Event.observe(window, 'load', function(){
 					if(n.indexOf(part)===0 && (!exact || n.length==part.length)){
 						out.push({
 							value: n
-							,reminder: myScope.name
+							,reminder: (myScope.which==adhoc.nodeWhich.CONTROL_LOOP ? '(Loop)' : myScope.name)
 							,hidden: myScope.scopeVars[i].id
 						});
 					}
