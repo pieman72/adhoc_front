@@ -209,7 +209,7 @@ if(!count($errors) && $_SESSION['username']){
 							Hello, guest. Would you like to <a href="login/">login</a> or <a href="register/">register</a>?
 						<?}?>
 					</div>
-					<div style="height:20px;" class="clear"></div>
+					<div style="height:15px;" class="clear"></div>
 
 					<div class="floatLeft">
 						<div class="floatLeft">

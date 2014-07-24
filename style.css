@@ -114,6 +114,10 @@ label {
 #controls label,
 #controls span {
 	float:left;
+	line-height:20px;
+	}
+#controls span.nxj_cssButton {
+	line-height:16px;
 	}
 .nxj_cssButton .nxj_tipContent {
 	font-size:14px;

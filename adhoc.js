@@ -1561,7 +1561,18 @@ Event.observe(window, 'load', function(){
 
 		// Activate load project options
 		$$('#projectSelect .nxj_selectOption').each(function(option){
-			$(option).observe('click', function(){
+			option.observe('mouseover', function(){
+				$$('#projectSelect .nxj_selectOption').each(function(otherOption){
+					otherOption.removeClassName('hovered');
+				});
+				option.addClassName('hovered');
+			});
+			option.observe('click', function(){
+				$$('#projectSelect .nxj_selectOption').each(function(otherOption){
+					otherOption.removeClassName('selected');
+					otherOption.removeClassName('hovered');
+				});
+				option.addClassName('selected');
 				$('projectLightbox').hide();
 				adhoc.loadProject(this.getAttribute('data-value'));
 			});
@@ -2030,6 +2041,7 @@ Event.observe(window, 'load', function(){
 
 			// (ESC) close dialogs and deselect nodes
 			case Event.KEY_ESC:
+				if(!$('theLightbox').visible()) $('output').hide();
 				$('theLightbox').hide();
 				$('projectLightbox').hide();
 				if(adhoc.selectedNode){
@@ -2042,7 +2054,12 @@ Event.observe(window, 'load', function(){
 			// (Enter) several behaviors
 			case Event.KEY_RETURN:
 				// Submit certain dialogs
-				if($('theLightbox').visible()){
+				if($('projectLightbox').visible()){
+					// Load the hovered project
+					$$('#projectSelect .nxj_selectOption.hovered').each(function(hoveredProject){
+						hoveredProject.click();
+					});
+				}else if($('theLightbox').visible()){
 					// Submit prompt flag
 					var checkedRadio = false;
 					$$('#theLightbox input[name=lb_flag_opt]').each(function(radio){
@@ -2060,6 +2077,38 @@ Event.observe(window, 'load', function(){
 			case Event.KEY_DOWN:
 			case Event.KEY_LEFT:
 			case Event.KEY_RIGHT:
+				// Create handles on things that can be scrolled
+				var theLightbox = $('theLightbox');
+				var projectSelect = $('projectSelect');
+
+				// Scroll through loadable projects
+				if($('projectLightbox').visible()){
+					if(!projectSelect.hasClassName('nxj_selectOpen')){
+						projectSelect.addClassName('nxj_selectOpen');
+						var projects = projectSelect.select('.nxj_selectOption');
+						if(projects.length) projects[0].addClassName('hovered');
+					}else{
+						var projects = projectSelect.select('.nxj_selectOption');
+						var hovered = projectSelect.select('.nxj_selectOption.hovered');
+						if(hovered.length){
+							switch(key){
+							case Event.KEY_DOWN:
+							case Event.KEY_RIGHT:
+								hovered[0].removeClassName('hovered');
+								projects[Math.min(projects.indexOf(hovered[0])+1,projects.length-1)].addClassName('hovered');
+								break;
+							case Event.KEY_UP:
+							case Event.KEY_LEFT:
+								hovered[0].removeClassName('hovered');
+								projects[Math.max(projects.indexOf(hovered[0])-1,0)].addClassName('hovered');
+								break;
+							}
+						}else{
+							if(projects.length) projects[0].addClassName('hovered');
+						}
+					}
+				}else if(theLightbox.visible()){
+				}
 				break;
 
 			// (CTRL+a) select generated code
@@ -3570,8 +3619,8 @@ Event.observe(window, 'load', function(){
 				,dbg: (adhoc.setting('dbg') ? 1 : 0)
 				,xsrftoken: $('xsrfToken').innerHTML
 			}
-			,onFailure: function(){
-				adhoc.error("Unable to send request to server. Make sure you're online.");
+			,onFailure: function(t){
+				adhoc.error("Request failed.\n\n"+t.responseText);
 			}
 			,onSuccess: function(t){
 				// Parse out the results and display any errors
