@@ -3671,9 +3671,7 @@ Event.observe(window, 'load', function(){
 
 				// Render and highlight the generated code itself
 				$('generatedCode').update(results.code);
-				$('generatedCode').addClassName(
-					'language-'+adhoc.languageHighlightClasses[$F('languageChoice_input')]
-				);
+				$('generatedCode').className = 'language-'+adhoc.languageHighlightClasses[$F('languageChoice_input')];
 				Prism.highlightElement($('generatedCode'));
 				$('output').show();
 			}
