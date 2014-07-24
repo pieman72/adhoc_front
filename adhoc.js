@@ -2031,7 +2031,7 @@ Event.observe(window, 'load', function(){
 		var keyDownFunc = function(e){
 			var key = e.which || window.event.keyCode;
 			switch(key){
-			// If various CTRL or CMD keys, set alternamte key mode on
+			// (CTRL/CMD/etc.) set alternamte key mode on
 			case Event.KEY_CONTROL:
 			case Event.KEY_COMMAND1:
 			case Event.KEY_COMMAND2:
@@ -2108,6 +2108,20 @@ Event.observe(window, 'load', function(){
 						}
 					}
 				}else if(theLightbox.visible()){
+				}
+				break;
+
+			// (CTRL++) zoom in
+			case 61:
+				if(adhoc.alternateKeys){ Event.stop(e);
+					adhoc.zoomIn();
+				}
+				break;
+
+			// (CTRL+-) zoom out
+			case 173:
+				if(adhoc.alternateKeys){ Event.stop(e);
+					adhoc.zoomOut();
 				}
 				break;
 
@@ -2222,20 +2236,8 @@ Event.observe(window, 'load', function(){
 		Event.observe(window, 'keyup', keyUpFunc);
 
 		// Ready the zoom buttons
-		$('zoomIn').observe('click', function(){
-			if($('zoomIn').hasClassName('disabled')) return;
-			$('zoomPrcent').update(((adhoc.display_scale *= 1.2)*100).toPrecision(3));
-			if(adhoc.display_scale > 8) $('zoomIn').addClassName('disabled');
-			$('zoomOut').removeClassName('disabled');
-			adhoc.refreshRender();
-		});
-		$('zoomOut').observe('click', function(){
-			if($('zoomOut').hasClassName('disabled')) return;
-			$('zoomPrcent').update(((adhoc.display_scale /= 1.2)*100).toPrecision(3));
-			if(adhoc.display_scale < 0.12) $('zoomOut').addClassName('disabled');
-			$('zoomIn').removeClassName('disabled');
-			adhoc.refreshRender();
-		});
+		$('zoomIn').observe('click', adhoc.zoomIn);
+		$('zoomOut').observe('click', adhoc.zoomOut);
 
 		// Create a new root node
 		adhoc.rootNode = adhoc.createNode(
@@ -3041,6 +3043,22 @@ Event.observe(window, 'load', function(){
 		if(adhoc.movingNode.moveTarget) adhoc.movingNode.moveTarget.highlighted = false;
 		adhoc.movingNode.moveTarget = adhoc.getClosestNode(adhoc.rootNode, [adhoc.rootNode, Infinity], click)[0];
 		if(adhoc.movingNode.moveTarget) adhoc.movingNode.moveTarget.highlighted = true;
+		adhoc.refreshRender();
+	}
+	// Zooms the view in
+	adhoc.zoomIn = function(){
+		if($('zoomIn').hasClassName('disabled')) return;
+		$('zoomPrcent').update(((adhoc.display_scale *= 1.2)*100).toPrecision(3));
+		if(adhoc.display_scale > 8) $('zoomIn').addClassName('disabled');
+		$('zoomOut').removeClassName('disabled');
+		adhoc.refreshRender();
+	}
+	// Zooms the view out
+	adhoc.zoomOut = function(){
+		if($('zoomOut').hasClassName('disabled')) return;
+		$('zoomPrcent').update(((adhoc.display_scale /= 1.2)*100).toPrecision(3));
+		if(adhoc.display_scale < 0.12) $('zoomOut').addClassName('disabled');
+		$('zoomIn').removeClassName('disabled');
 		adhoc.refreshRender();
 	}
 	// Pans the canvas to the specified node
