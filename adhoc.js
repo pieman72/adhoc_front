@@ -898,6 +898,12 @@ Event.observe(window, 'load', function(){
 			return 'Not a valid package name';
 		}
 	};
+	// Validate action comment text
+	adhoc.validateComment = function(v){
+		if(v.length < 4){
+			return 'Comment too short';
+		}
+	};
 
 	// Get and set GUI settings
 	adhoc.setting = function(s, v){
@@ -1506,6 +1512,8 @@ Event.observe(window, 'load', function(){
 				}
 			}
 		};
+		$('histBack').addClassName('disabled');
+		$('histFwd').addClassName('disabled');
 	}
 
 	// Initialize the GUI editor
@@ -1523,36 +1531,7 @@ Event.observe(window, 'load', function(){
 		}
 
 		// Activate new package button
-		$('newPackageButton').observe('click', function(){
-			adhoc.promptFlag('New Package: Are you sure?', ['Yes','No'], function(val){
-				if(val == 1) return;
-				adhoc.setting('projectId', 0);
-				adhoc.setting('projectName', 'New Project');
-				$('projectName').value = adhoc.setting('projectName');
-				$('savePackageButton').addClassName('disabled');
-				adhoc.selectedNode = null;
-				adhoc.display_scale = 1.0;
-				adhoc.display_x = 0;
-				adhoc.display_y = 0;
-				adhoc.lastId = 0;
-				adhoc.registeredActions = [];
-				adhoc.allNodes = [];
-				adhoc.rootNode = null;
-				adhoc.rootNode = adhoc.createNode(
-					null
-					,null
-					,null
-					,adhoc.nodeTypes.ACTION
-					,adhoc.nodeWhich.ACTION_DEFIN
-					,adhoc.nodeChildType.STATEMENT
-					,null
-					,'New Action'
-					,null
-				);
-				adhoc.resetHistory();
-				adhoc.refreshRender();
-			});
-		});
+		$('newPackageButton').observe('click', adhoc.newProject);
 
 		// Activate load package button
 		$('loadPackageButton').observe('click', function(){
@@ -1628,9 +1607,7 @@ Event.observe(window, 'load', function(){
 		});
 
 		// Activate the generate button
-		$('generateButton').observe('click', function(){
-			adhoc.generateCode();
-		});
+		$('generateButton').observe('click', adhoc.generateCode);
 
 		// Activate the top control panel toggle
 		$('controlsToggle').observe('click', function(){
@@ -1823,7 +1800,12 @@ Event.observe(window, 'load', function(){
 						// Prompt for an action name
 						adhoc.promptValue('Enter an action name:', adhoc.validateActionDefName, false, function(val){
 							adhoc.deactivateAllTools();
-							adhoc.createNode(null, prnt, repl, type, which, childType, null, val);
+							var n = adhoc.createNode(null, prnt, repl, type, which, childType, null, val);
+							if(n) setTimeout(function(){
+								adhoc.promptValue('Add a comment:', adhoc.validateComment, false, function(val){
+									n.value = val;
+								});
+							}, 0.01);
 						});
 						break;
 
@@ -3547,6 +3529,43 @@ Event.observe(window, 'load', function(){
 		return newNode;
 	}
 
+	// New package
+	adhoc.newProject = function(){
+		adhoc.promptFlag('New Package: Are you sure?', ['Yes','No'], function(val){
+			if(val == 1) return;
+			// Reset globals
+			adhoc.selectedNode = null;
+			adhoc.display_scale = 1.0;
+			adhoc.display_x = 0;
+			adhoc.display_y = 0;
+			adhoc.lastId = 0;
+			adhoc.registeredActions = [];
+			adhoc.allNodes = [];
+
+			// Create a new root node
+			adhoc.rootNode = adhoc.createNode(
+				null
+				,null
+				,null
+				,adhoc.nodeTypes.ACTION
+				,adhoc.nodeWhich.ACTION_DEFIN
+				,adhoc.nodeChildType.STATEMENT
+				,null
+				,'New Action'
+				,null
+			);
+
+			// Reset controls
+			$('controls').addClassName('collapsed');
+			adhoc.setting('projectId', 0);
+			adhoc.setting('projectName', 'New Project');
+			$('projectName').value = adhoc.setting('projectName');
+			$('savePackageButton').addClassName('disabled');
+			$('zoomPrcent').update(100);
+			adhoc.resetHistory();
+			adhoc.refreshRender();
+		});
+	}
 	// Save a package to storage
 	adhoc.saveProject = function(){
 		// Call save from Ajax
@@ -3606,6 +3625,7 @@ Event.observe(window, 'load', function(){
 				,xsrftoken: $('xsrfToken').innerHTML
 			}
 			,onSuccess: function(t){
+				// Reset globals
 				adhoc.selectedNode = null;
 				adhoc.display_scale = 1.0;
 				adhoc.display_x = 0;
@@ -3613,12 +3633,17 @@ Event.observe(window, 'load', function(){
 				adhoc.lastId = 0;
 				adhoc.registeredActions = [];
 				adhoc.allNodes = [];
-				adhoc.rootNode = null;
+
+				// Get the root node
 				adhoc.rootNode = adhoc.unserialize(t.responseText);
+
+				// Reset controls
+				$('controls').addClassName('collapsed');
 				adhoc.setting('projectId', projectId);
 				adhoc.setting('projectName', adhoc.rootNode.package);
 				$('projectName').value = adhoc.setting('projectName');
 				$('savePackageButton').addClassName('disabled');
+				$('zoomPrcent').update(100);
 				adhoc.resetHistory();
 				adhoc.refreshRender();
 			}
