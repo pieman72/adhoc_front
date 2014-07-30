@@ -3,6 +3,7 @@ Event.KEY_CONTROL = 17;
 Event.KEY_COMMAND1 = 91;
 Event.KEY_COMMAND2 = 93;
 Event.KEY_COMMAND3 = 224;
+Event.KEY_SPACE = 32;
 
 // Not sure why JavaScript doesn't include this...
 String.prototype.ltrim = function(s){ return this.replace(new RegExp("^"+s+"+", "")); }
@@ -935,6 +936,7 @@ Event.observe(window, 'load', function(){
 		adhoc.removeAutocomplete();
 		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
 		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
+		$('theLightbox').removeClassName('widthAuto');
 		$('theLightbox').show();
 		return false;
 	}
@@ -998,6 +1000,7 @@ Event.observe(window, 'load', function(){
 		adhoc.removeAutocomplete();
 		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
 		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
+		$('theLightbox').removeClassName('widthAuto');
 		$('theLightbox').show();
 	}
 	// Prompt the user for a value
@@ -1098,8 +1101,252 @@ Event.observe(window, 'load', function(){
 		adhoc.removeAutocomplete();
 		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
 		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
+		$('theLightbox').removeClassName('widthAuto');
 		$('theLightbox').show();
 		inp.focus();
+	}
+	// Pop up a dialog with info on a node
+	adhoc.promptNode = function(n){
+		// Function to check that info is ok before submitting
+		function checkFields(){
+			var change = false;
+			var error = false;
+			if($('lb_node_package')){
+				if($('lb_node_package').hasClassName('red')) error = true;
+				if($('lb_node_package').hasClassName('green')) change = true;
+			}
+			if($('lb_node_name')){
+				if($('lb_node_name').hasClassName('red')) error = true;
+				if($('lb_node_name').hasClassName('green')) change = true;
+			}
+			if($('lb_node_comment')){
+				if($('lb_node_comment').hasClassName('red')) error = true;
+				if($('lb_node_comment').hasClassName('green')) change = true;
+			}
+			if(change && !error) $('lb_input_select').removeClassName('disabled');
+			else $('lb_input_select').addClassName('disabled');
+		}
+
+		// Add a title
+		var LBtitle = $$('#theLightbox .nxj_lightboxTitle')[0];
+		LBtitle.update("Node "+n.id);
+
+		// Create the new lightbox content
+		var cont = $(document.createElement('div'));
+		cont.addClassName('nxj_lightboxContent');
+
+		// Create a table for all the node attributes
+		var table = $(document.createElement('table')), row, cellR, cellL;
+
+		// Create the node's type field
+		row = $(document.createElement('tr'));
+		cellR = $(document.createElement('td'));
+		cellL = $(document.createElement('td'));
+		cellL.addClassName('attrName').update('Type');
+		cellR.update(
+			adhoc.nodeTypeNames[n.nodeType]
+			+ '&nbsp;&nbsp;-&nbsp;&nbsp;'
+			+ adhoc.nodeWhichNames[adhoc.nodeWhichIndices[n.which][0]][adhoc.nodeWhichIndices[n.which][1]][0]
+		);
+		row.appendChild(cellL);
+		row.appendChild(cellR);
+		table.appendChild(row);
+
+		// Create the node's package field
+		row = $(document.createElement('tr'));
+		cellR = $(document.createElement('td'));
+		cellL = $(document.createElement('td'));
+		cellL.addClassName('attrName').update('Package');
+		cellR.setAttribute('id', 'lb_node_package');
+		cellR.update(n.package);
+		row.appendChild(cellL);
+		row.appendChild(cellR);
+		table.appendChild(row);
+
+		// Create the node's name field based on its which
+		row = $(document.createElement('tr'));
+		cellR = $(document.createElement('td'));
+		cellL = $(document.createElement('td'));
+		cellL.addClassName('attrName').update('Name');
+		switch(n.which){
+		case adhoc.nodeWhich.ACTION_DEFIN:
+			var inp = $(document.createElement('input'));
+			inp.addClassName('nxj_input').setAttribute('type', 'text');
+			inp.setAttribute('id', 'lb_node_name');
+			inp.setAttribute('value', n.name);
+			var rem = $(document.createElement('div'));
+			rem.setAttribute('id', 'lb_input_error');
+			inp.observe('keyup', function(e){
+				// Ignore certain keys
+				var key = e.which || window.event.keyCode;
+				if(key==9 || key==16 || (key>=35 && key<=40)) return;
+
+				// On keyup, validate the input
+				var msg = adhoc.validateActionDefName($F(this));
+				if(msg){
+					// Input is invalid, display a message
+					this.removeClassName('green').addClassName('red');
+					rem.update(msg);
+				}else{
+					// Input is good, allow submission
+					this.removeClassName('red').addClassName('green');
+					rem.update('');
+				}
+				if($F(this) == n.name){
+					this.removeClassName('red').removeClassName('green');
+					$('lb_input_error').update('');
+				}
+				checkFields();
+			});
+			cellR.appendChild(inp);
+			cellR.appendChild(rem);
+			break;
+		case adhoc.nodeWhich.ACTION_CALL:
+			var acBox = $(document.createElement('div'));
+			acBox.addClassName('searchHolder');
+			var inp = $(document.createElement('input'));
+			inp.addClassName('nxj_input').setAttribute('type', 'text');
+			inp.setAttribute('id', 'lb_node_name');
+			inp.setAttribute('value', n.name);
+			var rem = $(document.createElement('input'));
+			rem.setAttribute('type', 'hidden');
+			rem.setAttribute('value', n.package);
+			var hid = $(document.createElement('input'));
+			hid.setAttribute('type', 'hidden');
+			hid.setAttribute('value', n.name);
+			var acList = $(document.createElement('div'));
+			acList.setAttribute('id', 'lb_input_acList');
+			acList.setAttribute('style', 'display:none;');
+			acBox.appendChild(inp);
+			acBox.appendChild(hid);
+			acBox.appendChild(acList);
+			cellR.appendChild(acBox);
+			adhoc.attachAutocomplete(inp, rem, hid, acList, (n==adhoc.rootNode ? null : adhoc.actionSearch), function(val, rem, hid){
+				if(val){
+					inp.removeClassName('red').addClassName('green');
+					$('lb_node_package').update(rem || adhoc.setting('projectName'));
+				}else{
+					inp.removeClassName('green').addClassName('red');
+					$('lb_node_package').update(adhoc.setting('projectName'));
+				}
+				if($F(inp) == n.name){
+					inp.removeClassName('red').removeClassName('green');
+					$('lb_input_error').update('');
+				}
+				checkFields();
+			}, adhoc.validateActionName, 'No Action Found');
+			break;
+		case adhoc.nodeWhich.VARIABLE_ASIGN:
+		case adhoc.nodeWhich.VARIABLE_EVAL:
+			var acBox = $(document.createElement('div'));
+			acBox.addClassName('searchHolder');
+			var inp = $(document.createElement('input'));
+			inp.addClassName('nxj_input').setAttribute('type', 'text');
+			inp.setAttribute('id', 'lb_node_name');
+			inp.setAttribute('value', n.name);
+			var hid = $(document.createElement('input'));
+			hid.setAttribute('type', 'hidden');
+			inp.setAttribute('id', 'lb_node_ref');
+			hid.setAttribute('value', n.name);
+			var acList = $(document.createElement('div'));
+			acList.setAttribute('id', 'lb_input_acList');
+			acList.setAttribute('style', 'display:none;');
+			acBox.appendChild(inp);
+			acBox.appendChild(hid);
+			acBox.appendChild(acList);
+			cellR.appendChild(acBox);
+			adhoc.attachAutocomplete(inp, n.name, hid, acList, (n==adhoc.rootNode ? null : adhoc.genScopeSearch(n.parent)), function(val, rem, hid){
+				if(val) inp.removeClassName('red').addClassName('green');
+				else inp.removeClassName('green').addClassName('red');
+				if($F(inp) == n.name){
+					inp.removeClassName('red').removeClassName('green');
+					$('lb_input_error').update('');
+				}
+				checkFields();
+			}, adhoc.validateIdentifier, 'New Variable');
+			break;
+		default:
+			cellR.update(adhoc.nodeWhichNames[adhoc.nodeWhichIndices[n.which][0]][adhoc.nodeWhichIndices[n.which][1]][1]);
+			break;
+		}
+		row.appendChild(cellL);
+		row.appendChild(cellR);
+		table.appendChild(row);
+
+		// Create a comment field when appropriate
+		if(n.childType == adhoc.nodeChildType.STATEMENT){
+			row = $(document.createElement('tr'));
+			cellR = $(document.createElement('td'));
+			cellL = $(document.createElement('td'));
+			cellL.addClassName('attrName').update('Comment');
+			var inpC = $(document.createElement('textarea'));
+			inpC.setAttribute('id', 'lb_node_comment');
+			inpC.addClassName('nxj_input').setAttribute('style', 'height:60px;');
+			inpC.update(n.value);
+			var remC = $(document.createElement('div'));
+			remC.setAttribute('id', 'lb_comment_error');
+			inpC.observe('keyup', function(e){
+				// Ignore certain keys
+				var key = e.which || window.event.keyCode;
+				if(key==9 || key==16 || (key>=35 && key<=40)) return;
+
+				// On keyup, validate the input
+				var msg = adhoc.validateComment($F(this));
+				if(msg){
+					// Input is invalid, display a message
+					this.removeClassName('green').addClassName('red');
+					remC.update(msg);
+				}else{
+					// Input is good, allow submission
+					this.removeClassName('red').addClassName('green');
+					remC.update('');
+				}
+				if($F(this) == n.value){
+					this.removeClassName('red').removeClassName('green');
+					$('lb_comment_error').update('');
+				}
+				checkFields();
+			});
+			cellR.appendChild(inpC);
+			cellR.appendChild(remC);
+			row.appendChild(cellL);
+			row.appendChild(cellR);
+			table.appendChild(row);
+		}
+
+		// Add the table
+		cont.appendChild(table);
+
+		// Add the submit button
+		var butt = $(document.createElement('a'));
+		butt.setAttribute('id', 'lb_input_select');
+		butt.addClassName('nxj_button').addClassName('nxj_cssButton').addClassName('disabled').update('Update');
+		butt.observe('click', function(){
+			checkFields();
+			if(this.hasClassName('disabled')) return;
+			if($('lb_node_name') && $('lb_node_name').hasClassName('green')) adhoc.renameNode(
+				n
+				,($('lb_node_package') ? $('lb_node_package').innerHTML : n.package)
+				,($('lb_node_name') ? $F('lb_node_name') : n.name)
+				,($('lb_node_ref') ? parseInt($F('lb_node_ref')) : n.referenceId)
+				,true
+			);
+			if($('lb_node_comment') && $('lb_node_comment').hasClassName('green')) adhoc.changeComment(
+				n
+				,$F('lb_node_comment')
+			);
+			adhoc.refreshRender();
+			$('theLightbox').hide();
+		});
+		cont.appendChild(butt);
+
+		// Delete old lightbox content and add the new one, then show
+		adhoc.removeAutocomplete();
+		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
+		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
+		$('theLightbox').addClassName('widthAuto');
+		$('theLightbox').show();
+		return false;
 	}
 
 	// Function to clear the listener on autocomplete
@@ -1303,7 +1550,7 @@ Event.observe(window, 'load', function(){
 			acOpen = false;
 		}
 
-		// Attache the listener to the autocomplete input
+		// Attach the listener to the autocomplete input
 		adhoc.autocompleteListener = acInput;
 		input.observe('keyup', acInput);
 	}
@@ -1340,6 +1587,7 @@ Event.observe(window, 'load', function(){
 				switch(action){
 				case 'package':
 				case 'rename':
+				case 'comment':
 				case 'move':
 					break;
 
@@ -1423,6 +1671,8 @@ Event.observe(window, 'load', function(){
 
 				// Undo a rename
 				case 'rename':
+				// Undo a comment change
+				case 'comment':
 				// Undo a deletion
 				case 'delete':
 				// Undo a general action
@@ -1460,6 +1710,12 @@ Event.observe(window, 'load', function(){
 						adhoc.allNodes[item.parentId].package = adhoc.setting('projectName');
 						adhoc.allNodes[item.parentId].name = item.target;
 					}
+					adhoc.refreshRender();
+					break;
+
+				// Redo a comment change
+				case 'comment':
+					adhoc.allNodes[item.parentId].value = item.target;
 					adhoc.refreshRender();
 					break;
 
@@ -1927,40 +2183,9 @@ Event.observe(window, 'load', function(){
 
 			// If a node is clicked with no tool active, figure out what to do
 			}else if(clickedNode){
-				// If the clicked node was already selected, try to rename it
+				// If the clicked node was already selected, pop up an info window
 				if(clickedNode==adhoc.selectedNode){
-					switch(clickedNode.which){
-					// Rename a defined action
-					case adhoc.nodeWhich.ACTION_DEFIN:
-						adhoc.promptValue('Rename this action:', adhoc.validateActionDefName, false, function(val, rem, hid){
-							adhoc.history.record('rename', (hid?parseInt(hid):val), clickedNode);
-							adhoc.renameNode(clickedNode, rem, val, hid);
-							adhoc.refreshRender();
-						});
-						break;
-
-					//Change an action call
-					case adhoc.nodeWhich.ACTION_CALL:
-						adhoc.promptValue('Call a different action:', adhoc.validateActionName, false, function(val, rem, hid){
-							adhoc.history.record('rename', (hid?parseInt(hid):val), clickedNode);
-							adhoc.renameNode(clickedNode, rem, val, hid);
-							adhoc.refreshRender();
-						}, adhoc.actionSearch, 'Not found in loaded projects');
-						break;
-
-					// Rename a variable
-					case adhoc.nodeWhich.VARIABLE_ASIGN:
-					case adhoc.nodeWhich.VARIABLE_EVAL:
-						adhoc.promptValue('Enter a variable name:', adhoc.validateIdentifier, false, function(val, rem, hid){
-							var nodeToRename = clickedNode.referenceId ? adhoc.allNodes[clickedNode.referenceId] : clickedNode;
-							adhoc.history.record('rename', (hid?parseInt(hid):val), nodeToRename);
-							adhoc.renameNode(nodeToRename, rem, val, hid);
-							adhoc.refreshRender();
-						}, adhoc.genScopeSearch(clickedNode.parent, false), 'New variable');
-						break;
-
-					default:
-					}
+					adhoc.foldNode(adhoc.selectedNode);
 
 				// If not, select it
 				}else{
@@ -1971,6 +2196,7 @@ Event.observe(window, 'load', function(){
 
 			// Empty space was clicked, deselect the selected node
 			}else if(adhoc.selectedNode){
+				if($('lb_input_acList')) $('lb_input_acList').hide();
 				adhoc.selectedNode.selected = false;
 				adhoc.selectedNode = null;
 			}
@@ -2035,14 +2261,15 @@ Event.observe(window, 'load', function(){
 
 			// (Enter) several behaviors
 			case Event.KEY_RETURN:
-				// Submit certain dialogs
+				// Submit the project laod dialog
 				if($('projectLightbox').visible()){
 					// Load the hovered project
 					$$('#projectSelect .nxj_selectOption.hovered').each(function(hoveredProject){
 						hoveredProject.click();
 					});
+
+				// Submit prompt flag
 				}else if($('theLightbox').visible()){
-					// Submit prompt flag
 					var checkedRadio = false;
 					$$('#theLightbox input[name=lb_flag_opt]').each(function(radio){
 						if(radio.checked) checkedRadio = true;
@@ -2051,7 +2278,71 @@ Event.observe(window, 'load', function(){
 						$('lb_flag_select').click();
 						break;
 					}
+
+				// Open info popup for selected node
+				}else if(adhoc.selectedNode){
+					adhoc.promptNode(adhoc.selectedNode);
 				}
+				break;
+
+			// (Space) rename certain nodes, if selected
+			case Event.KEY_SPACE:
+				if(!adhoc.selectedNode) break;
+				if($('theLightbox').visible()) break;
+				if($('projectLightbox').visible()) break;
+				if($('output').visible()) break;
+				switch(adhoc.selectedNode.which){
+				// Rename a defined action
+				case adhoc.nodeWhich.ACTION_DEFIN:
+					adhoc.promptValue('Rename this action:', adhoc.validateActionDefName, false, function(val, rem, hid){
+						adhoc.history.record('rename', (hid?parseInt(hid):val), adhoc.selectedNode);
+						adhoc.renameNode(adhoc.selectedNode, rem, val, hid);
+						adhoc.refreshRender();
+					});
+					break;
+
+				//Change an action call
+				case adhoc.nodeWhich.ACTION_CALL:
+					adhoc.promptValue('Call a different action:', adhoc.validateActionName, false, function(val, rem, hid){
+						adhoc.history.record('rename', (hid?parseInt(hid):val), adhoc.selectedNode);
+						adhoc.renameNode(adhoc.selectedNode, rem, val, hid);
+						adhoc.refreshRender();
+					}, adhoc.actionSearch, 'Not found in loaded projects');
+					break;
+
+				// Rename a variable
+				case adhoc.nodeWhich.VARIABLE_ASIGN:
+				case adhoc.nodeWhich.VARIABLE_EVAL:
+					adhoc.promptValue('Enter a variable name:', adhoc.validateIdentifier, false, function(val, rem, hid){
+						var nodeToRename = adhoc.selectedNode.referenceId ? adhoc.allNodes[adhoc.selectedNode.referenceId] : adhoc.selectedNode;
+						adhoc.history.record('rename', (hid?parseInt(hid):val), nodeToRename);
+						adhoc.renameNode(nodeToRename, rem, val, hid);
+						adhoc.refreshRender();
+					}, adhoc.genScopeSearch(adhoc.selectedNode.parent, false), 'New variable');
+					break;
+
+				default:
+				}
+				break;
+
+			// (DEL) Remove the selected node and it's children
+			case Event.KEY_DELETE:
+				// Edge cases
+				if(!adhoc.selectedNode) break;
+				if(adhoc.selectedNode == adhoc.rootNode){
+					adhoc.error("You cannot delete the project root.");
+					break;
+				}
+				// Deselect the node, record a deletion and actually delete
+				adhoc.selectedNode.selected = false;
+				adhoc.history.record(
+					'delete'
+					,adhoc.selectedNode.id
+					,adhoc.selectedNode.parent
+				);
+				adhoc.deleteNode(adhoc.selectedNode);
+				adhoc.selectedNode = null;
+				adhoc.refreshRender();
 				break;
 
 			// (Up, Down, Left, Right) several behaviors
@@ -2109,8 +2400,8 @@ Event.observe(window, 'load', function(){
 
 			// (CTRL+a) select generated code
 			case 65:
-				if(adhoc.alternateKeys){ Event.stop(e);
-					if($('output').visible()) adhoc.selectText($('generatedCode'));
+				if(adhoc.alternateKeys && $('output').visible()){ Event.stop(e);
+					adhoc.selectText($('generatedCode'));
 				}
 				break;
 
@@ -2179,26 +2470,6 @@ Event.observe(window, 'load', function(){
 			case Event.KEY_COMMAND2:
 			case Event.KEY_COMMAND3:
 				adhoc.alternateKeys = false;
-				break;
-
-			// (DEL) Remove the selected node and it's children
-			case Event.KEY_DELETE:
-				// Edge cases
-				if(!adhoc.selectedNode) break;
-				if(adhoc.selectedNode == adhoc.rootNode){
-					adhoc.error("You cannot delete the project root.");
-					break;
-				}
-				// Deselect the node, record a deletion and actually delete
-				adhoc.selectedNode.selected = false;
-				adhoc.history.record(
-					'delete'
-					,adhoc.selectedNode.id
-					,adhoc.selectedNode.parent
-				);
-				adhoc.deleteNode(adhoc.selectedNode);
-				adhoc.selectedNode = null;
-				adhoc.refreshRender();
 				break;
 
 			// (Unknown) Do nothing
@@ -2280,6 +2551,7 @@ Event.observe(window, 'load', function(){
 			,highlighted: false
 			,error: null
 			,detached: false
+			,folded: false
 			,moveClick: null
 			,moveTarget: null
 			,movePos: {
@@ -3027,6 +3299,12 @@ Event.observe(window, 'load', function(){
 		if(adhoc.movingNode.moveTarget) adhoc.movingNode.moveTarget.highlighted = true;
 		adhoc.refreshRender();
 	}
+	// Collapses / expands a node
+	adhoc.foldNode = function(n){
+		if(!n.children.length) return;
+		n.folded = !n.folded;
+		adhoc.refreshRender();
+	}
 	// Zooms the view in
 	adhoc.zoomIn = function(){
 		if($('zoomIn').hasClassName('disabled')) return;
@@ -3237,7 +3515,7 @@ Event.observe(window, 'load', function(){
 		};
 	}
 
-	// Renames a single node
+	// Renames a single node, and possibly the package of its children
 	adhoc.renameNode = function(n, pkg, name, ref, recursive){
 		// Default the package name to the current package
 		pkg = pkg || adhoc.setting('projectName');
@@ -3283,6 +3561,11 @@ Event.observe(window, 'load', function(){
 			adhoc.history.record('rename', n.id, adhoc.allNodes[n.references[i]], true);
 			adhoc.renameNode(adhoc.allNodes[n.references[i]], pkg, name, n.id, true);
 		}
+	}
+	// Changes the comment on a single node
+	adhoc.changeComment = function(c, cmnt){
+		adhoc.history.record('rename', cmnt, c, false);
+		c.value = cmnt;
 	}
 	// Changes the package name of all children
 	adhoc.updatePackageName = function(n, oldP, newP){
