@@ -1129,7 +1129,7 @@ Event.observe(window, 'load', function(){
 
 		// Add a title
 		var LBtitle = $$('#theLightbox .nxj_lightboxTitle')[0];
-		LBtitle.update("Node "+n.id);
+		LBtitle.removeClassName('LBTitleError').removeClassName('LBTitleWarn').update("Node "+n.id);
 
 		// Create the new lightbox content
 		var cont = $(document.createElement('div'));
@@ -3564,7 +3564,7 @@ Event.observe(window, 'load', function(){
 	}
 	// Changes the comment on a single node
 	adhoc.changeComment = function(c, cmnt){
-		adhoc.history.record('rename', cmnt, c, false);
+		adhoc.history.record('comment', cmnt, c, false);
 		c.value = cmnt;
 	}
 	// Changes the package name of all children
