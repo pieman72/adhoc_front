@@ -2329,6 +2329,9 @@ Event.observe(window, 'load', function(){
 			case Event.KEY_DELETE:
 				// Edge cases
 				if(!adhoc.selectedNode) break;
+				if($('theLightbox').visible()) break;
+				if($('projectLightbox').visible()) break;
+				if($('output').visible()) break;
 				if(adhoc.selectedNode == adhoc.rootNode){
 					adhoc.error("You cannot delete the project root.");
 					break;
@@ -2669,21 +2672,23 @@ Event.observe(window, 'load', function(){
 	adhoc.subTreeHeightNode = function(n){
 		n.subTreeHeight = (n.nodeType==adhoc.nodeTypes.GROUP ? 30 : 0);
 		var childrenFound = false;
-		for(var i=0; i<n.children.length; ++i){
-			// Skip null placeholders when setting is disabled
-			if(n.children[i].nodeType==adhoc.nodeTypes.TYPE_NULL
-					&& !adhoc.setting('showNullNodes')
-					&& !adhoc.setting('dbg'))
-				continue;
+		if(!n.folded){
+			for(var i=0; i<n.children.length; ++i){
+				// Skip null placeholders when setting is disabled
+				if(n.children[i].nodeType==adhoc.nodeTypes.TYPE_NULL
+						&& !adhoc.setting('showNullNodes')
+						&& !adhoc.setting('dbg'))
+					continue;
 
-			// Skip any detached nodes
-			if(n.children[i].detached){
-				adhoc.subTreeHeightNode(n.children[i]);
-				continue;
+				// Skip any detached nodes
+				if(n.children[i].detached){
+					adhoc.subTreeHeightNode(n.children[i]);
+					continue;
+				}
+
+				childrenFound = true;
+				n.subTreeHeight += adhoc.subTreeHeightNode(n.children[i]);
 			}
-
-			childrenFound = true;
-			n.subTreeHeight += adhoc.subTreeHeightNode(n.children[i]);
 		}
 		if(!childrenFound) n.subTreeHeight = (n.nodeType==adhoc.nodeTypes.GROUP ? 30 : 100);
 		return n.subTreeHeight;
@@ -2693,21 +2698,23 @@ Event.observe(window, 'load', function(){
 		var passed = d ? n.y : 0;
 		n.x = d*200 + 100 + (m ? adhoc.movingNode.movePos.x : 0);
 		n.y = n.subTreeHeight/2 + passed + (m ? adhoc.movingNode.movePos.y : 0);
-		for(var i=0; i<n.children.length; ++i){
-			// Skip null placeholders when setting is disabled
-			if(n.children[i].nodeType==adhoc.nodeTypes.TYPE_NULL
-					&& !adhoc.setting('showNullNodes')
-					&& !adhoc.setting('dbg'))
-				continue;
+		if(!n.folded){
+			for(var i=0; i<n.children.length; ++i){
+				// Skip null placeholders when setting is disabled
+				if(n.children[i].nodeType==adhoc.nodeTypes.TYPE_NULL
+						&& !adhoc.setting('showNullNodes')
+						&& !adhoc.setting('dbg'))
+					continue;
 
-			// Figure out how much vertical space has passed
-			n.children[i].y = passed;
-			if(!n.children[i].detached) passed += n.children[i].subTreeHeight;
-			adhoc.positionNode(
-				n.children[i]
-				,d + (n.nodeType==adhoc.nodeTypes.GROUP?0:1)
-				,(m||n.detached) ? true : false
-			);
+				// Figure out how much vertical space has passed
+				n.children[i].y = passed;
+				if(!n.children[i].detached) passed += n.children[i].subTreeHeight;
+				adhoc.positionNode(
+					n.children[i]
+					,d + (n.nodeType==adhoc.nodeTypes.GROUP?0:1)
+					,(m||n.detached) ? true : false
+				);
+			}
 		}
 	}
 
@@ -2715,18 +2722,20 @@ Event.observe(window, 'load', function(){
 	adhoc.renderNode = function(n){
 		// Process the children recursively
 		var c, maxWidth=30;
-		for(var i=0; i<n.children.length; ++i){
-			// Render one child
-			c = n.children[i];
+		if(!n.folded){
+			for(var i=0; i<n.children.length; ++i){
+				// Render one child
+				c = n.children[i];
 
-			// Skip null placeholders when setting is disabled
-			if(c.nodeType==adhoc.nodeTypes.TYPE_NULL
-					&& !adhoc.setting('showNullNodes')
-					&& !adhoc.setting('dbg'))
-				continue;
+				// Skip null placeholders when setting is disabled
+				if(c.nodeType==adhoc.nodeTypes.TYPE_NULL
+						&& !adhoc.setting('showNullNodes')
+						&& !adhoc.setting('dbg'))
+					continue;
 
-			adhoc.renderNode(c);
-			if(c.width > maxWidth) maxWidth = c.width;
+				adhoc.renderNode(c);
+				if(c.width > maxWidth) maxWidth = c.width;
+			}
 		}
 
 		// Rest canvas parameters
@@ -3013,54 +3022,79 @@ Event.observe(window, 'load', function(){
 			break;
 		}
 
-		// Process the child connectors recursively
-		for(var i=0; i<n.children.length; ++i){
-			// Draw a connecting arrow except for groups
-			if(n.nodeType == adhoc.nodeTypes.GROUP) continue;
-			c = n.children[i];
+		// Process the child connectors recursively, if not folded
+		if(!n.folded){
+			for(var i=0; i<n.children.length; ++i){
+				// Draw a connecting arrow except for groups
+				if(n.nodeType == adhoc.nodeTypes.GROUP) continue;
+				c = n.children[i];
 
-			// Skip null placeholders when setting is disabled
-			if(c.nodeType==adhoc.nodeTypes.TYPE_NULL
-					&& !adhoc.setting('showNullNodes')
-					&& !adhoc.setting('dbg'))
-				continue;
+				// Skip null placeholders when setting is disabled
+				if(c.nodeType==adhoc.nodeTypes.TYPE_NULL
+						&& !adhoc.setting('showNullNodes')
+						&& !adhoc.setting('dbg'))
+					continue;
 
-			// Skip child if detached
-			if(c.detached) continue;
+				// Skip child if detached
+				if(c.detached) continue;
 
-			ctx.strokeStyle = nodeColor;
-			ctx.beginPath();
-			var arrowFrom = [
-				(n.x+(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
-				,n.y * adhoc.display_scale - adhoc.display_y
-			]
-			,arrowTo = [
-				(c.x-(c.width/2.0)) * adhoc.display_scale - adhoc.display_x
-				,c.y * adhoc.display_scale - adhoc.display_y
-			]
-			,arrowCenter = [
-				(arrowFrom[0]+arrowTo[0])/2.0
-				, (arrowFrom[1]+arrowTo[1])/2.0
-			]
-			ctx.moveTo(arrowFrom[0], arrowFrom[1]);
-			ctx.lineTo(arrowTo[0], arrowTo[1]);
-			ctx.stroke();
+				ctx.strokeStyle = nodeColor;
+				ctx.beginPath();
+				var arrowFrom = [
+					(n.x+(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+					,n.y * adhoc.display_scale - adhoc.display_y
+				]
+				,arrowTo = [
+					(c.x-(c.width/2.0)) * adhoc.display_scale - adhoc.display_x
+					,c.y * adhoc.display_scale - adhoc.display_y
+				]
+				,arrowCenter = [
+					(arrowFrom[0]+arrowTo[0])/2.0
+					, (arrowFrom[1]+arrowTo[1])/2.0
+				]
+				ctx.moveTo(arrowFrom[0], arrowFrom[1]);
+				ctx.lineTo(arrowTo[0], arrowTo[1]);
+				ctx.stroke();
 
-			// Label the connector for certain child types
-			var childInfo = adhoc.nodeChildTypeInfo[c.childType];
-			var labelSetting = adhoc.setting('labelConnectors');
-			if(adhoc.setting('dbg')) labelSetting=2;
-			if(labelSetting && (labelSetting==2 || childInfo.useLabel)){
-				ctx.font = "" + (14*adhoc.display_scale) + "px Arial";
-				var rise = arrowTo[1] - arrowFrom[1];
-				var run = arrowTo[0] - arrowFrom[0];
-				ctx.save();
-				ctx.translate(arrowCenter[0], arrowCenter[1]-5);
-				ctx.rotate(Math.atan(rise/run));
-				ctx.textAlign = "center";
-				ctx.fillStyle = nodeColor;
-				ctx.fillText(childInfo.label, 0, 0);
-				ctx.restore();
+				// Label the connector for certain child types
+				var childInfo = adhoc.nodeChildTypeInfo[c.childType];
+				var labelSetting = adhoc.setting('labelConnectors');
+				if(adhoc.setting('dbg')) labelSetting=2;
+				if(labelSetting && (labelSetting==2 || childInfo.useLabel)){
+					ctx.font = "" + (14*adhoc.display_scale) + "px Arial";
+					var rise = arrowTo[1] - arrowFrom[1];
+					var run = arrowTo[0] - arrowFrom[0];
+					ctx.save();
+					ctx.translate(arrowCenter[0], arrowCenter[1]-5);
+					ctx.rotate(Math.atan(rise/run));
+					ctx.textAlign = "center";
+					ctx.fillStyle = nodeColor;
+					ctx.fillText(childInfo.label, 0, 0);
+					ctx.restore();
+				}
+			}
+
+		// If folded, display fold line
+		}else{
+			for(var i=0; i<n.children.length; ++i){
+				c = n.children[i];
+				if(c.nodeType==adhoc.nodeTypes.TYPE_NULL
+						&& !adhoc.setting('showNullNodes')
+						&& !adhoc.setting('dbg'))
+					continue;
+
+				ctx.strokeStyle = '#5F87AF';
+				ctx.beginPath();
+				ctx.moveTo(
+					(n.x+(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+					,n.y * adhoc.display_scale - adhoc.display_y
+				);
+				ctx.lineTo(
+					(n.x+(n.width/2.0)+100) * adhoc.display_scale - adhoc.display_x
+					,n.y * adhoc.display_scale - adhoc.display_y
+				);
+				ctx.stroke();
+				break;
 			}
 		}
 
