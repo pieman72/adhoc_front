@@ -141,7 +141,7 @@ Event.observe(window, 'load', function(){
 		,ARGUMENT:		7
 		,PARENT:		8
 		,CHILD:			9
-		,MEMBER:		10
+		,INDEX:			10
 		,IF:			11
 		,ELSE:			12
 		,STORAGE:		13
@@ -163,11 +163,11 @@ Event.observe(window, 'load', function(){
 			['Null', '']
 		]
 		,[ // ACTION
-			['Define Action', '']
-			,['Call Action', '']
+			['Define Action', 'Action']
+			,['Call Action', 'Action']
 		]
 		,[ // GROUP
-			['Serial Group', '']
+			['Serial Group', 'Group']
 		]
 		,[ // CONTROL
 			['If', 'If']
@@ -216,17 +216,17 @@ Event.observe(window, 'load', function(){
 			,['Conjoin With', '&&=']
 		]
 		,[ // VARIABLE
-			['Variable', '']
-			,['Variable', '']
+			['Variable', 'Variable']
+			,['Variable', 'Variable']
 		]
 		,[ // LITERAL
-			['Boolean', '']
-			,['Integer', '']
-			,['Float', '']
-			,['String', '']
-			,['Array', '']
-			,['Hash', '']
-			,['Struct', '']
+			['Boolean', 'Boolean']
+			,['Integer', 'Integer']
+			,['Float', 'Float']
+			,['String', 'String']
+			,['Array', 'Array']
+			,['Hash', 'Hash']
+			,['Struct', 'Struct']
 		]
 	];
 	// AST node sub-type indices
@@ -297,14 +297,16 @@ Event.observe(window, 'load', function(){
 		,{label: 'Case'
 			,useLabel: false
 			,nodeTypes: [
-				adhoc.nodeTypes.ACTION
-				,adhoc.nodeTypes.OPERATOR
-				,adhoc.nodeTypes.ASSIGNMENT
-				,adhoc.nodeTypes.VARIABLE
-				,adhoc.nodeTypes.LITERAL
+				adhoc.nodeTypes.CONTROL
 			]
 			,nodeNotWhich: [
-				adhoc.nodeWhich.VARIABLE_ASIGN
+				adhoc.nodeWhich.CONTROL_IF
+				,adhoc.nodeWhich.CONTROL_LOOP
+				,adhoc.nodeWhich.CONTROL_SWITCH
+				,adhoc.nodeWhich.CONTROL_FORK
+				,adhoc.nodeWhich.CONTROL_CNTNU
+				,adhoc.nodeWhich.CONTROL_BREAK
+				,adhoc.nodeWhich.CONTROL_RETRN
 			]
 		}
 		,{label: 'Parameter'
@@ -353,8 +355,8 @@ Event.observe(window, 'load', function(){
 				adhoc.nodeWhich.CONTROL_CASE
 			]
 		}
-		,{label: 'Member'
-			,useLabel: true
+		,{label: 'Index'
+			,useLabel: false
 			,nodeTypes: [
 				adhoc.nodeTypes.ACTION
 				,adhoc.nodeTypes.OPERATOR
@@ -363,7 +365,29 @@ Event.observe(window, 'load', function(){
 				,adhoc.nodeTypes.LITERAL
 			]
 			,nodeNotWhich: [
-				adhoc.nodeWhich.VARIABLE_ASIGN
+				adhoc.nodeWhich.ACTION_DEFIN
+				,adhoc.nodeWhich.OPERATOR_OR
+				,adhoc.nodeWhich.OPERATOR_AND
+				,adhoc.nodeWhich.OPERATOR_NOT
+				,adhoc.nodeWhich.OPERATOR_EQUIV
+				,adhoc.nodeWhich.OPERATOR_GRTTN
+				,adhoc.nodeWhich.OPERATOR_LESTN
+				,adhoc.nodeWhich.OPERATOR_GRTEQ
+				,adhoc.nodeWhich.OPERATOR_LESEQ
+				,adhoc.nodeWhich.OPERATOR_NOTEQ
+				,adhoc.nodeWhich.ASSIGNMENT_INCPR
+				,adhoc.nodeWhich.ASSIGNMENT_INCPS
+				,adhoc.nodeWhich.ASSIGNMENT_DECPR
+				,adhoc.nodeWhich.ASSIGNMENT_DECPS
+				,adhoc.nodeWhich.ASSIGNMENT_NEGPR
+				,adhoc.nodeWhich.ASSIGNMENT_NEGPS
+				,adhoc.nodeWhich.ASSIGNMENT_OR
+				,adhoc.nodeWhich.ASSIGNMENT_AND
+				,adhoc.nodeWhich.VARIABLE_ASIGN
+				,adhoc.nodeWhich.LITERAL_BOOL
+				,adhoc.nodeWhich.LITERAL_ARRAY
+				,adhoc.nodeWhich.LITERAL_HASH
+				,adhoc.nodeWhich.LITERAL_STRCT
 			]
 		}
 		,{label: 'If (true)'
@@ -404,6 +428,13 @@ Event.observe(window, 'load', function(){
 	adhoc.nodeWhichChildren = [
 		[ // NULL
 			[ // WHICH_NULL
+			]
+			,[ // placeholder for indices... jank, much?
+				{
+					childType: adhoc.nodeChildType.EXPRESSION
+					,min: 1
+					,max: 1
+				}
 			]
 		]
 		,[ // ACTION
@@ -805,21 +836,21 @@ Event.observe(window, 'load', function(){
 			]
 			,[ // LITERAL_ARRAY
 				{
-					childType: adhoc.nodeChildType.MEMBER
+					childType: adhoc.nodeChildType.INDEX
 					,min: 0
 					,max: null
 				}
 			]
 			,[ // LITERAL_HASH
 				{
-					childType: adhoc.nodeChildType.MEMBER
+					childType: adhoc.nodeChildType.INDEX
 					,min: 0
 					,max: null
 				}
 			]
 			,[ // LITERAL_STRCT
 				{
-					childType: adhoc.nodeChildType.MEMBER
+					childType: adhoc.nodeChildType.INDEX
 					,min: 0
 					,max: null
 				}
@@ -2018,6 +2049,7 @@ Event.observe(window, 'load', function(){
 				// For variables, determine the which from context
 				if(type == adhoc.nodeTypes.VARIABLE){
 					var neededChildren = adhoc.nodeWhichChildren[prnt.nodeType][adhoc.nodeWhichIndices[prnt.which][1]];
+					if(prnt.childType == adhoc.nodeChildType.INDEX) neededChildren = adhoc.nodeWhichChildren[0][1];
 					var assignOk = false;
 
 					for(var i=0; i<neededChildren.length; ++i){
@@ -2114,12 +2146,11 @@ Event.observe(window, 'load', function(){
 						});
 						break;
 
-					case adhoc.nodeWhich.LITERAL_ARRAY:
 					case adhoc.nodeWhich.LITERAL_HASH:
 					case adhoc.nodeWhich.LITERAL_STRCT:
 						adhoc.deactivateAllTools();
 						// TODO: Prompt for literal value
-						adhoc.message('This type of literal is not yet implemented'); break;
+						adhoc.message('Warning', 'This type of literal is not yet implemented'); break;
 						adhoc.createNode(null, prnt, repl, type, which, childType);
 						break;
 
@@ -2137,6 +2168,7 @@ Event.observe(window, 'load', function(){
 
 				// Get the child roles this node can fill
 				var neededChildren = adhoc.nodeWhichChildren[prnt.nodeType][adhoc.nodeWhichIndices[prnt.which][1]];
+				if(prnt.childType == adhoc.nodeChildType.INDEX) neededChildren = adhoc.nodeWhichChildren[0][1];
 				var roleOptions = [];
 				var roleOptionNames = [];
 				var someOk = false;
@@ -2580,6 +2612,7 @@ Event.observe(window, 'load', function(){
 					,reached=false
 					,neededChildren=adhoc.nodeWhichChildren[p.nodeType][adhoc.nodeWhichIndices[p.which][1]]
 					;
+				if(p.childType == adhoc.nodeChildType.INDEX) neededChildren = adhoc.nodeWhichChildren[0][1];
 				while(true){
 					if(pc >= p.children.length){
 						p.children.push(newNode);
@@ -2627,6 +2660,7 @@ Event.observe(window, 'load', function(){
 		// Give this node empty children as necessary
 		if(!(w==adhoc.nodeWhich.VARIABLE_ASIGN && p && p.which!=adhoc.nodeWhich.ACTION_DEFIN)){
 			var neededChildren = adhoc.nodeWhichChildren[t][adhoc.nodeWhichIndices[w][1]];
+			if(c == adhoc.nodeChildType.INDEX) neededChildren = adhoc.nodeWhichChildren[0][1];
 			for(var i=0; i<neededChildren.length; ++i){
 				for(var j=0; j<neededChildren[i].min; ++j){
 					adhoc.createNode(
@@ -2670,7 +2704,11 @@ Event.observe(window, 'load', function(){
 
 	// Recursively determine the display heights of each subtree
 	adhoc.subTreeHeightNode = function(n){
-		n.subTreeHeight = (n.nodeType==adhoc.nodeTypes.GROUP ? 30 : 0);
+		var isHolder = n.nodeType == adhoc.nodeTypes.GROUP
+			|| n.which == adhoc.nodeWhich.LITERAL_ARRAY
+			|| n.which == adhoc.nodeWhich.LITERAL_HASH
+			|| n.which == adhoc.nodeWhich.LITERAL_STRCT;
+		n.subTreeHeight = (isHolder ? 30 : 0);
 		var childrenFound = false;
 		if(!n.folded){
 			for(var i=0; i<n.children.length; ++i){
@@ -2690,11 +2728,15 @@ Event.observe(window, 'load', function(){
 				n.subTreeHeight += adhoc.subTreeHeightNode(n.children[i]);
 			}
 		}
-		if(!childrenFound) n.subTreeHeight = (n.nodeType==adhoc.nodeTypes.GROUP ? 30 : 100);
+		if(!childrenFound) n.subTreeHeight = (isHolder ? 30 : 100);
 		return n.subTreeHeight;
 	}
 	// Recursively determine each node's display position
 	adhoc.positionNode = function(n, d, m){
+		var isHolder = n.nodeType == adhoc.nodeTypes.GROUP
+			|| n.which == adhoc.nodeWhich.LITERAL_ARRAY
+			|| n.which == adhoc.nodeWhich.LITERAL_HASH
+			|| n.which == adhoc.nodeWhich.LITERAL_STRCT;
 		var passed = d ? n.y : 0;
 		n.x = d*200 + 100 + (m ? adhoc.movingNode.movePos.x : 0);
 		n.y = n.subTreeHeight/2 + passed + (m ? adhoc.movingNode.movePos.y : 0);
@@ -2711,7 +2753,7 @@ Event.observe(window, 'load', function(){
 				if(!n.children[i].detached) passed += n.children[i].subTreeHeight;
 				adhoc.positionNode(
 					n.children[i]
-					,d + (n.nodeType==adhoc.nodeTypes.GROUP?0:1)
+					,d + (isHolder?0:1)
 					,(m||n.detached) ? true : false
 				);
 			}
@@ -2963,15 +3005,15 @@ Event.observe(window, 'load', function(){
 				break;
 
 			case adhoc.nodeWhich.LITERAL_ARRAY:
-				// Set the node's dimensions
-				n.width = 100;
-				n.height = 100;
+				// Determine the right color
+				nodeColor = adhoc.setting('colorScheme')=='dark' ? '#FFFFFF' : '#000000';
 
-				// Darw the items
-				// TODO: draw shorthand for array items
+				// Set the node's dimensions
+				n.width = maxWidth + 10;
+				n.height = n.subTreeHeight + 10;
 
 				// Draw the brackets
-				ctx.strokeStyle = '#000000';
+				ctx.strokeStyle = nodeColor;
 				ctx.beginPath();
 				ctx.moveTo(
 					(n.x-(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
@@ -3025,8 +3067,12 @@ Event.observe(window, 'load', function(){
 		// Process the child connectors recursively, if not folded
 		if(!n.folded){
 			for(var i=0; i<n.children.length; ++i){
-				// Draw a connecting arrow except for groups
-				if(n.nodeType == adhoc.nodeTypes.GROUP) continue;
+				// Draw a connecting arrow except for groups and complex literals
+				if(n.nodeType == adhoc.nodeTypes.GROUP
+						|| n.which == adhoc.nodeWhich.LITERAL_ARRAY
+						|| n.which == adhoc.nodeWhich.LITERAL_HASH
+						|| n.which == adhoc.nodeWhich.LITERAL_STRCT
+					) continue;
 				c = n.children[i];
 
 				// Skip null placeholders when setting is disabled
@@ -3253,6 +3299,7 @@ Event.observe(window, 'load', function(){
 			var type = adhoc.movingNode.nodeType;
 			var which = adhoc.movingNode.which;
 			var neededChildren = adhoc.nodeWhichChildren[prnt.nodeType][adhoc.nodeWhichIndices[prnt.which][1]];
+			if(prnt.childType == adhoc.nodeChildType.INDEX) neededChildren = adhoc.nodeWhichChildren[0][1];
 			var roleOptions = [];
 			var roleOptionNames = [];
 			var someOk = false;
@@ -3621,6 +3668,7 @@ Event.observe(window, 'load', function(){
 			var pType = p1.nodeType;
 			var pWhich = adhoc.nodeWhichIndices[p1.which][1];
 			var neededChildren = adhoc.nodeWhichChildren[pType][pWhich];
+			if(p1.childType == adhoc.nodeChildType.INDEX) neededChildren = adhoc.nodeWhichChildren[0][1];
 			for(var i=0; i<neededChildren.length; ++i){
 				if(neededChildren[i].childType != n.childType) continue;
 				if(adhoc.countChildrenOfType(p1, n.childType) < neededChildren[i].min){
@@ -3652,6 +3700,7 @@ Event.observe(window, 'load', function(){
 				,reached=false
 				,neededChildren=adhoc.nodeWhichChildren[p2.nodeType][adhoc.nodeWhichIndices[p2.which][1]]
 				;
+			if(p2.childType == adhoc.nodeChildType.INDEX) neededChildren = adhoc.nodeWhichChildren[0][1];
 			while(true){
 				if(pc >= p2.children.length){
 					p2.children.push(n);
@@ -3701,6 +3750,7 @@ Event.observe(window, 'load', function(){
 			var pType = n.parent.nodeType;
 			var pWhich = adhoc.nodeWhichIndices[n.parent.which][1];
 			var neededChildren = adhoc.nodeWhichChildren[pType][pWhich];
+			if(n.parent.childType == adhoc.nodeChildType.INDEX) neededChildren = adhoc.nodeWhichChildren[0][1];
 			for(var i=0; i<neededChildren.length; ++i){
 				if(neededChildren[i].childType != n.childType) continue;
 				if(adhoc.countChildrenOfType(n.parent, n.childType) < neededChildren[i].min){
@@ -3789,6 +3839,7 @@ Event.observe(window, 'load', function(){
 					,reached=false
 					,neededChildren=adhoc.nodeWhichChildren[n.parent.nodeType][adhoc.nodeWhichIndices[n.parent.which][1]]
 					;
+				if(n.parent.childType == adhoc.nodeChildType.INDEX) neededChildren = adhoc.nodeWhichChildren[0][1];
 				while(true){
 					if(pc >= n.parent.children.length){
 						n.parent.children.push(n);

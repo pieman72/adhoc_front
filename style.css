@@ -221,7 +221,7 @@ label {
 	height:40px;
 	line-height:40px;
 	min-height:24px;
-	padding:0 8px;
+	padding:0 5px;
 	}
 .dark .toolboxTab {
 	background:#333333;
@@ -470,7 +470,7 @@ label {
 	margin:25px 0 5px;
 	}
 #regUser, #regPass {
-	width:183px;
+	width:182px;
 	}
 #recaptcha_response_field {
 	width:390px;
