@@ -2326,6 +2326,7 @@ Event.observe(window, 'load', function(){
 				switch(adhoc.selectedNode.which){
 				// Rename a defined action
 				case adhoc.nodeWhich.ACTION_DEFIN:
+					Event.stop(e);
 					adhoc.promptValue('Rename this action:', adhoc.validateActionDefName, false, function(val, rem, hid){
 						adhoc.history.record('rename', (hid?parseInt(hid):val), adhoc.selectedNode);
 						adhoc.renameNode(adhoc.selectedNode, rem, val, hid);
@@ -2335,6 +2336,7 @@ Event.observe(window, 'load', function(){
 
 				//Change an action call
 				case adhoc.nodeWhich.ACTION_CALL:
+					Event.stop(e);
 					adhoc.promptValue('Call a different action:', adhoc.validateActionName, false, function(val, rem, hid){
 						adhoc.history.record('rename', (hid?parseInt(hid):val), adhoc.selectedNode);
 						adhoc.renameNode(adhoc.selectedNode, rem, val, hid);
@@ -2345,6 +2347,7 @@ Event.observe(window, 'load', function(){
 				// Rename a variable
 				case adhoc.nodeWhich.VARIABLE_ASIGN:
 				case adhoc.nodeWhich.VARIABLE_EVAL:
+					Event.stop(e);
 					adhoc.promptValue('Enter a variable name:', adhoc.validateIdentifier, false, function(val, rem, hid){
 						var nodeToRename = adhoc.selectedNode.referenceId ? adhoc.allNodes[adhoc.selectedNode.referenceId] : adhoc.selectedNode;
 						adhoc.history.record('rename', (hid?parseInt(hid):val), nodeToRename);
@@ -3449,7 +3452,7 @@ Event.observe(window, 'load', function(){
 		for(var i=0; i<adhoc.registeredActions.length; ++i){
 			// If one matches, add it to the output array
 			var n = adhoc.registeredActions[i].name;
-			if((exact && n==part) || (!exact && n.indexOf(part)===0)){
+			if((exact && n==part) || (!exact && n.match(new RegExp('^'+part, 'i')))){
 				out.push({
 					value: n
 					,reminder: adhoc.registeredActions[i].package
@@ -3464,7 +3467,7 @@ Event.observe(window, 'load', function(){
 		for(var i=0; i<adhoc.systemActions.length; ++i){
 			// If one matches, add it to the output array
 			var n = adhoc.systemActions[i].name;
-			if((exact && n==part) || (!exact && n.indexOf(part)===0)){
+			if((exact && n==part) || (!exact && n.match(new RegExp('^'+part, 'i')))){
 				out.push({
 					value: n
 					,reminder: 'System'
@@ -4022,6 +4025,7 @@ Event.observe(window, 'load', function(){
 	}
 	// Generate code from the current file
 	adhoc.generateCode = function(){
+		$('generateButton').blur();
 		adhoc.clearErrors(adhoc.rootNode);
 		new Ajax.Request('generate/', {
 			parameters: {
