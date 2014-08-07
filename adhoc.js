@@ -836,7 +836,7 @@ Event.observe(window, 'load', function(){
 			]
 			,[ // LITERAL_ARRAY
 				{
-					childType: adhoc.nodeChildType.INDEX
+					childType: adhoc.nodeChildType.EXPRESSION
 					,min: 0
 					,max: null
 				}
@@ -2567,6 +2567,27 @@ Event.observe(window, 'load', function(){
 		if(!t) t = adhoc.nodeTypes.TYPE_NULL;
 		if(!w) w = adhoc.nodeWhich.WHICH_NULL;
 		if(!c) c = adhoc.nodeChildType.CHILD_NULL;
+
+		// Create an index node for children of arrays/hashes/structs
+		if(p && c!=adhoc.nodeChildType.INDEX && (
+				p.which==adhoc.nodeWhich.LITERAL_ARRAY
+				|| p.which==adhoc.nodeWhich.LITERAL_HASH
+				|| p.which==adhoc.nodeWhich.LITERAL_STRCT
+			)){
+			p = adhoc.createNode(
+				null
+				,p
+				,r
+				,adhoc.nodeTypes.LITERAL
+				,adhoc.nodeWhich.LITERAL_INT
+				,adhoc.nodeChildType.INDEX
+				,k
+				,null
+				,p.children.length
+				,null
+			);
+			r = null;
+		}
 
 		// Create the object with its params
 		var newNode = {
