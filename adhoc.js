@@ -6,8 +6,8 @@ Event.KEY_COMMAND3 = 224;
 Event.KEY_SPACE = 32;
 
 // Not sure why JavaScript doesn't include this...
-String.prototype.ltrim = function(s){ return this.replace(new RegExp("^"+s+"+", "")); }
-String.prototype.rtrim = function(s){ return this.replace(new RegExp(s+"+$", "")); }
+String.prototype.ltrim = function(s){ return this.replace(new RegExp("^"+s+"+"), ""); }
+String.prototype.rtrim = function(s){ return this.replace(new RegExp(s+"+$"), ""); }
 
 // Set up everything only after the page loads
 Event.observe(window, 'load', function(){
@@ -434,6 +434,13 @@ Event.observe(window, 'load', function(){
 					childType: adhoc.nodeChildType.EXPRESSION
 					,min: 1
 					,max: 1
+				}
+			]
+			,[ // placeholder for indices... jank, much?
+				{
+					childType: adhoc.nodeChildType.INDEX
+					,min: 0
+					,max: null
 				}
 			]
 		]
@@ -2569,24 +2576,22 @@ Event.observe(window, 'load', function(){
 		if(!c) c = adhoc.nodeChildType.CHILD_NULL;
 
 		// Create an index node for children of arrays/hashes/structs
-		if(p && c!=adhoc.nodeChildType.INDEX && (
-				p.which==adhoc.nodeWhich.LITERAL_ARRAY
-				|| p.which==adhoc.nodeWhich.LITERAL_HASH
-				|| p.which==adhoc.nodeWhich.LITERAL_STRCT
-			)){
-			p = adhoc.createNode(
-				null
-				,p
-				,r
-				,adhoc.nodeTypes.LITERAL
-				,adhoc.nodeWhich.LITERAL_INT
-				,adhoc.nodeChildType.INDEX
-				,k
-				,null
-				,p.children.length
-				,null
-			);
-			r = null;
+		if(p && c!=adhoc.nodeChildType.INDEX){
+			if(p.which==adhoc.nodeWhich.LITERAL_ARRAY){
+				p = adhoc.createNode(
+					null
+					,p
+					,r
+					,adhoc.nodeTypes.LITERAL
+					,adhoc.nodeWhich.LITERAL_INT
+					,adhoc.nodeChildType.INDEX
+					,k
+					,null
+					,p.children.length
+					,null
+				);
+				r = null;
+			}
 		}
 
 		// Create the object with its params
@@ -2637,6 +2642,7 @@ Event.observe(window, 'load', function(){
 					,neededChildren=adhoc.nodeWhichChildren[p.nodeType][adhoc.nodeWhichIndices[p.which][1]]
 					;
 				if(p.childType == adhoc.nodeChildType.INDEX) neededChildren = adhoc.nodeWhichChildren[0][1];
+				if(c == adhoc.nodeChildType.INDEX) neededChildren = adhoc.nodeWhichChildren[0][2];
 				while(true){
 					if(pc >= p.children.length){
 						p.children.push(newNode);
@@ -3534,7 +3540,7 @@ Event.observe(window, 'load', function(){
 			+ adhoc.intTo3Byte(n.childType)
 			+ '"' + (n.package ? n.package : 'NULL') + '"'
 			+ '"' + (n.name ? n.name : 'NULL') + '"'
-			+ '"' + (n.value ? n.value : 'NULL') + '"';
+			+ '"' + (n.value!==null ? n.value : 'NULL') + '"';
 		for(var i=0; i<n.children.length; ++i){
 			out += adhoc.serialize(n.children[i]);
 		}
@@ -4027,7 +4033,7 @@ Event.observe(window, 'load', function(){
 				adhoc.allNodes = [];
 
 				// Get the root node
-				adhoc.rootNode = adhoc.unserialize(t.responseText);
+				adhoc.rootNode = adhoc.unserialize(t.responseText.rtrim("\\s"));
 
 				// Reset controls
 				$('controls').addClassName('collapsed');
