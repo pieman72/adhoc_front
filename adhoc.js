@@ -3257,7 +3257,8 @@ Event.observe(window, 'load', function(){
 		}
 
 		// See if it's in this node
-		if(click.x >= n.x-(n.width/2.0)
+		if(n.childType != adhoc.nodeChildType.INDEX
+				&& click.x >= n.x-(n.width/2.0)
 				&& click.x <= n.x+(n.width/2.0)
 				&& click.y >= n.y-(n.height/2.0)
 				&& click.y <= n.y+(n.height/2.0)
