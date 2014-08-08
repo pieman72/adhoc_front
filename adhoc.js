@@ -2590,7 +2590,7 @@ Event.observe(window, 'load', function(){
 					,p.children.length
 					,null
 				);
-				r = null;
+				r = p.children.length ? p.children[0] : null;
 			}
 		}
 
@@ -3689,6 +3689,14 @@ Event.observe(window, 'load', function(){
 			adhoc.updatePackageName(n.references[i], oldP, newP);
 		}
 	}
+	// Reset the indices of a container-type node
+	adhoc.resetIndices = function(n){
+		if(n.which == adhoc.nodeWhich.LITERAL_ARRAY){
+			for(var i=0; i<n.children.length; ++i){
+				n.children[i].value = i;
+			}
+		}
+	}
 	// Moves a node from one parent to another
 	adhoc.moveNode = function(n, p1, p2){
 		// Remove this node from its old parent and scope
@@ -3716,11 +3724,37 @@ Event.observe(window, 'load', function(){
 			if(n.scope){
 				n.scope.scopeVars.splice(n.scope.scopeVars.indexOf(n), 1);
 			}
+
+			// Reset parent's indicies, if it's an array
+			if(p1.childType == adhoc.nodeChildType.INDEX
+					&& p1.parent.which == adhoc.nodeWhich.LITERAL_ARRAY
+				){
+				var p1p = p1.parent;
+				adhoc.deleteNode(p1);
+				adhoc.resetIndices(p1p);
+			}
+		}
+
+		// If moving to a container type, add an index
+		var r = adhoc.getFirstNullChildByType(p2, n.childType);
+		if(p2.which==adhoc.nodeWhich.LITERAL_ARRAY){
+			p2 = adhoc.createNode(
+				null
+				,p2
+				,r
+				,adhoc.nodeTypes.LITERAL
+				,adhoc.nodeWhich.LITERAL_INT
+				,adhoc.nodeChildType.INDEX
+				,p2.package
+				,null
+				,p2.children.length
+				,null
+			);
+			r = p2.children.length ? p2.children[0] : null;
 		}
 
 		// Add to the new parent (assume validity has been checked)
 		n.parent = p2;
-		var r = adhoc.getFirstNullChildByType(p2, n.childType);
 		// Replace null if possible
 		if(r) p2.children[p2.children.indexOf(r)] = n;
 		// Otherwise, find proper location
@@ -3794,6 +3828,13 @@ Event.observe(window, 'load', function(){
 					);
 				}
 				break;
+			}
+
+			// Reset parent's indicies, if it's an array
+			if(n.parent.childType == adhoc.nodeChildType.INDEX
+					&& n.parent.parent.which == adhoc.nodeWhich.LITERAL_ARRAY
+				){
+				adhoc.resetIndices(n.parent.parent);
 			}
 		}
 		if(n.scope){
