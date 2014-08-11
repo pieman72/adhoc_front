@@ -234,7 +234,7 @@ if(!count($errors) && $_SESSION['username']){
 							<input type="text" id="projectName" class="nxj_input" value="New Project" style="width:142px;"/>
 							<div class="clear" style="height:10px;"></div>
 
-							<span id="savePackageButton" class="nxj_button nxj_cssButton disabled" style="position:relative;">
+							<span id="savePackageButton" class="nxj_button nxj_cssButton<?=(isset($settings->username) ? '' : ' disabled')?>" style="position:relative;">
 								Save
 								<?if(!isset($settings->username)){?>
 									<?=Nxj_UI::tooltip(array(

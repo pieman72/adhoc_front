@@ -130,6 +130,17 @@ label {
 #controls span.nxj_cssButton {
 	line-height:16px;
 	}
+span.nxj_button.nxj_cssButton.disabled.saving,
+span.nxj_button.nxj_cssButton.disabled.saving:hover {
+	background:linear-gradient(to bottom,#64AEF6 0%,#206BDF 100%) repeat scroll 0 0 rgba(0,0,0,0);
+	border:1px solid #1F54BC;
+	color:#EFF7FF;
+	}
+span.nxj_button.nxj_cssButton.disabled.saving:after {
+	content:url('//static.harveyserv.ath.cx/adhoc/img/buttonLoading.gif');
+	margin-left:3px;
+	vertical-align:top;
+	}
 .nxj_cssButton .nxj_tipContent {
 	font-size:14px;
 	line-height:20px;

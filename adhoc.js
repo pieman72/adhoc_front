@@ -1652,7 +1652,10 @@ Event.observe(window, 'load', function(){
 				++adhoc.history.index;
 
 				// Activate the 'save' button if user is logged in
-				if(adhoc.setting('username')) $('savePackageButton').removeClassName('disabled');
+				if(adhoc.setting('username')){
+					$('savePackageButton').removeClassName('disabled');
+					$('savePackageButton').update('Save');
+				}
 
 				// Activate the undo button, and deactivate redo
 				$('histBack').removeClassName('disabled');
@@ -1720,7 +1723,10 @@ Event.observe(window, 'load', function(){
 				}
 
 				// Activate the 'save' button if user is logged in
-				if(adhoc.setting('username')) $('savePackageButton').removeClassName('disabled');
+				if(adhoc.setting('username')){
+					$('savePackageButton').removeClassName('disabled');
+					$('savePackageButton').update('Save');
+				}
 
 				// If the next item is bound to this one, do it as well
 				if(item.bind) adhoc.history.undo();
@@ -1793,7 +1799,10 @@ Event.observe(window, 'load', function(){
 				}
 
 				// Activate the 'save' button if user is logged in
-				if(adhoc.setting('username')) $('savePackageButton').removeClassName('disabled');
+				if(adhoc.setting('username')){
+					$('savePackageButton').removeClassName('disabled');
+					$('savePackageButton').update('Save');
+				}
 
 				// Activate the undo button, and if we're at the newest history item, deactivate redo
 				++adhoc.history.index;
@@ -1812,12 +1821,12 @@ Event.observe(window, 'load', function(){
 
 	// Initialize the GUI editor
 	adhoc.init = function(){
-		// Load settings from cookie
+		// Load settings from cookie but reset the project ID
 		if(document.cookie && document.cookie.indexOf('adhocSettings=')>=0){
 			var settingsJSON = document.cookie.match(/adhocSettings=([^;]*)/);
 			var loadedSettings = decodeURIComponent(settingsJSON[1]).evalJSON();
 			for(var i in loadedSettings){
-				if(i == 'projectName') continue;
+				if(i=='projectName' || i=='projectId') continue;
 				adhoc.setting(i, loadedSettings[i]);
 			}
 		}else{
@@ -1866,9 +1875,7 @@ Event.observe(window, 'load', function(){
 
 		// Activate save package button
 		$('savePackageButton').observe('click', function(){
-			// No action if disabled, otherwise save
-			if($(this).hasClassName('disabled')) return;
-			adhoc.saveProject();
+			if(!$(this).hasClassName('disabled')) adhoc.saveProject();
 		});
 
 		// Activate connector label toggles
@@ -4008,7 +4015,10 @@ Event.observe(window, 'load', function(){
 			adhoc.setting('projectId', 0);
 			adhoc.setting('projectName', 'New Project');
 			$('projectName').value = adhoc.setting('projectName');
-			$('savePackageButton').addClassName('disabled');
+			if(adhoc.setting('username')){
+				$('savePackageButton').removeClassName('disabled');
+				$('savePackageButton').update('Save');
+			}else $('savePackageButton').addClassName('disabled');
 			$('zoomPrcent').update(100);
 			adhoc.resetHistory();
 			adhoc.refreshRender();
@@ -4016,6 +4026,10 @@ Event.observe(window, 'load', function(){
 	}
 	// Save a package to storage
 	adhoc.saveProject = function(){
+		// Set the save button to a processing state
+		$('savePackageButton').addClassName('disabled').addClassName('saving');
+		$('savePackageButton').update('Saving...');
+
 		// Call save from Ajax
 		new Ajax.Request('save/', {
 			parameters: {
@@ -4025,6 +4039,9 @@ Event.observe(window, 'load', function(){
 				,xsrftoken: $('xsrfToken').innerHTML
 			}
 			,onFailure: function(t){
+				// Reactivate the save button, and report the error
+				$('savePackageButton').removeClassName('disabled').removeClassName('saving');
+				$('savePackageButton').update('Save');
 				adhoc.error(t.responseText);
 			}
 			,onSuccess: function(t){
@@ -4060,8 +4077,9 @@ Event.observe(window, 'load', function(){
 				var inner = $$('#projectSelect .nxj_selectInner')[0];
 				inner.insertBefore(projOpt, inner.firstChild);
 
-				// Disable the 'save' button until a change is made
-				$('savePackageButton').addClassName('disabled');
+				// Change the text on the save button
+				$('savePackageButton').removeClassName('saving');
+				$('savePackageButton').update('Saved');
 			}
 		});
 	}
@@ -4091,6 +4109,7 @@ Event.observe(window, 'load', function(){
 				adhoc.setting('projectName', adhoc.rootNode.package);
 				$('projectName').value = adhoc.setting('projectName');
 				$('savePackageButton').addClassName('disabled');
+				$('savePackageButton').update('Saved');
 				$('zoomPrcent').update(100);
 				adhoc.resetHistory();
 				adhoc.refreshRender();
