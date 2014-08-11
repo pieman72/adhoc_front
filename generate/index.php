@@ -22,12 +22,6 @@ if(session_status()==PHP_SESSION_NONE){
     );
     session_start();
 }
-if(!isset($_POST['xsrftoken'])
-		|| !isset($_SESSION['xsrftoken'])
-		|| $_POST['xsrftoken']!=$_SESSION['xsrftoken']
-	){
-	$errors[] = "XSRF Token mismatch. If this persists, try logging out and back in.";
-}
 
 // Continue with generation only if no errors
 if(!count($errors)){

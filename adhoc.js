@@ -2738,7 +2738,7 @@ Event.observe(window, 'load', function(){
 			|| n.which == adhoc.nodeWhich.LITERAL_ARRAY
 			|| n.which == adhoc.nodeWhich.LITERAL_HASH
 			|| n.which == adhoc.nodeWhich.LITERAL_STRCT;
-		n.subTreeHeight = (isHolder ? 30 : 0);
+		n.subTreeHeight = 0;
 		var childrenFound = false;
 		if(!n.folded){
 			for(var i=0; i<n.children.length; ++i){
@@ -2758,7 +2758,8 @@ Event.observe(window, 'load', function(){
 				n.subTreeHeight += adhoc.subTreeHeightNode(n.children[i]);
 			}
 		}
-		if(!childrenFound) n.subTreeHeight = (isHolder ? 30 : 100);
+		if(!childrenFound) n.subTreeHeight = 100;
+		else if(isHolder) n.subTreeHeight += 30;
 		return n.subTreeHeight;
 	}
 	// Recursively determine each node's display position
@@ -2769,7 +2770,7 @@ Event.observe(window, 'load', function(){
 			|| n.which == adhoc.nodeWhich.LITERAL_STRCT;
 		var passed = d ? n.y : 0;
 		n.x = d*200 + 100 + (m ? adhoc.movingNode.movePos.x : 0);
-		n.y = n.subTreeHeight/2 + passed + (m ? adhoc.movingNode.movePos.y : 0);
+		n.y = n.subTreeHeight/2 + 20 + passed + (m ? adhoc.movingNode.movePos.y : 0);
 		if(!n.folded){
 			for(var i=0; i<n.children.length; ++i){
 				// Skip null placeholders when setting is disabled
@@ -2796,7 +2797,7 @@ Event.observe(window, 'load', function(){
 		var c, maxWidth=30;
 		if(!n.folded){
 			for(var i=0; i<n.children.length; ++i){
-				// Render one child
+				// Get one child
 				c = n.children[i];
 
 				// Skip null placeholders when setting is disabled
@@ -2805,6 +2806,7 @@ Event.observe(window, 'load', function(){
 						&& !adhoc.setting('dbg'))
 					continue;
 
+				// Render the child
 				adhoc.renderNode(c);
 				if(c.width > maxWidth) maxWidth = c.width;
 			}
@@ -2873,8 +2875,9 @@ Event.observe(window, 'load', function(){
 			nodeColor = '#8A8A8A';
 
 			// Set the group's dimensions by the size of its subtree
-			n.width = maxWidth + 10;
-			n.height = n.subTreeHeight + 10;
+			var hasChildren = adhoc.countChildrenOfType(n, null, true);
+			n.width = (hasChildren ? maxWidth+10 : 40);
+			n.height = (hasChildren ? n.subTreeHeight+10 : 40);
 
 			// Draw box border
 			ctx.strokeStyle = nodeColor;
@@ -3038,46 +3041,47 @@ Event.observe(window, 'load', function(){
 				// Determine the right color
 				nodeColor = adhoc.setting('colorScheme')=='dark' ? '#FFFFFF' : '#000000';
 
-				// Set the node's dimensions
-				n.width = maxWidth + 10;
-				n.height = n.subTreeHeight + 10;
+				// Set the array's dimensions by the size of its subtree
+				var hasChildren = adhoc.countChildrenOfType(n, null, true);
+				n.width = (hasChildren ? 110 : 40);
+				n.height = (hasChildren ? n.subTreeHeight+10 : 40);
 
 				// Draw the brackets
 				ctx.strokeStyle = nodeColor;
 				ctx.beginPath();
 				ctx.moveTo(
-					(n.x-(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
-					,(n.y-(n.height/2.0+5)+10) * adhoc.display_scale - adhoc.display_y
+					(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+					,(n.y-(n.height/2.0)+10) * adhoc.display_scale - adhoc.display_y
 				);
 				ctx.lineTo(
-					(n.x-(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
-					,(n.y-(n.height/2.0+5)) * adhoc.display_scale - adhoc.display_y
+					(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+					,(n.y-(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
 				);
 				ctx.lineTo(
-					(n.x+(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
-					,(n.y-(n.height/2.0+5)) * adhoc.display_scale - adhoc.display_y
+					(n.x+(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+					,(n.y-(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
 				);
 				ctx.lineTo(
-					(n.x+(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
-					,(n.y-(n.height/2.0+5)+10) * adhoc.display_scale - adhoc.display_y
+					(n.x+(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+					,(n.y-(n.height/2.0)+10) * adhoc.display_scale - adhoc.display_y
 				);
 				ctx.stroke();
 				ctx.beginPath();
 				ctx.moveTo(
-					(n.x-(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
-					,(n.y+(n.height/2.0+5)-10) * adhoc.display_scale - adhoc.display_y
+					(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+					,(n.y+(n.height/2.0)-10) * adhoc.display_scale - adhoc.display_y
 				);
 				ctx.lineTo(
-					(n.x-(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
-					,(n.y+(n.height/2.0+5)) * adhoc.display_scale - adhoc.display_y
+					(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+					,(n.y+(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
 				);
 				ctx.lineTo(
-					(n.x+(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
-					,(n.y+(n.height/2.0+5)) * adhoc.display_scale - adhoc.display_y
+					(n.x+(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+					,(n.y+(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
 				);
 				ctx.lineTo(
-					(n.x+(n.width/2.0+5)) * adhoc.display_scale - adhoc.display_x
-					,(n.y+(n.height/2.0+5)-10) * adhoc.display_scale - adhoc.display_y
+					(n.x+(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
+					,(n.y+(n.height/2.0)-10) * adhoc.display_scale - adhoc.display_y
 				);
 				ctx.stroke();
 				break;
@@ -3269,19 +3273,23 @@ Event.observe(window, 'load', function(){
 	}
 	// Recursively determine which node (if any) the click landed near
 	adhoc.getClosestNode = function(n, best, click){
-		// Skip detached blocks
-		if(!n.detached){
-			// Get the distance of this node
-			var dist = Math.min(Math.abs(click.x-n.x)-(n.width/2.0), Math.abs(click.y-n.y)-(n.height/2.0));
-			if(dist < best[1]){
+		// Skip detached blocks and indices
+		if(n.detached) return best;
+
+		// Get the distance to this node (skip index nodes)
+		if(n.childType != adhoc.nodeChildType.INDEX){
+			var x = Math.max(0, Math.abs(click.x-n.x)-(n.width/2.0));
+			var y = Math.max(0, Math.abs(click.y-n.y)-(n.height/2.0));
+			var dist = Math.sqrt(x*x + y*y);
+			if(dist <= best[1]){
 				best[0] = n;
 				best[1] = dist;
 			}
+		}
 
-			// Check the children
-			for(var i=0; i<n.children.length; ++i){
-				best = adhoc.getClosestNode(n.children[i], best, click);
-			}
+		// Check the children
+		for(var i=0; i<n.children.length; ++i){
+			best = adhoc.getClosestNode(n.children[i], best, click);
 		}
 
 		// Return the best found
@@ -3512,7 +3520,7 @@ Event.observe(window, 'load', function(){
 		var count = 0;
 		for(var i=0; i<prnt.children.length; ++i){
 			if(prnt.children[i].nodeType == adhoc.nodeTypes.TYPE_NULL && skipNull) continue;
-			if(prnt.children[i].childType == childType) ++count;
+			if((prnt.children[i].childType == childType) || !childType) ++count;
 		}
 		return count;
 	}
