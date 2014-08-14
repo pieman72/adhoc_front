@@ -55,11 +55,6 @@ if(!count($errors) && isset($_SESSION['username']) && $_SESSION['username']){
 	}
 }
 
-// Display errors
-if(count($errors)){
-	// TODO
-}
-
 // Remove the current login
 unset($_SESSION['username']);
 setcookie(

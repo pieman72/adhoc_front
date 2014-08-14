@@ -2324,7 +2324,6 @@ Event.observe(window, 'load', function(){
 					case adhoc.nodeWhich.LITERAL_HASH:
 					case adhoc.nodeWhich.LITERAL_STRCT:
 						adhoc.deactivateAllTools();
-						// TODO: Prompt for literal value
 						adhoc.message('Warning', 'This type of literal is not yet implemented'); break;
 						adhoc.createNode(null, prnt, repl, type, which, childType);
 						break;
@@ -2594,31 +2593,79 @@ Event.observe(window, 'load', function(){
 						}
 					}
 				}else if(theLightbox.visible()){
+				}else{
+					var selector = $('toolbox').className == 'Operator'
+						? '#toolboxItems .Operator, #toolboxItems .Assignment'
+						: '#toolboxItems .'+$('toolbox').className;
+					var tools = $$(selector);
+					for(var index = 0; index<tools.length; ++index){
+						if(!tools[index].hasClassName('active')) continue;
+						switch(key){
+						case Event.KEY_DOWN:
+						case Event.KEY_RIGHT:
+							if(index == tools.length-1) break;
+							tools[index].removeClassName('active');
+							tools[++index].addClassName('active');
+							Effect.ScrollTo(tools[index]);
+							break;
+						case Event.KEY_UP:
+						case Event.KEY_LEFT:
+							if(index == 0) break;
+							tools[index].removeClassName('active');
+							tools[--index].addClassName('active');
+							break;
+						}
+						$('toolbox').scrollTop = Math.min(Math.max(
+								$('toolbox').scrollTop
+								,tools[index].offsetTop + tools[index].clientHeight - $('toolbox').clientHeight
+							)
+							,tools[index].offsetTop
+						);
+						break;
+					}
 				}
 				break;
 
-			// (CTRL++) zoom in
+			// (1 - 6) Select a tool from the toolbox
+			case 49:
+			case 50:
+			case 51:
+			case 52:
+			case 53:
+			case 54:
+				if($('theLightbox').visible()) break;
+				if($('projectLightbox').visible()) break;
+				if(!$('controls').hasClassName('collapsed')) break;
+				if(!adhoc.alternateKeys){ Event.stop(e);
+					// Select the menu based on the typeName
+					var name = adhoc.nodeTypeNames[key - (key>=53 ? 47 : 48)];
+					$('toolbox').className = name;
+					$$('#toolboxItems .'+name)[0].addClassName('active');
+				}
+				break;
+
+			// (CTRL++) Zoom in
 			case 61:
 				if(adhoc.alternateKeys){ Event.stop(e);
 					adhoc.zoomIn();
 				}
 				break;
 
-			// (CTRL+-) zoom out
+			// (CTRL+-) Zoom out
 			case 173:
 				if(adhoc.alternateKeys){ Event.stop(e);
 					adhoc.zoomOut();
 				}
 				break;
 
-			// (CTRL+a) select generated code
+			// (CTRL+a) Select generated code
 			case 65:
 				if(adhoc.alternateKeys && $('output').visible()){ Event.stop(e);
 					adhoc.selectText($('generatedCode'));
 				}
 				break;
 
-			// (CTRL+g) generate code!
+			// (CTRL+g) Generate code!
 			case 71:
 				if(adhoc.alternateKeys){ Event.stop(e);
 					adhoc.generateCode();
@@ -3276,11 +3323,9 @@ Event.observe(window, 'load', function(){
 				break;
 
 			case adhoc.nodeWhich.LITERAL_HASH:
-				// TODO: render a literal hash
 				break;
 
 			case adhoc.nodeWhich.LITERAL_STRCT:
-				// TODO: render a literal struct
 				break;
 
 			}
