@@ -146,6 +146,18 @@ Event.observe(window, 'load', function(){
 		,ELSE:			12
 		,STORAGE:		13
 	};
+	// AST node dataTypes
+	adhoc.nodeDataTypes = {
+		VOID:		0
+		,BOOL:		1
+		,INT:		2
+		,FLOAT:		3
+		,STRING:	4
+		,ARRAY:		5
+		,HASH:		6
+		,STRUCT:	7
+		,ACTION:	8
+	}
 	// AST node type names
 	adhoc.nodeTypeNames = [
 		'Null'
@@ -418,9 +430,26 @@ Event.observe(window, 'load', function(){
 			,useLabel: false
 			,nodeTypes: [
 				adhoc.nodeTypes.VARIABLE
+				,adhoc.nodeTypes.OPERATOR
 			]
 			,nodeNotWhich: [
 				adhoc.nodeWhich.VARIABLE_EVAL
+				,adhoc.nodeWhich.OPERATOR_PLUS
+				,adhoc.nodeWhich.OPERATOR_MINUS
+				,adhoc.nodeWhich.OPERATOR_TIMES
+				,adhoc.nodeWhich.OPERATOR_DIVBY
+				,adhoc.nodeWhich.OPERATOR_MOD
+				,adhoc.nodeWhich.OPERATOR_EXP
+				,adhoc.nodeWhich.OPERATOR_OR
+				,adhoc.nodeWhich.OPERATOR_AND
+				,adhoc.nodeWhich.OPERATOR_NOT
+				,adhoc.nodeWhich.OPERATOR_EQUIV
+				,adhoc.nodeWhich.OPERATOR_GRTTN
+				,adhoc.nodeWhich.OPERATOR_LESTN
+				,adhoc.nodeWhich.OPERATOR_GRTEQ
+				,adhoc.nodeWhich.OPERATOR_LESEQ
+				,adhoc.nodeWhich.OPERATOR_NOTEQ
+				,adhoc.nodeWhich.OPERATOR_TRNIF
 			]
 		}
 	];
@@ -1031,6 +1060,88 @@ Event.observe(window, 'load', function(){
 			if(butt.hasClassName('disabled')) return;
 			$('theLightbox').hide();
 			callBack(parseInt($$('#theLightbox input:checked')[0].value));
+		});
+		cont.appendChild(butt);
+
+		// Delete old lightbox content and add the new one, then show
+		adhoc.removeAutocomplete();
+		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
+		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
+		$('theLightbox').removeClassName('widthAuto');
+		$('theLightbox').show();
+	}
+	// Prompt the user for a selection
+	adhoc.promptSelect = function(prmpt, opts, callBack){
+		// Add the prompt text as the title
+		var LBtitle = $$('#theLightbox .nxj_lightboxTitle')[0];
+		LBtitle.removeClassName('LBTitleError').removeClassName('LBTitleWarn').update(prmpt);
+
+		// Create the new lightbox content
+		var cont = $(document.createElement('div'));
+		cont.addClassName('nxj_lightboxContent');
+
+		// Create the selectBox holder
+		var sel = $(document.createElement('div'));
+		sel.addClassName('nxj_select').setAttribute('id', 'lb_select');
+		sel.setAttribute('style', 'width:370px;');
+		cont.appendChild(sel);
+
+		// Create the selectbox display area
+		var disp = $(document.createElement('div'));
+		disp.addClassName('nxj_selectDisplay').addClassName('default');
+		disp.update('- Select -');
+		sel.appendChild(disp);
+
+		// Create the selectbox arrow
+		sel.appendChild($(document.createElement('div')).addClassName('nxj_selectArrow'));
+
+		// Create the selectbox menu
+		var menu = $(document.createElement('div'));
+		sel.appendChild(menu.addClassName('nxj_selectInner'));
+
+		// Create the hidden input for form submission
+		var hid = $(document.createElement('input'));
+		hid.addClassName('nxj_selectValue').setAttribute('id', 'lb_select_input');
+		hid.setAttribute('type', 'hidden');
+		sel.appendChild(hid);
+
+		// Create and add the prompt options
+		var hasDefault = false;
+		for(var i=0; i<opts.length; ++i){
+			// Create the option itself
+			var opt = $(document.createElement('div')).addClassName('nxj_selectOption');
+			opt.setAttribute('data-value', opts[i].value);
+			if(opts[i].default){
+				opt.setAttribute('data-default', 'true');
+				hasDefault = true;
+			}
+			opt.update(opts[i].display);
+			opt.observe('click', function(){
+				disp.update(this.innerHTML);
+				hid.value = this.getAttribute('data-value');
+				$('lb_select_select').removeClassName('disabled');
+			});
+			menu.appendChild(opt);
+		}
+
+		// Activate the selectbox
+		nxj.ui.selectBox.activateSelectBoxes(sel);
+
+		// Add a break
+		var br = $(document.createElement('br'));
+		cont.appendChild(br);
+
+		// Create the confirmation button
+		var butt = $(document.createElement('a'));
+		butt.setAttribute('id', 'lb_select_select');
+		butt.addClassName('nxj_button');
+		butt.addClassName('nxj_cssButton');
+		if(!hasDefault) butt.addClassName('disabled');
+		butt.update('Select');
+		butt.observe('click', function(){
+			if(butt.hasClassName('disabled')) return;
+			$('theLightbox').hide();
+			callBack($F(hid), disp.innerHTML);
 		});
 		cont.appendChild(butt);
 
@@ -2160,6 +2271,56 @@ Event.observe(window, 'load', function(){
 						});
 						break;
 
+					case adhoc.nodeWhich.LITERAL_ARRAY:
+						// Create the array first
+						adhoc.deactivateAllTools();
+						var newArray = adhoc.createNode(null, prnt, repl, type, which, childType);
+						// Then prompt for a child data type
+						adhoc.promptSelect('Choose dataType held:', [
+							{
+								value: adhoc.nodeDataTypes.VOID
+								,display: 'Mixed - <i>(some languages only)</i>'
+								,default: 1
+							},{
+								value: adhoc.nodeDataTypes.BOOL
+								,display: 'Bool'
+							},{
+								value: adhoc.nodeDataTypes.INT
+								,display: 'Int'
+							},{
+								value: adhoc.nodeDataTypes.FLOAT
+								,display: 'Float'
+							},{
+								value: adhoc.nodeDataTypes.STRING
+								,display: 'String'
+							},{
+								value: adhoc.nodeDataTypes.ARRAY
+								,display: 'Array'
+							},{
+								value: adhoc.nodeDataTypes.HASH
+								,display: 'Hash'
+							},{
+								value: adhoc.nodeDataTypes.STRUCT
+								,display: 'Struct'
+							},{
+								value: adhoc.nodeDataTypes.ACTION
+								,display: 'Action'
+							}
+						], function(val, disp){
+							if(val != adhoc.nodeDataTypes.VOID) adhoc.createNode(
+								null
+								,newArray
+								,null
+								,adhoc.nodeTypes.LITERAL
+								,adhoc.nodeWhich.LITERAL_INT
+								,adhoc.nodeChildType.INDEX
+								,null
+								,val
+								,-1
+							);
+						});
+						break;
+
 					case adhoc.nodeWhich.LITERAL_HASH:
 					case adhoc.nodeWhich.LITERAL_STRCT:
 						adhoc.deactivateAllTools();
@@ -2585,6 +2746,12 @@ Event.observe(window, 'load', function(){
 		// Create an index node for children of arrays/hashes/structs
 		if(p && c!=adhoc.nodeChildType.INDEX){
 			if(p.which==adhoc.nodeWhich.LITERAL_ARRAY){
+				// Remove the dummy index if present
+				if(p.children.length && p.children[0].value<0){
+					adhoc.deleteNode(p.children[0]);
+				}
+
+				// Create the new index
 				p = adhoc.createNode(
 					null
 					,p
@@ -2634,7 +2801,7 @@ Event.observe(window, 'load', function(){
 			,subTreeHeight: 100
 		};
 
-		// Add to the list of all nodes and record in the history
+		// Add to the list of all nodes
 		if(t != adhoc.nodeTypes.TYPE_NULL) adhoc.allNodes[newNode.id] = newNode;
 
 		// Assign to the parent if present
@@ -2695,7 +2862,9 @@ Event.observe(window, 'load', function(){
 		}
 
 		// Give this node empty children as necessary
-		if(!(w==adhoc.nodeWhich.VARIABLE_ASIGN && p && p.which!=adhoc.nodeWhich.ACTION_DEFIN)){
+		if(!(w==adhoc.nodeWhich.VARIABLE_ASIGN && p && p.which!=adhoc.nodeWhich.ACTION_DEFIN)
+				&& !(c==adhoc.nodeChildType.INDEX && v<0)
+			){
 			var neededChildren = adhoc.nodeWhichChildren[t][adhoc.nodeWhichIndices[w][1]];
 			if(c == adhoc.nodeChildType.INDEX) neededChildren = adhoc.nodeWhichChildren[0][1];
 			for(var i=0; i<neededChildren.length; ++i){
@@ -2755,6 +2924,11 @@ Event.observe(window, 'load', function(){
 						&& !adhoc.setting('dbg'))
 					continue;
 
+				// Skip dummy nodes
+				if(n.children[i].childType == adhoc.nodeChildType.INDEX
+						&& n.children[i].value<0)
+					continue;
+
 				// Skip any detached nodes
 				if(n.children[i].detached){
 					adhoc.subTreeHeightNode(n.children[i]);
@@ -2800,6 +2974,9 @@ Event.observe(window, 'load', function(){
 
 	// Recursively draw each node
 	adhoc.renderNode = function(n){
+		// Skip placeholders
+		if(n.childType==adhoc.nodeChildType.INDEX && n.value<0) return;
+
 		// Process the children recursively
 		var c, maxWidth=30;
 		if(!n.folded){
@@ -2813,13 +2990,18 @@ Event.observe(window, 'load', function(){
 						&& !adhoc.setting('dbg'))
 					continue;
 
+				// Skip dummy nodes
+				if(n.children[i].childType == adhoc.nodeChildType.INDEX
+						&& n.children[i].value<0)
+					continue;
+
 				// Render the child
 				adhoc.renderNode(c);
 				if(c.width > maxWidth) maxWidth = c.width;
 			}
 		}
 
-		// Rest canvas parameters
+		// Reset canvas parameters
 		var ctx = adhoc.canvas.getContext('2d');
 		var nodeColor;
 		ctx.lineWidth = (6.0*adhoc.display_scale)<<0;
@@ -3527,6 +3709,7 @@ Event.observe(window, 'load', function(){
 		var count = 0;
 		for(var i=0; i<prnt.children.length; ++i){
 			if(prnt.children[i].nodeType == adhoc.nodeTypes.TYPE_NULL && skipNull) continue;
+			if(prnt.children[i].childType == adhoc.nodeChildType.INDEX && prnt.children[i].value<0) continue;
 			if((prnt.children[i].childType == childType) || !childType) ++count;
 		}
 		return count;
