@@ -1497,6 +1497,37 @@ Event.observe(window, 'load', function(){
 		$('theLightbox').show();
 		return false;
 	}
+	// Pop up a dialog containing an IFramed page
+	adhoc.promptIFrame = function(prmpt, url){
+		// Add the prompt text as the title
+		var LBtitle = $$('#theLightbox .nxj_lightboxTitle')[0];
+		LBtitle.removeClassName('LBTitleError').removeClassName('LBTitleWarn').update(prmpt);
+
+		// Create the new lightbox content
+		var cont = $(document.createElement('div'));
+		cont.addClassName('nxj_lightboxContent');
+
+		// Create the IFrame
+		var frame = $(document.createElement('iframe'));
+		frame.setAttribute('src', url);
+		var height = document.viewport.getDimensions().height;
+		frame.setAttribute('style', 'height:'+(height-170)+'px;');
+		cont.appendChild(frame);
+		frame.observe('load', function(){ this.contentWindow.focus(); });
+
+		// Delete old lightbox content and add the new one, then show
+		adhoc.removeAutocomplete();
+		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
+		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
+		$('theLightbox').addClassName('widthAuto');
+		$('theLightbox').show();
+	}
+	// Remove any iframes, close the lightbox, and eturn focus to the canvas
+	adhoc.regainFocus = function(){
+		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
+		$('theLightbox').hide();
+		window.focus();
+	}
 
 	// Function to clear the listener on autocomplete
 	adhoc.removeAutocomplete = function(){
@@ -2017,6 +2048,9 @@ Event.observe(window, 'load', function(){
 				adhoc.refreshRender();
 			});
 		});
+
+		// Activate the help link
+		$('helpLink').observe('click', adhoc.help);
 
 		// Activate the generate button
 		$('generateButton').observe('click', adhoc.generateCode);
@@ -2672,6 +2706,13 @@ Event.observe(window, 'load', function(){
 				}
 				break;
 
+			// (CTRL+h) Show help
+			case 72:
+				if(adhoc.alternateKeys){ Event.stop(e);
+					adhoc.help();
+				}
+				break;
+
 			// (CTRL+k) Toggle the debugger
 			case 75:
 				if(adhoc.alternateKeys){ Event.stop(e);
@@ -2771,12 +2812,12 @@ Event.observe(window, 'load', function(){
 		// Draw the initial canvas
 		adhoc.refreshRender();
 
-		// Bind to the window if debug mode is on
-		if(adhoc.setting('dbg')) window.adhoc = adhoc;
-
 		// Ready the history buttons
 		$('histBack').observe('click', adhoc.history.undo);
 		$('histFwd').observe('click', adhoc.history.redo);
+
+		// Bind to the window
+		window.adhoc = adhoc;
 	}
 
 	// Generate the next available node ID
@@ -3772,6 +3813,10 @@ Event.observe(window, 'load', function(){
 		if(!n) return;
 		n.error = null;
 		for(var i=0; i<n.children.length; ++i) adhoc.clearErrors(n.children[i]);
+	}
+	// Pop up the help pane
+	adhoc.help = function(){
+		adhoc.promptIFrame('ADHOC Help', 'help.php');
 	}
 
 	// Function to serialize a node and its children for binary

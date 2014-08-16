@@ -197,11 +197,11 @@ if(!count($errors) && $_SESSION['username']){
 			,'content'      => "<br/>$projectSelect"
 		))?>
 
-		<div id="controls" class="collapsed">
+		<div id="controls"<?=(isset($_SESSION['username']) ? ' class="collapsed"' : '')?>>
 			<div class="controlsLeft floatLeft">
 				<div class="floatLeft" style="height:100%;width:10px;"></div>
 				<div class="floatLeft">
-					<div class="floatLeft">
+					<div class="floatLeft" style="border-bottom:1px solid #000000;width:100%;">
 						<?if(isset($_SESSION['username'])){?>
 							Logged in as <b><?=$_SESSION['username']?></b>.&nbsp;&nbsp;
 							<a class="logoutLink" href="logout/">Log-out</a>
@@ -220,9 +220,9 @@ if(!count($errors) && $_SESSION['username']){
 									<?=Nxj_UI::tooltip(array(
 										'id'            => 'loadTip'
 										,'direction'    => 'right'
-										,'width'		=> 161
+										,'width'		=> 163
 										,'height'		=> 40
-										,'content'      => 'You must <a href="register/" target="_blank">register</a> or <a href="login/" target="_blank">login</a> in order to load a project'
+										,'content'      => 'You must <a href="login/" target="_blank">login</a> or <a href="register/" target="_blank">register</a> in order to load a project'
 									))?>
 								<?}?>
 							</span>
@@ -231,7 +231,7 @@ if(!count($errors) && $_SESSION['username']){
 							<label for="projectName">Package Name</label>
 							<div class="clear"></div>
 
-							<input type="text" id="projectName" class="nxj_input" value="New Project" style="width:142px;"/>
+							<input type="text" id="projectName" class="nxj_input" value="New Project"/>
 							<div class="clear" style="height:10px;"></div>
 
 							<span id="savePackageButton" class="nxj_button nxj_cssButton<?=(isset($settings->username) ? '' : ' disabled')?>" style="position:relative;">
@@ -240,9 +240,9 @@ if(!count($errors) && $_SESSION['username']){
 									<?=Nxj_UI::tooltip(array(
 										'id'            => 'saveTip'
 										,'direction'    => 'right'
-										,'width'		=> 161
+										,'width'		=> 163
 										,'height'		=> 40
-										,'content'      => 'You must <a href="register/" target="_blank">register</a> or <a href="login/" target="_blank">login</a> in order to save a project'
+										,'content'      => 'You must <a href="login/" target="_blank">login</a> or <a href="register/" target="_blank">register</a> in order to save a project'
 									))?>
 								<?}?>
 							</span>
@@ -339,6 +339,14 @@ if(!count($errors) && $_SESSION['username']){
 				</div>
 			</div>
 			<div class="controlsRight floatRight">
+				<div class="floatRight" style="border-bottom:1px solid #000000;width:100%;">
+					<div class="floatRight" style="height:10px;width:10px;"></div>
+					<div class="floatRight">
+						ADHOC Front-End (<a target="_blank" href="LICENSE">GPL v3</a>) |
+						<a target="_blank" href="http://harveyserv.ath.cx/adhoc/">About</a> |
+						<a id="helpLink" href="javascript:void(0);">Help</a>
+					</div>
+				</div>
 				<div style="height:10px;" class="clear"></div>
 
 				<div class="floatLeft">

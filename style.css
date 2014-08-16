@@ -32,8 +32,9 @@ label {
 	background:#000000;
 	box-shadow:0 0 20px 7px #FFFFFF;
 	}
-.widthAuto .nxj_lightbox {
-	max-width:50%;
+#theLightbox.widthAuto .nxj_lightbox {
+	max-width:60%;
+	top:50px;
 	width:auto;
 	}
 #theLightbox .nxj_input {
@@ -42,7 +43,7 @@ label {
 	}
 #theLightbox .searchHolder {
 	float:left;
-	height:32px
+	height:32px;
 	overflow:visible;
 	position:relative;
 	width:380px;
@@ -98,6 +99,13 @@ label {
 	text-align:right;
 	vertical-align:text-top;
 	}
+#theLightbox iframe {
+	background:#FFFFFF;
+	border:none;
+	margin:0;
+	padding:0;
+	width:100%;
+	}
 
 #controls {
 	background:#EEEEEE;
@@ -121,6 +129,19 @@ label {
 	height:100%;
 	position:relative;
 	width:50%;
+	}
+#controls #projectName {
+	background:none;
+	border:none;
+	box-shadow:none;
+	color:#0000FF;
+	cursor:pointer;
+	overflow:hidden;
+	padding:0;
+	text-decoration:underline;
+	text-overflow:ellipsis;
+	white-space:nowrap;
+	width:142px;
 	}
 #controls label,
 #controls span {
