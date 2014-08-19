@@ -157,6 +157,7 @@ Event.observe(window, 'load', function(){
 		,HASH:		6
 		,STRUCT:	7
 		,ACTION:	8
+		,MIXED:		9
 	}
 	// AST node type names
 	adhoc.nodeTypeNames = [
@@ -1272,6 +1273,9 @@ Event.observe(window, 'load', function(){
 				if($('lb_node_comment').hasClassName('red')) error = true;
 				if($('lb_node_comment').hasClassName('green')) change = true;
 			}
+			if($('lb_node_type_input')){
+				if($('lb_node_type_input').hasClassName('changed')) change = true;
+			}
 			if(change && !error) $('lb_input_select').removeClassName('disabled');
 			else $('lb_input_select').addClassName('disabled');
 		}
@@ -1463,6 +1467,94 @@ Event.observe(window, 'load', function(){
 			table.appendChild(row);
 		}
 
+		// Create a dataType field when appropriate
+		if(n.which == adhoc.nodeWhich.LITERAL_ARRAY || n.which == adhoc.nodeWhich.LITERAL_HASH){
+			row = $(document.createElement('tr'));
+			cellR = $(document.createElement('td'));
+			cellL = $(document.createElement('td'));
+			cellL.addClassName('attrName').update('Child DataType');
+
+			// Create the selectBox holder
+			var sel = $(document.createElement('div'));
+			sel.addClassName('nxj_select').setAttribute('id', 'lb_select');
+			sel.setAttribute('style', 'width:370px;');
+			cellR.appendChild(sel);
+
+			// Create the selectbox display area
+			var disp = $(document.createElement('div'));
+			disp.addClassName('nxj_selectDisplay').addClassName('default');
+			disp.update('- Select -');
+			sel.appendChild(disp);
+
+			// Create the selectbox arrow
+			sel.appendChild($(document.createElement('div')).addClassName('nxj_selectArrow'));
+
+			// Create the selectbox menu
+			var menu = $(document.createElement('div'));
+			sel.appendChild(menu.addClassName('nxj_selectInner'));
+
+			// Create the hidden input for form submission
+			var hid = $(document.createElement('input'));
+			hid.addClassName('nxj_selectValue').setAttribute('id', 'lb_node_type_input');
+			hid.setAttribute('type', 'hidden');
+			sel.appendChild(hid);
+
+			// Create and add the prompt options
+			var opts = [
+				{
+					value: adhoc.nodeDataTypes.BOOL
+					,display: 'Bool'
+				},{
+					value: adhoc.nodeDataTypes.INT
+					,display: 'Int'
+				},{
+					value: adhoc.nodeDataTypes.FLOAT
+					,display: 'Float'
+				},{
+					value: adhoc.nodeDataTypes.STRING
+					,display: 'String'
+				},{
+					value: adhoc.nodeDataTypes.ARRAY
+					,display: 'Array'
+				},{
+					value: adhoc.nodeDataTypes.HASH
+					,display: 'Hash'
+				},{
+					value: adhoc.nodeDataTypes.STRUCT
+					,display: 'Struct'
+				},{
+					value: adhoc.nodeDataTypes.ACTION
+					,display: 'Action'
+				},{
+					value: adhoc.nodeDataTypes.MIXED
+					,display: 'Mixed - <i>(some languages only)</i>'
+				}
+			];
+			for(var i=0; i<opts.length; ++i){
+				// Create the option itself
+				var opt = $(document.createElement('div')).addClassName('nxj_selectOption');
+				opt.setAttribute('data-value', opts[i].value);
+				if(opts[i].value == n.childDataType){
+					opt.setAttribute('data-default', 'true');
+				}
+				opt.update(opts[i].display);
+				opt.observe('click', function(){
+					disp.update(this.innerHTML);
+					hid.value = this.getAttribute('data-value');
+					$('lb_input_select').removeClassName('disabled');
+					$('lb_node_type_input').addClassName('changed');
+				});
+				menu.appendChild(opt);
+			}
+
+			// Add the selectbox to the table, then activate it
+			cellR.appendChild(sel);
+			row.appendChild(cellL);
+			row.appendChild(cellR);
+			table.appendChild(row);
+			nxj.ui.selectBox.activateSelectBoxes(sel);
+		}
+
 		// Add the table
 		cont.appendChild(table);
 
@@ -1484,6 +1576,12 @@ Event.observe(window, 'load', function(){
 				n
 				,$F('lb_node_comment')
 			);
+			if($('lb_node_type_input') && n.dataType != parseInt($F('lb_node_type_input'))){
+				n.dataType = parseInt($F('lb_node_type_input'));
+				if(n.children.length==1 && n.children[0].value<0){
+					n.children[0].name = parseInt($F('lb_node_type_input'));
+				}
+			}
 			adhoc.refreshRender();
 			$('theLightbox').hide();
 		});
@@ -2312,10 +2410,6 @@ Event.observe(window, 'load', function(){
 						// Then prompt for a child data type
 						adhoc.promptSelect('Choose dataType held:', [
 							{
-								value: adhoc.nodeDataTypes.VOID
-								,display: 'Mixed - <i>(some languages only)</i>'
-								,default: 1
-							},{
 								value: adhoc.nodeDataTypes.BOOL
 								,display: 'Bool'
 							},{
@@ -2339,6 +2433,10 @@ Event.observe(window, 'load', function(){
 							},{
 								value: adhoc.nodeDataTypes.ACTION
 								,display: 'Action'
+							},{
+								value: adhoc.nodeDataTypes.MIXED
+								,display: 'Mixed - <i>(some languages only)</i>'
+								,default: 1
 							}
 						], function(val, disp){
 							if(val != adhoc.nodeDataTypes.VOID) adhoc.createNode(
@@ -2824,7 +2922,18 @@ Event.observe(window, 'load', function(){
 	adhoc.nextId = function(){
 		return ++adhoc.lastId;
 	}
-	// Create a new node with just a type and empty contents
+	/** Create a new node with just a type and empty contents
+	* @param i - The new node's id, typically null
+	* @param p - The new node's parent node (optional only for the root)
+	* @param r - (optional) An existing node to replace
+	* @param t - (optional) The new node's node type
+	* @param w - (optional) The new node's which
+	* @param c - (optional) The new node's child type
+	* @param k - (optional) The new node's package
+	* @param n - (optional) The new node's name
+	* @param v - (optional) The new node's value
+	* @param f - (optional) The id of the node the new node will reference
+	*/
 	adhoc.createNode = function(i, p, r, t, w, c, k, n, v, f){
 		// Set the type, which, and childType if they're not passed
 		if(!t) t = adhoc.nodeTypes.TYPE_NULL;
@@ -2865,7 +2974,8 @@ Event.observe(window, 'load', function(){
 			,nodeType: t
 			,which: w
 			,childType: c
-			,dataType: null
+			,dataType: adhoc.nodeDataTypes.VOID
+			,childDataType: adhoc.nodeDataTypes.VOID
 			,package: (t == adhoc.nodeTypes.TYPE_NULL) ? null : (k ? k : adhoc.setting('projectName'))
 			,name: n
 			,value: v
@@ -2991,6 +3101,7 @@ Event.observe(window, 'load', function(){
 		if(!adhoc.rootNode) return;
 		var ctx = adhoc.canvas.getContext('2d');
 		ctx.clearRect(0, 0, adhoc.canvas.width, adhoc.canvas.height);
+		adhoc.setDataType(adhoc.rootNode);
 		adhoc.subTreeHeightNode(adhoc.rootNode);
 		adhoc.positionNode(adhoc.rootNode, 0);
 		adhoc.renderNode(adhoc.rootNode);
@@ -3817,6 +3928,227 @@ Event.observe(window, 'load', function(){
 	// Pop up the help pane
 	adhoc.help = function(){
 		adhoc.promptIFrame('ADHOC Help', 'help.php');
+	}
+	// Compare two types for casting
+	adhoc.resolveTypes = function(a, b){
+		// Handle edge cases
+		if(a == adhoc.nodeDataTypes.TYPE_MIXED
+				|| b == adhoc.nodeDataTypes.TYPE_MIXED
+				|| a == adhoc.nodeDataTypes.TYPE_ACTN
+				|| b == adhoc.nodeDataTypes.TYPE_ACTN
+				|| a == adhoc.nodeDataTypes.TYPE_STRCT
+				|| b == adhoc.nodeDataTypes.TYPE_STRCT
+				|| a == adhoc.nodeDataTypes.TYPE_VOID
+				|| b == adhoc.nodeDataTypes.TYPE_VOID
+			) return adhoc.nodeDataTypes.TYPE_VOID;
+		if(a == b) return a;
+		if(a < b) return adhoc.resolveTypes(b, a);
+		if(a==adhoc.nodeDataTypes.TYPE_HASH && b==adhoc.nodeDataTypes.TYPE_ARRAY)
+			return adhoc.nodeDataTypes.TYPE_HASH;
+		if(a == adhoc.nodeDataTypes.TYPE_HASH) return adhoc.nodeDataTypes.TYPE_VOID;
+		if(a == adhoc.nodeDataTypes.TYPE_ARRAY) return adhoc.nodeDataTypes.TYPE_VOID;
+
+		// Handle casts
+		return a;
+	}
+	// Set a node's dataType from context
+	adhoc.setDataType = function(n){
+		// Set this node's children's types
+		for(var i=0; i<n.children.length; ++i){
+			adhoc.setDataType(n.children[i]);
+		}
+
+		// Default dataTypes
+		var dt = adhoc.nodeDataTypes.VOID;
+		var cdt = adhoc.nodeDataTypes.VOID;
+
+		// Handle dataType checks for different which
+		switch(n.which){
+		case adhoc.nodeWhich.WHICH_NULL:
+		case adhoc.nodeWhich.GROUP_SERIAL:
+		case adhoc.nodeWhich.CONTROL_IF:
+		case adhoc.nodeWhich.CONTROL_LOOP:
+		case adhoc.nodeWhich.CONTROL_SWITCH:
+		case adhoc.nodeWhich.CONTROL_CASE:
+		case adhoc.nodeWhich.CONTROL_FORK:
+		case adhoc.nodeWhich.CONTROL_CNTNU:
+		case adhoc.nodeWhich.CONTROL_BREAK:
+			break;
+
+		case adhoc.nodeWhich.ACTION_DEFIN:
+			for(var i=0; i<n.children.length; ++i){
+				if(n.children[i].which != adhoc.nodeWhich.CONTROL_RETRN) continue;
+				if(dt == adhoc.nodeDataTypes.VOID){
+					dt = n.children[i].dataType;
+					cdt = n.children[i].childDataType;
+				}
+				if(n.children[i].dataType==adhoc.nodeDataTypes.MIXED || dt!=n.children[i].dataType){
+					dt = adhoc.nodeDataTypes.MIXED;
+					cdt = adhoc.nodeDataTypes.MIXED;
+					break;
+				}
+			}
+			break;
+
+		case adhoc.nodeWhich.ACTION_CALL:
+			if(n.package == 'System'){
+				// TODO
+			}else if(n.referenceId && adhoc.allNodes[n.referenceId]){
+				dt = adhoc.allNodes[n.referenceId].dataType;
+				cdt = adhoc.allNodes[n.referenceId].childDataType;
+			}
+			break;
+
+		case adhoc.nodeWhich.CONTROL_RETRN:
+			if(n.children.length){
+				dt = n.children[0].dataType;
+				cdt = n.children[0].childDataType;
+			}
+			break;
+
+		case adhoc.nodeWhich.OPERATOR_PLUS:
+		case adhoc.nodeWhich.OPERATOR_MINUS:
+		case adhoc.nodeWhich.OPERATOR_TIMES:
+		case adhoc.nodeWhich.OPERATOR_DIVBY:
+		case adhoc.nodeWhich.OPERATOR_MOD:
+		case adhoc.nodeWhich.OPERATOR_EXP:
+		case adhoc.nodeWhich.ASSIGNMENT_PLUS:
+		case adhoc.nodeWhich.ASSIGNMENT_MINUS:
+		case adhoc.nodeWhich.ASSIGNMENT_TIMES:
+		case adhoc.nodeWhich.ASSIGNMENT_DIVBY:
+		case adhoc.nodeWhich.ASSIGNMENT_MOD:
+		case adhoc.nodeWhich.ASSIGNMENT_EXP:
+			if(n.children.length == 2){
+				dt = adhoc.resolveTypes(
+					n.children[0].dataType
+					,n.children[1].dataType
+				);
+				cdt = adhoc.resolveTypes(
+					n.children[0].childDataType
+					,n.children[1].childDataType
+				);
+			}
+			break;
+
+		case adhoc.nodeWhich.OPERATOR_OR:
+		case adhoc.nodeWhich.OPERATOR_AND:
+		case adhoc.nodeWhich.OPERATOR_NOT:
+		case adhoc.nodeWhich.OPERATOR_EQUIV:
+		case adhoc.nodeWhich.OPERATOR_GRTTN:
+		case adhoc.nodeWhich.OPERATOR_LESTN:
+		case adhoc.nodeWhich.OPERATOR_GRTEQ:
+		case adhoc.nodeWhich.OPERATOR_LESEQ:
+		case adhoc.nodeWhich.OPERATOR_NOTEQ:
+		case adhoc.nodeWhich.ASSIGNMENT_NEGPR:
+		case adhoc.nodeWhich.ASSIGNMENT_NEGPS:
+		case adhoc.nodeWhich.ASSIGNMENT_OR:
+		case adhoc.nodeWhich.ASSIGNMENT_AND:
+			dt = adhoc.nodeDataTypes.BOOL;
+			cdt = adhoc.nodeDataTypes.VOID;
+			break;
+
+		case adhoc.nodeWhich.OPERATOR_ARIND:
+			if(n.children.length){
+				dt = n.children[0].childDataType;
+				cdt = adhoc.nodeDataTypes.MIXED;
+			}
+			break;
+
+		case adhoc.nodeWhich.OPERATOR_TRNIF:
+			if(n.children.length == 3){
+				dt = adhoc.resolveTypes(
+					n.children[1].dataType
+					,n.children[2].dataType
+				);
+				cdt = adhoc.resolveTypes(
+					n.children[1].childDataType
+					,n.children[2].childDataType
+				);
+			}
+			break;
+
+		case adhoc.nodeWhich.ASSIGNMENT_INCPR:
+		case adhoc.nodeWhich.ASSIGNMENT_INCPS:
+		case adhoc.nodeWhich.ASSIGNMENT_DECPR:
+		case adhoc.nodeWhich.ASSIGNMENT_DECPS:
+			if(n.children.length){
+				dt = n.children[0].dataType;
+				cdt = n.children[0].childDataType;
+			}
+			break;
+
+		case adhoc.nodeWhich.ASSIGNMENT_EQUAL:
+			if(n.children.length == 2){
+				dt = n.children[1].dataType;
+				cdt = n.children[1].childDataType;
+				n.children[0].dataType = dt;
+				n.children[0].childDataType = cdt;
+			}
+			break;
+
+		case adhoc.nodeWhich.VARIABLE_ASIGN:
+			if(n.children.length && (
+					n.childType == adhoc.nodeChildType.PARAMETER
+					|| n.childType == adhoc.nodeChildType.INITIALIZATION
+				)){
+				dt = n.children[0].dataType;
+				cdt = n.children[0].childDataType;
+			}
+			break;
+
+		case adhoc.nodeWhich.VARIABLE_EVAL:
+			if(n.referenceId && adhoc.allNodes[n.referenceId]){
+				dt = adhoc.allNodes[n.referenceId].dataType;
+				cdt = adhoc.allNodes[n.referenceId].childDataType;
+			}
+			break;
+
+		case adhoc.nodeWhich.LITERAL_BOOL:
+			dt = adhoc.nodeDataTypes.BOOL;
+			cdt = adhoc.nodeDataTypes.VOID;
+			break;
+
+		case adhoc.nodeWhich.LITERAL_INT:
+			dt = adhoc.nodeDataTypes.INT;
+			cdt = adhoc.nodeDataTypes.VOID;
+			break;
+
+		case adhoc.nodeWhich.LITERAL_FLOAT:
+			dt = adhoc.nodeDataTypes.FLOAT;
+			cdt = adhoc.nodeDataTypes.VOID;
+			break;
+
+		case adhoc.nodeWhich.LITERAL_STRNG:
+			dt = adhoc.nodeDataTypes.STRNG;
+			cdt = adhoc.nodeDataTypes.VOID;
+			break;
+
+		case adhoc.nodeWhich.LITERAL_ARRAY:
+			dt = adhoc.nodeDataTypes.ARRAY;
+		case adhoc.nodeWhich.LITERAL_HASH:
+			dt = dt || adhoc.nodeDataTypes.HASH;
+			for(var i=0; i<n.children.length; ++i){
+				if(i==0){
+					if(n.children[i].value < 0) cdt = n.children[i].name;
+					else{
+						cdt = n.children[i].children[0].dataType;
+					}
+				}else{
+					if(cdt != n.children[i].children[0].dataType){
+						cdt = adhoc.nodeDataTypes.MIXED;
+						break;
+					}
+				}
+			}
+			break;
+
+		case adhoc.nodeWhich.LITERAL_STRCT:
+			dt = adhoc.nodeDataTypes.STRCT;
+			cdt = adhoc.nodeDataTypes.VOID;
+			break;
+		}
+		n.dataType = dt;
+		n.childDataType = cdt;
 	}
 
 	// Function to serialize a node and its children for binary
