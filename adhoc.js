@@ -1154,7 +1154,7 @@ Event.observe(window, 'load', function(){
 		$('theLightbox').show();
 	}
 	// Prompt the user for a value
-	adhoc.promptValue = function(prmpt, vldt, algnR, callBack, searchFunc, sorryText){
+	adhoc.promptValue = function(prmpt, dflt, vldt, algnR, callBack, searchFunc, sorryText){
 		// Add the prompt text as the title
 		var LBtitle = $$('#theLightbox .nxj_lightboxTitle')[0];
 		LBtitle.removeClassName('LBTitleError').removeClassName('LBTitleWarn').update(prmpt);
@@ -1173,6 +1173,7 @@ Event.observe(window, 'load', function(){
 		var rem;
 		var hid;
 		inp.addClassName('nxj_input').addClassName(algnR ? 'textAlignRight' : 'textAlignLeft');
+		inp.value = dflt;
 		inp.observe('keyup', function(e){
 			// On keyup, validate the input
 			var msg = vldt(this.value);
@@ -1865,6 +1866,7 @@ Event.observe(window, 'load', function(){
 				switch(action){
 				case 'package':
 				case 'rename':
+				case 'revalue':
 				case 'comment':
 				case 'move':
 					break;
@@ -1952,6 +1954,8 @@ Event.observe(window, 'load', function(){
 
 				// Undo a rename
 				case 'rename':
+				// Undo a revalue
+				case 'revalue':
 				// Undo a comment change
 				case 'comment':
 				// Undo a deletion
@@ -1997,7 +2001,8 @@ Event.observe(window, 'load', function(){
 					adhoc.refreshRender();
 					break;
 
-				// Redo a comment change
+				// Redo a revalue or a comment change
+				case 'revalue':
 				case 'comment':
 					adhoc.allNodes[item.parentId].value = item.target;
 					adhoc.refreshRender();
@@ -2102,7 +2107,7 @@ Event.observe(window, 'load', function(){
 
 		// Activate package name input
 		$('projectName').observe('focus', function(){
-			adhoc.promptValue('Rename This Package', adhoc.validatePackageName, false, function(val){
+			adhoc.promptValue('Rename This Package', adhoc.setting('projectName'), adhoc.validatePackageName, false, function(val){
 				var oldPackage = adhoc.setting('projectName');
 				if(oldPackage == val) return;
 				adhoc.history.record('package', val, adhoc.rootNode);
@@ -2343,11 +2348,11 @@ Event.observe(window, 'load', function(){
 					switch(which){
 					case adhoc.nodeWhich.ACTION_DEFIN:
 						// Prompt for an action name
-						adhoc.promptValue('Enter an action name:', adhoc.validateActionDefName, false, function(val){
+						adhoc.promptValue('Enter an action name:', '', adhoc.validateActionDefName, false, function(val){
 							adhoc.deactivateAllTools();
 							var n = adhoc.createNode(null, prnt, repl, type, which, childType, null, val);
 							if(n) setTimeout(function(){
-								adhoc.promptValue('Add a comment:', adhoc.validateComment, false, function(val){
+								adhoc.promptValue('Add a comment:', '', adhoc.validateComment, false, function(val){
 									n.value = val;
 								});
 							}, 0.01);
@@ -2356,7 +2361,7 @@ Event.observe(window, 'load', function(){
 
 					case adhoc.nodeWhich.ACTION_CALL:
 						// Prompt for an action name
-						adhoc.promptValue('Enter an action name:', adhoc.validateActionName, false, function(val, rem, hid){
+						adhoc.promptValue('Enter an action name:', '', adhoc.validateActionName, false, function(val, rem, hid){
 							adhoc.deactivateAllTools();
 							adhoc.createNode(null, prnt, repl, type, which, childType, rem, val, null, hid);
 						}, adhoc.actionSearch, 'Not found in loaded projects');
@@ -2365,7 +2370,7 @@ Event.observe(window, 'load', function(){
 					case adhoc.nodeWhich.VARIABLE_ASIGN:
 					case adhoc.nodeWhich.VARIABLE_EVAL:
 						// Prompt for a variable name
-						adhoc.promptValue('Enter a variable name:', adhoc.validateIdentifier, false, function(val, rem, hid){
+						adhoc.promptValue('Enter a variable name:', '', adhoc.validateIdentifier, false, function(val, rem, hid){
 							adhoc.deactivateAllTools();
 							adhoc.createNode(null, prnt, repl, type, which, childType, null, val, null, hid);
 						}, adhoc.genScopeSearch(prnt, false), 'New variable');
@@ -2381,7 +2386,7 @@ Event.observe(window, 'load', function(){
 
 					case adhoc.nodeWhich.LITERAL_INT:
 						// Prompt for an integer value
-						adhoc.promptValue('Enter an integer:', adhoc.validateInt, true, function(val){
+						adhoc.promptValue('Enter an integer:', '', adhoc.validateInt, true, function(val){
 							adhoc.deactivateAllTools();
 							adhoc.createNode(null, prnt, repl, type, which, childType, null, null, parseInt(val));
 						});
@@ -2389,7 +2394,7 @@ Event.observe(window, 'load', function(){
 
 					case adhoc.nodeWhich.LITERAL_FLOAT:
 						// Prompt for a float value
-						adhoc.promptValue('Enter a float:', adhoc.validateFloat, true, function(val){
+						adhoc.promptValue('Enter a float:', '', adhoc.validateFloat, true, function(val){
 							adhoc.deactivateAllTools();
 							adhoc.createNode(null, prnt, repl, type, which, childType, null, null, parseFloat(val));
 						});
@@ -2397,7 +2402,7 @@ Event.observe(window, 'load', function(){
 
 					case adhoc.nodeWhich.LITERAL_STRNG:
 						// Prompt for a string value
-						adhoc.promptValue('Enter a string:', adhoc.validateString, false, function(val){
+						adhoc.promptValue('Enter a string:', '', adhoc.validateString, false, function(val){
 							adhoc.deactivateAllTools();
 							adhoc.createNode(null, prnt, repl, type, which, childType, null, null, val);
 						});
@@ -2633,7 +2638,7 @@ Event.observe(window, 'load', function(){
 				// Rename a defined action
 				case adhoc.nodeWhich.ACTION_DEFIN:
 					Event.stop(e);
-					adhoc.promptValue('Rename this action:', adhoc.validateActionDefName, false, function(val, rem, hid){
+					adhoc.promptValue('Rename this action:', adhoc.selectedNode.name, adhoc.validateActionDefName, false, function(val, rem, hid){
 						adhoc.history.record('rename', (hid?parseInt(hid):val), adhoc.selectedNode);
 						adhoc.renameNode(adhoc.selectedNode, rem, val, hid);
 						adhoc.refreshRender();
@@ -2643,7 +2648,7 @@ Event.observe(window, 'load', function(){
 				//Change an action call
 				case adhoc.nodeWhich.ACTION_CALL:
 					Event.stop(e);
-					adhoc.promptValue('Call a different action:', adhoc.validateActionName, false, function(val, rem, hid){
+					adhoc.promptValue('Call a different action:', adhoc.selectedNode.name, adhoc.validateActionName, false, function(val, rem, hid){
 						adhoc.history.record('rename', (hid?parseInt(hid):val), adhoc.selectedNode);
 						adhoc.renameNode(adhoc.selectedNode, rem, val, hid);
 						adhoc.refreshRender();
@@ -2654,12 +2659,48 @@ Event.observe(window, 'load', function(){
 				case adhoc.nodeWhich.VARIABLE_ASIGN:
 				case adhoc.nodeWhich.VARIABLE_EVAL:
 					Event.stop(e);
-					adhoc.promptValue('Enter a variable name:', adhoc.validateIdentifier, false, function(val, rem, hid){
+					adhoc.promptValue('Enter a variable name:', adhoc.selectedNode.name, adhoc.validateIdentifier, false, function(val, rem, hid){
 						var nodeToRename = adhoc.selectedNode.referenceId ? adhoc.allNodes[adhoc.selectedNode.referenceId] : adhoc.selectedNode;
 						adhoc.history.record('rename', (hid?parseInt(hid):val), nodeToRename);
 						adhoc.renameNode(nodeToRename, rem, val, hid);
 						adhoc.refreshRender();
 					}, adhoc.genScopeSearch(adhoc.selectedNode.parent, false), 'New variable');
+					break;
+
+				case adhoc.nodeWhich.LITERAL_BOOL:
+					Event.stop(e);
+					adhoc.promptFlag('Select a boolean value:', ['true', 'false'], function(val){
+						adhoc.history.record('revalue', !val, adhoc.selectedNode);
+						adhoc.selectedNode.value = !val;
+						adhoc.refreshRender();
+					});
+					break;
+
+				case adhoc.nodeWhich.LITERAL_INT:
+					Event.stop(e);
+					adhoc.promptValue('Enter an integer:', adhoc.selectedNode.value, adhoc.validateInt, true, function(val){
+						adhoc.history.record('revalue', val, adhoc.selectedNode);
+						adhoc.selectedNode.value = val;
+						adhoc.refreshRender();
+					});
+					break;
+
+				case adhoc.nodeWhich.LITERAL_FLOAT:
+					Event.stop(e);
+					adhoc.promptValue('Enter a float:', adhoc.selectedNode.value, adhoc.validateFloat, true, function(val){
+						adhoc.history.record('revalue', val, adhoc.selectedNode);
+						adhoc.selectedNode.value = val;
+						adhoc.refreshRender();
+					});
+					break;
+
+				case adhoc.nodeWhich.LITERAL_STRNG:
+					Event.stop(e);
+					adhoc.promptValue('Enter a string:', adhoc.selectedNode.value, adhoc.validateString, false, function(val){
+						adhoc.history.record('revalue', val, adhoc.selectedNode);
+						adhoc.selectedNode.value = val;
+						adhoc.refreshRender();
+					});
 					break;
 
 				default:
