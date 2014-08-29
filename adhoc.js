@@ -880,7 +880,7 @@ Event.observe(window, 'load', function(){
 			]
 			,[ // LITERAL_HASH
 				{
-					childType: adhoc.nodeChildType.INDEX
+					childType: adhoc.nodeChildType.EXPRESSION
 					,min: 0
 					,max: null
 				}
@@ -969,7 +969,7 @@ Event.observe(window, 'load', function(){
 	};
 	// Validate action comment text
 	adhoc.validateComment = function(v){
-		if(v.length < 4){
+		if(v.length>0 && v.length<4){
 			return 'Comment too short';
 		}
 	};
@@ -2307,6 +2307,9 @@ Event.observe(window, 'load', function(){
 				var which = parseInt(activeTools[0].getAttribute('data-which'));
 				var prnt = (clickedNode.nodeType == adhoc.nodeTypes.TYPE_NULL) ? clickedNode.parent : clickedNode;
 				var repl = (prnt == clickedNode) ? null : clickedNode;
+				if(adhoc.selectedNode) adhoc.selectedNode.selected = false;
+				adhoc.selectedNode = prnt;
+				prnt.selected = true;
 
 				// For variables, determine the which from context
 				if(type == adhoc.nodeTypes.VARIABLE){
@@ -2353,9 +2356,9 @@ Event.observe(window, 'load', function(){
 							var n = adhoc.createNode(null, prnt, repl, type, which, childType, null, val);
 							if(n) setTimeout(function(){
 								adhoc.promptValue('Add a comment:', '', adhoc.validateComment, false, function(val){
-									n.value = val;
+									n.value = val ? val : null;
 								});
-							}, 0.01);
+							}, 10);
 						});
 						break;
 
@@ -2409,7 +2412,8 @@ Event.observe(window, 'load', function(){
 						break;
 
 					case adhoc.nodeWhich.LITERAL_ARRAY:
-						// Create the array first
+					case adhoc.nodeWhich.LITERAL_HASH:
+						// Create the array/hash first
 						adhoc.deactivateAllTools();
 						var newArray = adhoc.createNode(null, prnt, repl, type, which, childType);
 						// Then prompt for a child data type
@@ -2458,7 +2462,6 @@ Event.observe(window, 'load', function(){
 						});
 						break;
 
-					case adhoc.nodeWhich.LITERAL_HASH:
 					case adhoc.nodeWhich.LITERAL_STRCT:
 						adhoc.deactivateAllTools();
 						adhoc.message('Warning', 'This type of literal is not yet implemented'); break;
@@ -2983,6 +2986,7 @@ Event.observe(window, 'load', function(){
 
 		// Create an index node for children of arrays/hashes/structs
 		if(p && c!=adhoc.nodeChildType.INDEX){
+			// Index for an array
 			if(p.which==adhoc.nodeWhich.LITERAL_ARRAY){
 				// Remove the dummy index if present
 				if(p.children.length && p.children[0].value<0){
@@ -3003,6 +3007,16 @@ Event.observe(window, 'load', function(){
 					,null
 				);
 				r = p.children.length ? p.children[0] : null;
+
+			// index for a hash
+			}else if(p.which==adhoc.nodeWhich.LITERAL_HASH){
+				// Remove the dummy index if present
+				if(p.children.length==1 && p.children[0].which==adhoc.nodeWhich.LITERAL_INT){
+					adhoc.deleteNode(p.children[0]);
+				}
+
+				// Children added directly become indices
+				c = adhoc.nodeChildType.INDEX;
 			}
 		}
 
@@ -3467,6 +3481,7 @@ Event.observe(window, 'load', function(){
 				break;
 
 			case adhoc.nodeWhich.LITERAL_ARRAY:
+			case adhoc.nodeWhich.LITERAL_HASH:
 				// Determine the right color
 				nodeColor = adhoc.setting('colorScheme')=='dark' ? '#FFFFFF' : '#000000';
 
@@ -3513,9 +3528,6 @@ Event.observe(window, 'load', function(){
 					,(n.y+(n.height/2.0)-10) * adhoc.display_scale - adhoc.display_y
 				);
 				ctx.stroke();
-				break;
-
-			case adhoc.nodeWhich.LITERAL_HASH:
 				break;
 
 			case adhoc.nodeWhich.LITERAL_STRCT:
@@ -3687,9 +3699,13 @@ Event.observe(window, 'load', function(){
 			if(temp) return temp;
 		}
 
+		// Skip array indices
+		if(n.childType == adhoc.nodeChildType.INDEX &&
+				n.parent.which == adhoc.nodeWhich.LITERAL_ARRAY)
+			return null;
+
 		// See if it's in this node
-		if(n.childType != adhoc.nodeChildType.INDEX
-				&& click.x >= n.x-(n.width/2.0)
+		if(click.x >= n.x-(n.width/2.0)
 				&& click.x <= n.x+(n.width/2.0)
 				&& click.y >= n.y-(n.height/2.0)
 				&& click.y <= n.y+(n.height/2.0)
@@ -4202,7 +4218,7 @@ Event.observe(window, 'load', function(){
 			+ adhoc.intTo3Byte(n.childType)
 			+ '"' + (n.package ? n.package : 'NULL') + '"'
 			+ '"' + (n.name ? n.name : 'NULL') + '"'
-			+ '"' + (n.value!==null ? n.value : 'NULL') + '"';
+			+ '"' + ((n.value!==null&&n.value!==undefined) ? n.value : 'NULL') + '"';
 		for(var i=0; i<n.children.length; ++i){
 			out += adhoc.serialize(n.children[i]);
 		}
@@ -4338,7 +4354,7 @@ Event.observe(window, 'load', function(){
 	// Changes the comment on a single node
 	adhoc.changeComment = function(c, cmnt){
 		adhoc.history.record('comment', cmnt, c, false);
-		c.value = cmnt;
+		c.value = cmnt ? cmnt : null;
 	}
 	// Changes the package name of all children
 	adhoc.updatePackageName = function(n, oldP, newP){
@@ -4397,7 +4413,7 @@ Event.observe(window, 'load', function(){
 			}
 		}
 
-		// If moving to a container type, add an index
+		// If moving to an array, add an index
 		var r = adhoc.getFirstNullChildByType(p2, n.childType);
 		if(p2.which==adhoc.nodeWhich.LITERAL_ARRAY){
 			p2 = adhoc.createNode(
