@@ -364,6 +364,29 @@ if(!count($errors) && $_SESSION['username']){
 					));?>
 				</div>
 
+				<div class="floatLeft" style="margin-left:10px;">
+					<label class="floatLeft">Generate Executable</label>
+					<div class="floatLeft" style="position:relative;">&nbsp;[?]
+						<?=Nxj_UI::tooltip(array(
+							'id'            => 'executableTip'
+							,'direction'    => 'down'
+							,'width'		=> 163
+							,'height'		=> 120
+							,'content'      => 'If checked, the generated code should be able to be executed with only the necessary ADHOC libraries, and no other user code. If unchecked, the generated code will simply implement the logic of your actions, but may, for example, need a <code>main()</code> function in order to run.'
+						))?>
+					</div>
+					<div class="clear"></div>
+
+					<?$checked = (!isset($settings->executable)||!$settings->executable ? '' : 'checked="checked" ');?>
+					<input type="checkbox"
+							class="floatLeft"
+							name="generateExecutable"
+							value="1"
+							id="generateExecutable"
+							<?=$checked?>/>
+				</div>
+
+
 				<a id="generateButton" class="nxj_button nxj_cssButton green" href="javascript:void(0);">Generate Code</a>
 
 				<div id="controlsToggle" title="Show/Hide Controls">

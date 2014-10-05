@@ -42,6 +42,7 @@ Event.observe(window, 'load', function(){
 		,labelConnectors: 1
 		,projectId: 0
 		,projectName: 'New Project'
+		,executable: 1
 		,username: null
 		,password: null
 		,remember: false
@@ -2154,6 +2155,11 @@ Event.observe(window, 'load', function(){
 
 		// Activate the help link
 		$('helpLink').observe('click', adhoc.help);
+
+		// Activate the generate executable checkbox
+		$('generateExecutable').observe('change', function(){
+			adhoc.setting('executable', this.checked);
+		});
 
 		// Activate the generate button
 		$('generateButton').observe('click', adhoc.generateCode);
@@ -4789,7 +4795,7 @@ Event.observe(window, 'load', function(){
 			parameters: {
 				binary: adhoc.serialize(adhoc.rootNode)
 				,language: $F('languageChoice_input')
-				,executable: 1
+				,executable: (adhoc.setting('executable') ? 1 : 0)
 				,dbg: (adhoc.setting('dbg') ? 1 : 0)
 				,xsrftoken: $('xsrfToken').innerHTML
 			}

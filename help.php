@@ -267,8 +267,17 @@
 		specific syntax.<p/>
 		<p>Currently, the following languages are supported:</p>
 		<ul>
-			<li>C (ANSI C99)</li>
-			<li>Javascript </li>
+			<li>C (ANSI C99)
+				<span style="font-size:10px;">
+					- (requires <a target="_blank" href="https://raw.githubusercontent.com/pieman72/adhoc/master/libadhoc.c">ADHOC C library</a>
+					and <a target="_blank" href="https://raw.githubusercontent.com/pieman72/adhoc/master/libadhoc.h">header</a>)
+				</span>
+			</li>
+			<li>Javascript
+				<span style="font-size:10px;">
+					- (requires <a target="_blank" href="https://raw.githubusercontent.com/pieman72/adhoc/master/libadhoc.js">ADHOC JS library</a>)
+				</span>
+			</li>
 		</ul>
 		<br/>
 
