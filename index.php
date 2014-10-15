@@ -365,7 +365,7 @@ if(!count($errors) && $_SESSION['username']){
 				</div>
 
 				<div class="floatLeft" style="margin-left:10px;">
-					<label class="floatLeft">Generate Executable</label>
+					<label class="floatLeft" for="generateExecutable">Generate Executable</label>
 					<div class="floatLeft" style="position:relative;">&nbsp;[?]
 						<?=Nxj_UI::tooltip(array(
 							'id'            => 'executableTip'

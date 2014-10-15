@@ -4219,9 +4219,11 @@ Event.observe(window, 'load', function(){
 		var out =
 			adhoc.intTo3Byte(n.id)
 			+ adhoc.intTo3Byte(n.parent ? n.parent.id : 0)
+			+ adhoc.intTo3Byte(n.referenceId ? n.referenceId : 0)
 			+ adhoc.intTo3Byte(n.nodeType)
 			+ adhoc.intTo3Byte(n.which)
 			+ adhoc.intTo3Byte(n.childType)
+			+ adhoc.intTo3Byte(n.dataType)
 			+ '"' + (n.package ? n.package : 'NULL') + '"'
 			+ '"' + (n.name ? n.name : 'NULL') + '"'
 			+ '"' + ((n.value!==null&&n.value!==undefined) ? n.value : 'NULL') + '"';
@@ -4236,17 +4238,19 @@ Event.observe(window, 'load', function(){
 		var tempNode = {};
 		tempNode.id = adhoc.intFrom3Byte(s.substr(0, 3));
 		tempNode.parentId = adhoc.intFrom3Byte(s.substr(3, 3));
-		tempNode.nodeType = adhoc.intFrom3Byte(s.substr(6, 3));
-		tempNode.which = adhoc.intFrom3Byte(s.substr(9, 3));
-		tempNode.childType = adhoc.intFrom3Byte(s.substr(12, 3));
+		tempNode.referenceId = adhoc.intFrom3Byte(s.substr(6, 3));
+		tempNode.nodeType = adhoc.intFrom3Byte(s.substr(9, 3));
+		tempNode.which = adhoc.intFrom3Byte(s.substr(12, 3));
+		tempNode.childType = adhoc.intFrom3Byte(s.substr(15, 3));
+		tempNode.dataType = adhoc.intFrom3Byte(s.substr(18, 3));
 		var found = 1;
-		var offset = 16;
+		var offset = 22;
 		while(found<6){
 			offset = s.indexOf('"', offset+1);
 			if(s.charAt(offset-1) == "\\") continue;
 			++found;
 		}
-		var parts = s.substring(16, offset).split('""');
+		var parts = s.substring(22, offset).split('""');
 		tempNode.package = (parts[0]=="NULL" ? null : parts[0]);
 		tempNode.name = (parts[1]=="NULL" ? null : parts[1]);
 		tempNode.value = (parts[2]=="NULL" ? null : parts[2]);
@@ -4262,8 +4266,9 @@ Event.observe(window, 'load', function(){
 			,tempNode.package
 			,tempNode.name
 			,tempNode.value
-			//,f  // Reference Id
+			,tempNode.referenceId
 		);
+		newNode.dataType = tempNode.dataType;
 		adhoc.lastId = Math.max(newNode.id+1, adhoc.lastId);
 
 		// Continue until we've exhaused the string

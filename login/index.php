@@ -176,6 +176,7 @@ if(isset($_POST['submitted'])){
 		$('regUser').observe('keyup', checkUser);
 		$('regPass').observe('keyup', checkPass);
 		$('regForm').observe('submit', checkForm);
+		Event.observe(window, 'load', function(){ $('regUser').focus(); });
 	</script>
 </body>
 </html>
