@@ -92,7 +92,7 @@ if(!count($errors)
 }
 
 // If the user was not loaded, clear the settings
-if(!$_SESSION['username']){
+if(!isset($_SESSION['username']) || !$_SESSION['username']){
 	setcookie(
 		'adhocSettings'
 		,''
@@ -109,7 +109,7 @@ if(!$_SESSION['username']){
 
 // If the user was found, try to load their projects
 $projects = array();
-if(!count($errors) && $_SESSION['username']){
+if(!count($errors) && (!isset($_SESSION['username']) || $_SESSION['username'])){
 	if(!($query = mysqli_stmt_init($dbConn))){
 		$errors[] = "Could not initializedatabase statement: ".$dbConn->error;
 	}

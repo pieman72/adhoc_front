@@ -6,8 +6,12 @@ Event.KEY_COMMAND3 = 224;
 Event.KEY_SPACE = 32;
 
 // Not sure why JavaScript doesn't include this...
-String.prototype.ltrim = function(s){ return this.replace(new RegExp("^"+s+"+"), ""); }
-String.prototype.rtrim = function(s){ return this.replace(new RegExp(s+"+$"), ""); }
+String.prototype.ltrim = function(s){
+	return this.replace(new RegExp("^"+s+"+"), "");
+}
+String.prototype.rtrim = function(s){
+	return this.replace(new RegExp(s+"+$"), "");
+}
 
 // Set up everything only after the page loads
 Event.observe(window, 'load', function(){
@@ -895,6 +899,19 @@ Event.observe(window, 'load', function(){
 			]
 		]
 	];
+	// Names of datatypes
+	adhoc.nodeDataTypeNames = [
+		'Void'
+		,'Bool'
+		,'Int'
+		,'Float'
+		,'String'
+		,'Array'
+		,'Hash'
+		,'Struct'
+		,'Action'
+		,'Mixed'
+	];
 	// List of system actions that ADHOC supports
 	adhoc.systemActions = [
 		{
@@ -1275,8 +1292,11 @@ Event.observe(window, 'load', function(){
 				if($('lb_node_comment').hasClassName('red')) error = true;
 				if($('lb_node_comment').hasClassName('green')) change = true;
 			}
-			if($('lb_node_type_input')){
-				if($('lb_node_type_input').hasClassName('changed')) change = true;
+			if($('lb_select_input')){
+				if($('lb_select_input').hasClassName('changed')) change = true;
+			}
+			if($('lb_select2_input')){
+				if($('lb_select2_input').hasClassName('changed')) change = true;
 			}
 			if(change && !error) $('lb_input_select').removeClassName('disabled');
 			else $('lb_input_select').addClassName('disabled');
@@ -1318,115 +1338,328 @@ Event.observe(window, 'load', function(){
 		row.appendChild(cellR);
 		table.appendChild(row);
 
-		// Create the node's name field based on its which
-		row = $(document.createElement('tr'));
-		cellR = $(document.createElement('td'));
-		cellL = $(document.createElement('td'));
-		cellL.addClassName('attrName').update('Name');
-		switch(n.which){
-		case adhoc.nodeWhich.ACTION_DEFIN:
-			var inp = $(document.createElement('input'));
-			inp.addClassName('nxj_input').setAttribute('type', 'text');
-			inp.setAttribute('id', 'lb_node_name');
-			inp.setAttribute('value', n.name);
-			var rem = $(document.createElement('div'));
-			rem.setAttribute('id', 'lb_input_error');
-			inp.observe('keyup', function(e){
-				// Ignore certain keys
-				var key = e.which || window.event.keyCode;
-				if(key==9 || key==16 || (key>=35 && key<=40)) return;
+		// Create the node's name field if appropriate based on its which
+		if(n.nodeType==adhoc.nodeTypes.ACTION || n.nodeType==adhoc.nodeTypes.VARIABLE){
+			row = $(document.createElement('tr'));
+			cellR = $(document.createElement('td'));
+			cellL = $(document.createElement('td'));
+			cellL.addClassName('attrName').update('Name');
+			switch(n.which){
+			case adhoc.nodeWhich.ACTION_DEFIN:
+				var inp = $(document.createElement('input'));
+				inp.addClassName('nxj_input').setAttribute('type', 'text');
+				inp.setAttribute('id', 'lb_node_name');
+				inp.setAttribute('value', n.name);
+				var rem = $(document.createElement('div'));
+				rem.setAttribute('id', 'lb_input_error');
+				inp.observe('keyup', function(e){
+					// Ignore certain keys
+					var key = e.which || window.event.keyCode;
+					if(key==9 || key==16 || (key>=35 && key<=40)) return;
 
-				// On keyup, validate the input
-				var msg = adhoc.validateActionDefName($F(this));
-				if(msg){
-					// Input is invalid, display a message
-					this.removeClassName('green').addClassName('red');
-					rem.update(msg);
-				}else{
-					// Input is good, allow submission
-					this.removeClassName('red').addClassName('green');
-					rem.update('');
-				}
-				if($F(this) == n.name){
-					this.removeClassName('red').removeClassName('green');
-					$('lb_input_error').update('');
-				}
-				checkFields();
-			});
-			cellR.appendChild(inp);
-			cellR.appendChild(rem);
-			break;
-		case adhoc.nodeWhich.ACTION_CALL:
-			var acBox = $(document.createElement('div'));
-			acBox.addClassName('searchHolder');
-			var inp = $(document.createElement('input'));
-			inp.addClassName('nxj_input').setAttribute('type', 'text');
-			inp.setAttribute('id', 'lb_node_name');
-			inp.setAttribute('value', n.name);
-			var rem = $(document.createElement('input'));
-			rem.setAttribute('type', 'hidden');
-			rem.setAttribute('value', n.package);
-			var hid = $(document.createElement('input'));
-			hid.setAttribute('type', 'hidden');
-			hid.setAttribute('value', n.name);
-			var acList = $(document.createElement('div'));
-			acList.setAttribute('id', 'lb_input_acList');
-			acList.setAttribute('style', 'display:none;');
-			acBox.appendChild(inp);
-			acBox.appendChild(hid);
-			acBox.appendChild(acList);
-			cellR.appendChild(acBox);
-			adhoc.attachAutocomplete(inp, rem, hid, acList, (n==adhoc.rootNode ? null : adhoc.actionSearch), function(val, rem, hid){
-				if(val){
-					inp.removeClassName('red').addClassName('green');
-					$('lb_node_package').update(rem || adhoc.setting('projectName'));
-				}else{
-					inp.removeClassName('green').addClassName('red');
-					$('lb_node_package').update(adhoc.setting('projectName'));
-				}
-				if($F(inp) == n.name){
-					inp.removeClassName('red').removeClassName('green');
-					$('lb_input_error').update('');
-				}
-				checkFields();
-			}, adhoc.validateActionName, 'No Action Found');
-			break;
-		case adhoc.nodeWhich.VARIABLE_ASIGN:
-		case adhoc.nodeWhich.VARIABLE_EVAL:
-			var acBox = $(document.createElement('div'));
-			acBox.addClassName('searchHolder');
-			var inp = $(document.createElement('input'));
-			inp.addClassName('nxj_input').setAttribute('type', 'text');
-			inp.setAttribute('id', 'lb_node_name');
-			inp.setAttribute('value', n.name);
-			var hid = $(document.createElement('input'));
-			hid.setAttribute('type', 'hidden');
-			inp.setAttribute('id', 'lb_node_ref');
-			hid.setAttribute('value', n.name);
-			var acList = $(document.createElement('div'));
-			acList.setAttribute('id', 'lb_input_acList');
-			acList.setAttribute('style', 'display:none;');
-			acBox.appendChild(inp);
-			acBox.appendChild(hid);
-			acBox.appendChild(acList);
-			cellR.appendChild(acBox);
-			adhoc.attachAutocomplete(inp, n.name, hid, acList, (n==adhoc.rootNode ? null : adhoc.genScopeSearch(n.parent)), function(val, rem, hid){
-				if(val) inp.removeClassName('red').addClassName('green');
-				else inp.removeClassName('green').addClassName('red');
-				if($F(inp) == n.name){
-					inp.removeClassName('red').removeClassName('green');
-					$('lb_input_error').update('');
-				}
-				checkFields();
-			}, adhoc.validateIdentifier, 'New Variable');
-			break;
-		default:
-			cellR.update(adhoc.nodeWhichNames[adhoc.nodeWhichIndices[n.which][0]][adhoc.nodeWhichIndices[n.which][1]][1]);
-			break;
+					// On keyup, validate the input
+					var msg = adhoc.validateActionDefName($F(this));
+					if(msg){
+						// Input is invalid, display a message
+						this.removeClassName('green').addClassName('red');
+						rem.update(msg);
+					}else{
+						// Input is good, allow submission
+						this.removeClassName('red').addClassName('green');
+						rem.update('');
+					}
+					if($F(this) == n.name){
+						this.removeClassName('red').removeClassName('green');
+						$('lb_input_error').update('');
+					}
+					checkFields();
+				});
+				cellR.appendChild(inp);
+				cellR.appendChild(rem);
+				break;
+			case adhoc.nodeWhich.ACTION_CALL:
+				var acBox = $(document.createElement('div'));
+				acBox.addClassName('searchHolder');
+				var inp = $(document.createElement('input'));
+				inp.addClassName('nxj_input').setAttribute('type', 'text');
+				inp.setAttribute('id', 'lb_node_name');
+				inp.setAttribute('value', n.name);
+				var rem = $(document.createElement('input'));
+				rem.setAttribute('type', 'hidden');
+				rem.setAttribute('value', n.package);
+				var hid = $(document.createElement('input'));
+				hid.setAttribute('type', 'hidden');
+				hid.setAttribute('value', n.name);
+				var acList = $(document.createElement('div'));
+				acList.setAttribute('id', 'lb_input_acList');
+				acList.setAttribute('style', 'display:none;');
+				acBox.appendChild(inp);
+				acBox.appendChild(hid);
+				acBox.appendChild(acList);
+				cellR.appendChild(acBox);
+				adhoc.attachAutocomplete(inp, rem, hid, acList, (n==adhoc.rootNode ? null : adhoc.actionSearch), function(val, rem, hid){
+					if(val){
+						inp.removeClassName('red').addClassName('green');
+						$('lb_node_package').update(rem || adhoc.setting('projectName'));
+					}else{
+						inp.removeClassName('green').addClassName('red');
+						$('lb_node_package').update(adhoc.setting('projectName'));
+					}
+					if($F(inp) == n.name){
+						inp.removeClassName('red').removeClassName('green');
+						$('lb_input_error').update('');
+					}
+					checkFields();
+				}, adhoc.validateActionName, 'No Action Found');
+				break;
+			case adhoc.nodeWhich.VARIABLE_ASIGN:
+			case adhoc.nodeWhich.VARIABLE_EVAL:
+				var acBox = $(document.createElement('div'));
+				acBox.addClassName('searchHolder');
+				var inp = $(document.createElement('input'));
+				inp.addClassName('nxj_input').setAttribute('type', 'text');
+				inp.setAttribute('id', 'lb_node_name');
+				inp.setAttribute('value', n.name);
+				var hid = $(document.createElement('input'));
+				hid.setAttribute('type', 'hidden');
+				inp.setAttribute('id', 'lb_node_ref');
+				hid.setAttribute('value', n.name);
+				var acList = $(document.createElement('div'));
+				acList.setAttribute('id', 'lb_input_acList');
+				acList.setAttribute('style', 'display:none;');
+				acBox.appendChild(inp);
+				acBox.appendChild(hid);
+				acBox.appendChild(acList);
+				cellR.appendChild(acBox);
+				adhoc.attachAutocomplete(inp, n.name, hid, acList, (n==adhoc.rootNode ? null : adhoc.genScopeSearch(n.parent)), function(val, rem, hid){
+					if(val) inp.removeClassName('red').addClassName('green');
+					else inp.removeClassName('green').addClassName('red');
+					if($F(inp) == n.name){
+						inp.removeClassName('red').removeClassName('green');
+						$('lb_input_error').update('');
+					}
+					checkFields();
+				}, adhoc.validateIdentifier, 'New Variable');
+				break;
+			}
+			row.appendChild(cellL);
+			row.appendChild(cellR);
+			table.appendChild(row);
 		}
-		row.appendChild(cellL);
-		row.appendChild(cellR);
-		table.appendChild(row);
+
+		// Create a dataType field when appropriate
+		if(n.nodeType == adhoc.nodeTypes.ACTION
+				|| n.nodeType == adhoc.nodeTypes.OPERATOR
+				|| n.nodeType == adhoc.nodeTypes.ASSIGNMENT
+				|| n.nodeType == adhoc.nodeTypes.VARIABLE
+				|| n.nodeType == adhoc.nodeTypes.LITERAL
+			){
+			row = $(document.createElement('tr'));
+			cellR = $(document.createElement('td'));
+			cellL = $(document.createElement('td'));
+			cellL.addClassName('attrName').update('DataType');
+
+			// If editable, create a selectBox holder
+			if(n.nodeType==adhoc.nodeTypes.ACTION || n.nodeType==adhoc.nodeTypes.VARIABLE){
+				var sel = $(document.createElement('div'));
+				sel.addClassName('nxj_select').setAttribute('id', 'lb_select');
+				sel.setAttribute('style', 'width:370px;');
+				cellR.appendChild(sel);
+
+				// Create the selectbox display area
+				var disp = $(document.createElement('div'));
+				disp.addClassName('nxj_selectDisplay').addClassName('default');
+				disp.update('- Select -');
+				sel.appendChild(disp);
+
+				// Create the selectbox arrow
+				sel.appendChild($(document.createElement('div')).addClassName('nxj_selectArrow'));
+
+				// Create the selectbox menu
+				var menu = $(document.createElement('div'));
+				sel.appendChild(menu.addClassName('nxj_selectInner'));
+
+				// Create the hidden input for form submission
+				var hid = $(document.createElement('input'));
+				hid.addClassName('nxj_selectValue').setAttribute('id', 'lb_select_input');
+				hid.setAttribute('type', 'hidden');
+				sel.appendChild(hid);
+
+				var opts = [
+					{
+						value: adhoc.nodeDataTypes.BOOL
+						,display: 'Bool'
+					},{
+						value: adhoc.nodeDataTypes.INT
+						,display: 'Int'
+					},{
+						value: adhoc.nodeDataTypes.FLOAT
+						,display: 'Float'
+					},{
+						value: adhoc.nodeDataTypes.STRING
+						,display: 'String'
+					},{
+						value: adhoc.nodeDataTypes.ARRAY
+						,display: 'Array'
+					},{
+						value: adhoc.nodeDataTypes.HASH
+						,display: 'Hash'
+					},{
+						value: adhoc.nodeDataTypes.STRUCT
+						,display: 'Struct'
+					},{
+						value: adhoc.nodeDataTypes.ACTION
+						,display: 'Action'
+					},{
+						value: adhoc.nodeDataTypes.MIXED
+						,display: 'Mixed - <i>(some languages only)</i>'
+					}
+				];
+				if(n.nodeType == adhoc.nodeTypes.ACTION){
+					opts.unshift({
+						value: adhoc.nodeDataTypes.VOID
+						,display: 'Void'
+					});
+				}
+				for(var i=0; i<opts.length; ++i){
+					// Create the option itself
+					var opt = $(document.createElement('div')).addClassName('nxj_selectOption');
+					opt.setAttribute('data-value', opts[i].value);
+					if(opts[i].value == n.dataType){
+						opt.setAttribute('data-default', 'true');
+					}
+					opt.update(opts[i].display);
+					opt.observe('click', function(){
+						disp.update(this.innerHTML);
+						hid.value = this.getAttribute('data-value');
+						$('lb_input_select').removeClassName('disabled');
+						$('lb_select_input').addClassName('changed');
+					});
+					menu.appendChild(opt);
+				}
+
+				// Add the selectbox to the table, then activate it
+				cellR.appendChild(sel);
+				row.appendChild(cellL);
+				row.appendChild(cellR);
+				table.appendChild(row);
+				nxj.ui.selectBox.activateSelectBoxes(sel);
+			}else{
+				cellR.update(adhoc.nodeDataTypeNames[n.dataType]);
+				row.appendChild(cellL);
+				row.appendChild(cellR);
+				table.appendChild(row);
+			}
+		}
+
+		// Create a child dataType field when appropriate
+		if(n.which == adhoc.nodeWhich.LITERAL_ARRAY
+				|| n.which == adhoc.nodeWhich.LITERAL_HASH
+				|| n.dataType == adhoc.nodeDataTypes.ARRAY
+				|| n.dataType == adhoc.nodeDataTypes.HASH
+			){
+			row = $(document.createElement('tr'));
+			cellR = $(document.createElement('td'));
+			cellL = $(document.createElement('td'));
+			cellL.addClassName('attrName').update('Child DataType');
+
+			// Create the selectBox holder
+			var sel2 = $(document.createElement('div'));
+			sel2.addClassName('nxj_select').setAttribute('id', 'lb_select2');
+			sel2.setAttribute('style', 'width:370px;');
+			cellR.appendChild(sel2);
+
+			// Create the selectbox display area
+			var disp2 = $(document.createElement('div'));
+			disp2.addClassName('nxj_selectDisplay').addClassName('default');
+			disp2.update('- Select -');
+			sel2.appendChild(disp2);
+
+			// Create the selectbox arrow
+			sel2.appendChild($(document.createElement('div')).addClassName('nxj_selectArrow'));
+
+			// Create the selectbox menu
+			var menu2 = $(document.createElement('div'));
+			sel2.appendChild(menu2.addClassName('nxj_selectInner'));
+
+			// Create the hidden input for form submission
+			var hid2 = $(document.createElement('input'));
+			hid2.addClassName('nxj_selectValue').setAttribute('id', 'lb_select2_input');
+			hid2.setAttribute('type', 'hidden');
+			sel2.appendChild(hid2);
+
+			// Create and add the prompt options
+			var opts2 = [
+				{
+					value: adhoc.nodeDataTypes.BOOL
+					,display: 'Bool'
+				},{
+					value: adhoc.nodeDataTypes.INT
+					,display: 'Int'
+				},{
+					value: adhoc.nodeDataTypes.FLOAT
+					,display: 'Float'
+				},{
+					value: adhoc.nodeDataTypes.STRING
+					,display: 'String'
+				},{
+					value: adhoc.nodeDataTypes.ARRAY
+					,display: 'Array'
+				},{
+					value: adhoc.nodeDataTypes.HASH
+					,display: 'Hash'
+				},{
+					value: adhoc.nodeDataTypes.STRUCT
+					,display: 'Struct'
+				},{
+					value: adhoc.nodeDataTypes.ACTION
+					,display: 'Action'
+				},{
+					value: adhoc.nodeDataTypes.MIXED
+					,display: 'Mixed - <i>(some languages only)</i>'
+				}
+			];
+			for(var i=0; i<opts2.length; ++i){
+				// Create the option itself
+				var opt2 = $(document.createElement('div')).addClassName('nxj_selectOption');
+				opt2.setAttribute('data-value', opts2[i].value);
+				opt2.update(opts2[i].display);
+				if(opts2[i].value == n.childDataType){
+					opt2.setAttribute('data-default', 'true');
+				}
+				// Disable ones that fail to cast some children
+				for(var j=0; j<n.children.length; ++j){
+					if(!n.children[j].children[0].dataType) continue;
+					if(adhoc.resolveTypes(opts2[i].value,n.children[j].children[0].dataType) != opts2[i].value){
+						opts2[i].disabled = true;
+					}
+				}
+				// Handle selection
+				opt2.observe('click', function(){
+					var newDataType2 = parseInt(this.getAttribute('data-value'));
+					if(newDataType2 != adhoc.nodeDataTypes.MIXED){
+						for(var j=0; j<n.children.length; ++j){
+							if(!n.children[j].children[0].dataType) continue;
+							if(adhoc.resolveTypes(newDataType2,n.children[j].children[0].dataType) != newDataType2){
+								return alert('Some children do not match this datatype and cannot be cast');
+							}
+						}
+					}
+					disp2.update(this.innerHTML);
+					hid2.value = this.getAttribute('data-value');
+					$('lb_input_select').removeClassName('disabled');
+					$('lb_select2_input').addClassName('changed');
+				});
+				menu2.appendChild(opt2);
+			}
+
+			// Add the selectbox to the table, then activate it
+			cellR.appendChild(sel2);
+			row.appendChild(cellL);
+			row.appendChild(cellR);
+			table.appendChild(row);
+			nxj.ui.selectBox.activateSelectBoxes(sel2);
+		}
 
 		// Create a comment field when appropriate
 		if(n.childType == adhoc.nodeChildType.STATEMENT){
@@ -1469,94 +1702,6 @@ Event.observe(window, 'load', function(){
 			table.appendChild(row);
 		}
 
-		// Create a dataType field when appropriate
-		if(n.which == adhoc.nodeWhich.LITERAL_ARRAY || n.which == adhoc.nodeWhich.LITERAL_HASH){
-			row = $(document.createElement('tr'));
-			cellR = $(document.createElement('td'));
-			cellL = $(document.createElement('td'));
-			cellL.addClassName('attrName').update('Child DataType');
-
-			// Create the selectBox holder
-			var sel = $(document.createElement('div'));
-			sel.addClassName('nxj_select').setAttribute('id', 'lb_select');
-			sel.setAttribute('style', 'width:370px;');
-			cellR.appendChild(sel);
-
-			// Create the selectbox display area
-			var disp = $(document.createElement('div'));
-			disp.addClassName('nxj_selectDisplay').addClassName('default');
-			disp.update('- Select -');
-			sel.appendChild(disp);
-
-			// Create the selectbox arrow
-			sel.appendChild($(document.createElement('div')).addClassName('nxj_selectArrow'));
-
-			// Create the selectbox menu
-			var menu = $(document.createElement('div'));
-			sel.appendChild(menu.addClassName('nxj_selectInner'));
-
-			// Create the hidden input for form submission
-			var hid = $(document.createElement('input'));
-			hid.addClassName('nxj_selectValue').setAttribute('id', 'lb_node_type_input');
-			hid.setAttribute('type', 'hidden');
-			sel.appendChild(hid);
-
-			// Create and add the prompt options
-			var opts = [
-				{
-					value: adhoc.nodeDataTypes.BOOL
-					,display: 'Bool'
-				},{
-					value: adhoc.nodeDataTypes.INT
-					,display: 'Int'
-				},{
-					value: adhoc.nodeDataTypes.FLOAT
-					,display: 'Float'
-				},{
-					value: adhoc.nodeDataTypes.STRING
-					,display: 'String'
-				},{
-					value: adhoc.nodeDataTypes.ARRAY
-					,display: 'Array'
-				},{
-					value: adhoc.nodeDataTypes.HASH
-					,display: 'Hash'
-				},{
-					value: adhoc.nodeDataTypes.STRUCT
-					,display: 'Struct'
-				},{
-					value: adhoc.nodeDataTypes.ACTION
-					,display: 'Action'
-				},{
-					value: adhoc.nodeDataTypes.MIXED
-					,display: 'Mixed - <i>(some languages only)</i>'
-				}
-			];
-			for(var i=0; i<opts.length; ++i){
-				// Create the option itself
-				var opt = $(document.createElement('div')).addClassName('nxj_selectOption');
-				opt.setAttribute('data-value', opts[i].value);
-				if(opts[i].value == n.childDataType){
-					opt.setAttribute('data-default', 'true');
-				}
-				opt.update(opts[i].display);
-				opt.observe('click', function(){
-					disp.update(this.innerHTML);
-					hid.value = this.getAttribute('data-value');
-					$('lb_input_select').removeClassName('disabled');
-					$('lb_node_type_input').addClassName('changed');
-				});
-				menu.appendChild(opt);
-			}
-
-			// Add the selectbox to the table, then activate it
-			cellR.appendChild(sel);
-			row.appendChild(cellL);
-			row.appendChild(cellR);
-			table.appendChild(row);
-			nxj.ui.selectBox.activateSelectBoxes(sel);
-		}
-
 		// Add the table
 		cont.appendChild(table);
 
@@ -1574,17 +1719,18 @@ Event.observe(window, 'load', function(){
 				,($('lb_node_ref') ? parseInt($F('lb_node_ref')) : n.referenceId)
 				,true
 			);
+			if($('lb_select_input') && n.dataType != parseInt($F('lb_select_input'))) adhoc.changeDatatype(
+				n
+				,parseInt($F('lb_select_input'))
+			);
+			if($('lb_select2_input') && n.childDataType != parseInt($F('lb_select2_input'))) adhoc.changeChildDataType(
+				n
+				,parseInt($F('lb_select2_input'))
+			);
 			if($('lb_node_comment') && $('lb_node_comment').hasClassName('green')) adhoc.changeComment(
 				n
 				,$F('lb_node_comment')
 			);
-			if($('lb_node_type_input') && n.dataType != parseInt($F('lb_node_type_input'))){
-				n.dataType = parseInt($F('lb_node_type_input'));
-				if(n.children.length==1 && n.children[0].value<0){
-					n.children[0].name = parseInt($F('lb_node_type_input'));
-				}
-			}
-			adhoc.refreshRender();
 			$('theLightbox').hide();
 		});
 		cont.appendChild(butt);
@@ -1867,6 +2013,8 @@ Event.observe(window, 'load', function(){
 				switch(action){
 				case 'package':
 				case 'rename':
+				case 'datatype':
+				case 'childdatatype':
 				case 'revalue':
 				case 'comment':
 				case 'move':
@@ -1957,6 +2105,10 @@ Event.observe(window, 'load', function(){
 				case 'rename':
 				// Undo a revalue
 				case 'revalue':
+				// Undo a datatype change
+				case 'datatype':
+				// Undo a childdatatype change
+				case 'childdatatype':
 				// Undo a comment change
 				case 'comment':
 				// Undo a deletion
@@ -1999,6 +2151,18 @@ Event.observe(window, 'load', function(){
 						adhoc.allNodes[item.parentId].package = adhoc.setting('projectName');
 						adhoc.allNodes[item.parentId].name = item.target;
 					}
+					adhoc.refreshRender();
+					break;
+
+				// Redo a datatype change
+				case 'datatype':
+					adhoc.allNodes[item.parentId].dataType = item.target;
+					adhoc.refreshRender();
+					break;
+
+				// Redo a childdatatype change
+				case 'childdatatype':
+					adhoc.allNodes[item.parentId].childDataType = item.target;
 					adhoc.refreshRender();
 					break;
 
@@ -2985,6 +3149,7 @@ Event.observe(window, 'load', function(){
 	* @param f - (optional) The id of the node the new node will reference
 	*/
 	adhoc.createNode = function(i, p, r, t, w, c, k, n, v, f){
+//TODO: add datatype and childdatatype
 		// Set the type, which, and childType if they're not passed
 		if(!t) t = adhoc.nodeTypes.TYPE_NULL;
 		if(!w) w = adhoc.nodeWhich.WHICH_NULL;
@@ -2994,11 +3159,6 @@ Event.observe(window, 'load', function(){
 		if(p && c!=adhoc.nodeChildType.INDEX){
 			// Index for an array
 			if(p.which==adhoc.nodeWhich.LITERAL_ARRAY){
-				// Remove the dummy index if present
-				if(p.children.length && p.children[0].value<0){
-					adhoc.deleteNode(p.children[0]);
-				}
-
 				// Create the new index
 				p = adhoc.createNode(
 					null
@@ -3016,11 +3176,6 @@ Event.observe(window, 'load', function(){
 
 			// index for a hash
 			}else if(p.which==adhoc.nodeWhich.LITERAL_HASH){
-				// Remove the dummy index if present
-				if(p.children.length==1 && p.children[0].which==adhoc.nodeWhich.LITERAL_INT){
-					adhoc.deleteNode(p.children[0]);
-				}
-
 				// Children added directly become indices
 				c = adhoc.nodeChildType.INDEX;
 			}
@@ -3184,11 +3339,6 @@ Event.observe(window, 'load', function(){
 						&& !adhoc.setting('dbg'))
 					continue;
 
-				// Skip dummy nodes
-				if(n.children[i].childType == adhoc.nodeChildType.INDEX
-						&& n.children[i].value<0)
-					continue;
-
 				// Skip any detached nodes
 				if(n.children[i].detached){
 					adhoc.subTreeHeightNode(n.children[i]);
@@ -3248,11 +3398,6 @@ Event.observe(window, 'load', function(){
 				if(c.nodeType==adhoc.nodeTypes.TYPE_NULL
 						&& !adhoc.setting('showNullNodes')
 						&& !adhoc.setting('dbg'))
-					continue;
-
-				// Skip dummy nodes
-				if(n.children[i].childType == adhoc.nodeChildType.INDEX
-						&& n.children[i].value<0)
 					continue;
 
 				// Render the child
@@ -4001,15 +4146,15 @@ Event.observe(window, 'load', function(){
 				|| b == adhoc.nodeDataTypes.TYPE_ACTN
 				|| a == adhoc.nodeDataTypes.TYPE_STRCT
 				|| b == adhoc.nodeDataTypes.TYPE_STRCT
-				|| a == adhoc.nodeDataTypes.TYPE_VOID
-				|| b == adhoc.nodeDataTypes.TYPE_VOID
-			) return adhoc.nodeDataTypes.TYPE_VOID;
+				|| a == adhoc.nodeDataTypes.VOID
+				|| b == adhoc.nodeDataTypes.VOID
+			) return adhoc.nodeDataTypes.VOID;
 		if(a == b) return a;
 		if(a < b) return adhoc.resolveTypes(b, a);
 		if(a==adhoc.nodeDataTypes.TYPE_HASH && b==adhoc.nodeDataTypes.TYPE_ARRAY)
 			return adhoc.nodeDataTypes.TYPE_HASH;
-		if(a == adhoc.nodeDataTypes.TYPE_HASH) return adhoc.nodeDataTypes.TYPE_VOID;
-		if(a == adhoc.nodeDataTypes.TYPE_ARRAY) return adhoc.nodeDataTypes.TYPE_VOID;
+		if(a == adhoc.nodeDataTypes.TYPE_HASH) return adhoc.nodeDataTypes.VOID;
+		if(a == adhoc.nodeDataTypes.TYPE_ARRAY) return adhoc.nodeDataTypes.VOID;
 
 		// Handle casts
 		return a;
@@ -4182,7 +4327,7 @@ Event.observe(window, 'load', function(){
 			break;
 
 		case adhoc.nodeWhich.LITERAL_STRNG:
-			dt = adhoc.nodeDataTypes.STRNG;
+			dt = adhoc.nodeDataTypes.STRING;
 			cdt = adhoc.nodeDataTypes.VOID;
 			break;
 
@@ -4190,17 +4335,11 @@ Event.observe(window, 'load', function(){
 			dt = adhoc.nodeDataTypes.ARRAY;
 		case adhoc.nodeWhich.LITERAL_HASH:
 			dt = dt || adhoc.nodeDataTypes.HASH;
+			cdt = n.childDataType;
 			for(var i=0; i<n.children.length; ++i){
-				if(i==0){
-					if(n.children[i].value < 0) cdt = n.children[i].name;
-					else{
-						cdt = n.children[i].children[0].dataType;
-					}
-				}else{
-					if(cdt != n.children[i].children[0].dataType){
-						cdt = adhoc.nodeDataTypes.MIXED;
-						break;
-					}
+				if(cdt != n.children[i].children[0].dataType){
+					cdt = adhoc.nodeDataTypes.MIXED;
+					break;
 				}
 			}
 			break;
@@ -4224,6 +4363,7 @@ Event.observe(window, 'load', function(){
 			+ adhoc.intTo3Byte(n.which)
 			+ adhoc.intTo3Byte(n.childType)
 			+ adhoc.intTo3Byte(n.dataType)
+			+ adhoc.intTo3Byte(n.childDataType)
 			+ '"' + (n.package ? n.package : 'NULL') + '"'
 			+ '"' + (n.name ? n.name : 'NULL') + '"'
 			+ '"' + ((n.value!==null&&n.value!==undefined) ? n.value : 'NULL') + '"';
@@ -4243,14 +4383,15 @@ Event.observe(window, 'load', function(){
 		tempNode.which = adhoc.intFrom3Byte(s.substr(12, 3));
 		tempNode.childType = adhoc.intFrom3Byte(s.substr(15, 3));
 		tempNode.dataType = adhoc.intFrom3Byte(s.substr(18, 3));
+		tempNode.childDataType = adhoc.intFrom3Byte(s.substr(21, 3));
 		var found = 1;
-		var offset = 22;
+		var offset = 25;
 		while(found<6){
 			offset = s.indexOf('"', offset+1);
 			if(s.charAt(offset-1) == "\\") continue;
 			++found;
 		}
-		var parts = s.substring(22, offset).split('""');
+		var parts = s.substring(25, offset).split('""');
 		tempNode.package = (parts[0]=="NULL" ? null : parts[0]);
 		tempNode.name = (parts[1]=="NULL" ? null : parts[1]);
 		tempNode.value = (parts[2]=="NULL" ? null : parts[2]);
@@ -4268,7 +4409,12 @@ Event.observe(window, 'load', function(){
 			,tempNode.value
 			,tempNode.referenceId
 		);
-		newNode.dataType = tempNode.dataType;
+		if(tempNode.dataType){
+			newNode.dataType = tempNode.dataType;
+			newNode.childDataType = tempNode.childDataType;
+		}else if(newNode.parent && newNode.parent.childType==adhoc.nodeChildType.INDEX){
+			newNode.dataType = newNode.parent.parent.childDataType;
+		}
 		adhoc.lastId = Math.max(newNode.id+1, adhoc.lastId);
 
 		// Continue until we've exhaused the string
@@ -4288,6 +4434,7 @@ Event.observe(window, 'load', function(){
 			,which: n.which
 			,childType: n.childType
 			,dataType: n.dataType
+			,childDataType: n.childDataType
 			,package: n.package
 			,name: n.name
 			,value: n.value
@@ -4362,10 +4509,76 @@ Event.observe(window, 'load', function(){
 			adhoc.renameNode(adhoc.allNodes[n.references[i]], pkg, name, n.id, true);
 		}
 	}
+	// Changes the dataType of a single node
+	adhoc.changeDatatype = function(n, type){
+		// If this is a reference, go for the main node
+		if(n.referenceId){
+			return adhoc.changeDatatype(adhoc.allNodes[n.referenceId], type);
+		}
+
+		// Determine if this action should be bound, then record it
+		var prevAction = adhoc.history.index>0 ? adhoc.history.history[adhoc.history.index-1] : null;
+		var ref1 = n.referenceId
+			? n.referenceId
+			: n.id;
+		if(prevAction){
+			var ref2 = adhoc.allNodes[prevAction.parentId].referenceId
+				? adhoc.allNodes[prevAction.parentId].referenceId
+				: prevAction.parentId;
+		}else{
+			var ref2 = null;
+		}
+		var bind = prevAction
+			&& ref1 == ref2
+			&& (['rename','datatype','childdatatype','comment'].indexOf(prevAction.action) >= 0);
+		adhoc.history.record('datatype', type, n, bind);
+
+		// Change this node's type and the types of all its references
+		n.dataType = type;
+		for(var i=0; i<n.references.length; ++i){
+			adhoc.history.record('datatype', type, adhoc.allNodes[n.references[i]], true);
+			adhoc.allNodes[n.references[i]].dataType = type;
+		}
+	}
+	// Changes the childDataType of a single node
+	adhoc.changeChildDataType = function(n, type){
+		// If this is a reference, go for the main node
+		if(n.referenceId){
+			return adhoc.changeChildDataType(adhoc.allNodes[n.referenceId], type);
+		}
+
+		// Determine if this action should be bound, then record it
+		var prevAction = adhoc.history.index>0 ? adhoc.history.history[adhoc.history.index-1] : null;
+		var ref1 = n.referenceId
+			? n.referenceId
+			: n.id;
+		if(prevAction){
+			var ref2 = adhoc.allNodes[prevAction.parentId].referenceId
+				? adhoc.allNodes[prevAction.parentId].referenceId
+				: prevAction.parentId;
+		}else{
+			var ref2 = null;
+		}
+		var bind = prevAction
+			&& ref1 == ref2
+			&& (['rename','datatype','childdatatype','comment'].indexOf(prevAction.action) >= 0);
+		adhoc.history.record('childdatatype', type, n, bind);
+
+		// Change this node's child datatype and the types of all its references
+		n.childDataType = type;
+		for(var i=0; i<n.references.length; ++i){
+			adhoc.history.record('childdatatype', type, adhoc.allNodes[n.references[i]], true);
+			adhoc.allNodes[n.references[i]].childDataType = type;
+		}
+	}
 	// Changes the comment on a single node
-	adhoc.changeComment = function(c, cmnt){
-		adhoc.history.record('comment', cmnt, c, false);
-		c.value = cmnt ? cmnt : null;
+	adhoc.changeComment = function(n, cmnt){
+		var prevAction = adhoc.history.index>0 ? adhoc.history.history[adhoc.history.index-1] : null;
+		var bind = prevAction
+			&& prevAction.parentId==n.id
+			&& (['rename','datatype','childdatatype','comment'].indexOf(prevAction.action) >= 0);
+		adhoc.history.record('comment', cmnt, n, bind);
+		n.value = cmnt ? cmnt : null;
 	}
 	// Changes the package name of all children
 	adhoc.updatePackageName = function(n, oldP, newP){
@@ -4561,6 +4774,7 @@ Event.observe(window, 'load', function(){
 			n.which = newNode.which;
 			n.childType = newNode.childType;
 			n.dataType = newNode.dataType;
+			n.childDataType = newNode.childDataType;
 			n.package = newNode.package;
 			n.name = newNode.name;
 			n.value = newNode.value;

@@ -509,7 +509,7 @@ if($params['callreset']){
 			$yoffsetStyle = ($yoffset ? 'top:'.$yoffset.'px;' : '');
 		}
 
-		$output .= "
+		$output = "
 <div ".(isset($params['id']) ? 'id="'.$params['id'].'"' : '')."
 		class=\"nxj_tip$direction\"
 		style=\"$zindexStyle$displayStyle\"
