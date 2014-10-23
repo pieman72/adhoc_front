@@ -86,7 +86,8 @@ label {
 	padding:2px 5px;
 	}
 #lb_input_error,
-#lb_comment_error {
+#lb_comment_error,
+#lb_tags_error {
 	color:#FF0000;
 	font-size:14px;
 	height:20px;

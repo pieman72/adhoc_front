@@ -54,6 +54,7 @@ if(!count($errors)){
 	if(!count($errors) && !mysqli_stmt_prepare($query, "
 		SELECT
 			LOWER(HEX(p.project_hash))
+			,p.tags
 			,u.username
 		FROM
 			front_projects p
@@ -75,6 +76,7 @@ if(!count($errors)){
 	}
 	if(!count($errors) && !mysqli_stmt_bind_result($query
 			,$fetchHash
+			,$fetchTags
 			,$fetchUser
 		)){
 		$errors[] = "Query failed: ".$query->error;
@@ -90,6 +92,7 @@ if(!count($errors)){
 	if(!count($errors)){
 		try{
 			header('Content-type: application/adhoc');
+			header("ADHOC-tags: $fetchTags");
 			readfile("../generate/$fetchHash.adh");
 			exit;
 		}catch(Exception $e){

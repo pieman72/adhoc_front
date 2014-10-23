@@ -12,6 +12,9 @@ String.prototype.ltrim = function(s){
 String.prototype.rtrim = function(s){
 	return this.replace(new RegExp(s+"+$"), "");
 }
+String.prototype.trim = function(s){
+	return this.ltrim(s).rtrim(s);
+}
 
 // Set up everything only after the page loads
 Event.observe(window, 'load', function(){
@@ -930,6 +933,8 @@ Event.observe(window, 'load', function(){
 	adhoc.registeredActions = [];
 	// List of all nodes
 	adhoc.allNodes = [];
+	// Node tags
+	adhoc.allTags = {};
 
 	// Convert an int to a 3-byte string
 	adhoc.intTo3Byte = function(i){
@@ -986,6 +991,15 @@ Event.observe(window, 'load', function(){
 			return 'Not a valid package name';
 		}
 	};
+	// Validate a comma-separated string of tags
+	adhoc.validateTagsString = function(s){
+		var tags = s.split(',');
+		for(var i=tags.length-1; i>=0; --i){
+			if(!tags[i].trim("\\s").match(/^[A-Za-z0-9 _]*$/))
+				return "Letters, numbers, spaces, and underscores only";
+		}
+		return false;
+	}
 	// Validate action comment text
 	adhoc.validateComment = function(v){
 		if(v.length>0 && v.length<4){
@@ -1289,6 +1303,10 @@ Event.observe(window, 'load', function(){
 				if($('lb_node_name').hasClassName('red')) error = true;
 				if($('lb_node_name').hasClassName('green')) change = true;
 			}
+			if($('lb_node_tags')){
+				if($('lb_node_tags').hasClassName('red')) error = true;
+				if($('lb_node_tags').hasClassName('green')) change = true;
+			}
 			if($('lb_node_comment')){
 				if($('lb_node_comment').hasClassName('red')) error = true;
 				if($('lb_node_comment').hasClassName('green')) change = true;
@@ -1447,6 +1465,40 @@ Event.observe(window, 'load', function(){
 			row.appendChild(cellR);
 			table.appendChild(row);
 		}
+
+		// Create the node's tags field
+		row = $(document.createElement('tr'));
+		cellR = $(document.createElement('td'));
+		cellL = $(document.createElement('td'));
+		cellL.addClassName('attrName').update('Tags');
+		var tagsInput = $(document.createElement('input'));
+		tagsInput.addClassName('nxj_input').setAttribute('id', 'lb_node_tags');
+		tagsInput.value = adhoc.getTagsByNode(n).join(', ');
+		var tagsError = $(document.createElement('div'));
+		tagsError.setAttribute('id', 'lb_tags_error');
+		tagsInput.observe('keyup', function(e){
+			// Ignore certain keys
+			var key = e.which || window.event.keyCode;
+			if(key==9 || key==16 || (key>=35 && key<=40)) return;
+
+			// On keyup, validate the input
+			var msg = adhoc.validateTagsString($F(this));
+			if(msg){
+				// Input is invalid, display a message
+				this.removeClassName('green').addClassName('red');
+				tagsError.update(msg);
+			}else{
+				// Input is good, allow submission
+				this.removeClassName('red').addClassName('green');
+				tagsError.update('');
+			}
+			checkFields();
+		});
+		cellR.appendChild(tagsInput);
+		cellR.appendChild(tagsError);
+		row.appendChild(cellL);
+		row.appendChild(cellR);
+		table.appendChild(row);
 
 		// Create a dataType field when appropriate
 		if(n.nodeType == adhoc.nodeTypes.ACTION
@@ -1720,6 +1772,10 @@ Event.observe(window, 'load', function(){
 				,($('lb_node_ref') ? parseInt($F('lb_node_ref')) : n.referenceId)
 				,true
 			);
+			if($('lb_node_tags')) adhoc.changeTags(
+				n
+				,$F('lb_node_tags')
+			);
 			if($('lb_select_input') && n.dataType != parseInt($F('lb_select_input'))) adhoc.changeDatatype(
 				n
 				,parseInt($F('lb_select_input'))
@@ -1733,6 +1789,7 @@ Event.observe(window, 'load', function(){
 				,$F('lb_node_comment')
 			);
 			$('theLightbox').hide();
+			adhoc.refreshRender();
 		});
 		cont.appendChild(butt);
 
@@ -2014,6 +2071,7 @@ Event.observe(window, 'load', function(){
 				switch(action){
 				case 'package':
 				case 'rename':
+				case 'tags':
 				case 'datatype':
 				case 'childdatatype':
 				case 'revalue':
@@ -2104,6 +2162,8 @@ Event.observe(window, 'load', function(){
 
 				// Undo a rename
 				case 'rename':
+				// Undo a tags change
+				case 'tags':
 				// Undo a revalue
 				case 'revalue':
 				// Undo a datatype change
@@ -2152,6 +2212,17 @@ Event.observe(window, 'load', function(){
 						adhoc.allNodes[item.parentId].package = adhoc.setting('projectName');
 						adhoc.allNodes[item.parentId].name = item.target;
 					}
+					adhoc.refreshRender();
+					break;
+
+				// Redo a tags change
+				case 'tags':
+					var newTags = [];
+					var tags = item.target.split(',');
+					for(var i=0; i<tags.length; ++i){
+						newTags.push(tags[i].trim("\\s"));
+					}
+					adhoc.allTags[item.parentId] = newTags;
 					adhoc.refreshRender();
 					break;
 
@@ -3812,6 +3883,38 @@ Event.observe(window, 'load', function(){
 			);
 		}
 
+		// Show the node's tags
+		var nodeTags = adhoc.getTagsByNode(n);
+		if(nodeTags && nodeTags.length){
+			var tagWidth = 0;
+			ctx.setLineDash([2,2]);
+			for(var i=0; i<nodeTags.length; ++i){
+				var tagText = nodeTags[i];
+				ctx.strokeStyle = nodeColor;
+				ctx.fillStyle = adhoc.setting('colorScheme')=='dark' ? adhoc.textColorDark : adhoc.textColor;
+				ctx.lineWidth = (2.0*adhoc.display_scale)<<0;
+				ctx.font = ((12.0*adhoc.display_scale)<<0)+'px Arial';
+				var size = ctx.measureText(tagText);
+				if(tagWidth+(size.width/adhoc.display_scale)+14 > n.width){
+					tagText = "...";
+					size = ctx.measureText(tagText);
+					i = nodeTags.length;
+				}
+				ctx.fillText(
+					tagText
+					,(n.x-(n.width/2.0)+5+tagWidth) * adhoc.display_scale - adhoc.display_x
+					,(n.y+(n.height/2.0)-6) * adhoc.display_scale - adhoc.display_y
+				);
+				ctx.strokeRect(
+					(n.x-(n.width/2.0)+tagWidth) * adhoc.display_scale - adhoc.display_x
+					,(n.y+(n.height/2.0)-20) * adhoc.display_scale - adhoc.display_y
+					,(size.width+10) * adhoc.display_scale
+					,20 * adhoc.display_scale
+				);
+				tagWidth += size.width+14;
+			}
+		}
+
 		// Reset line dashes
 		ctx.setLineDash([]);
 
@@ -4452,6 +4555,7 @@ Event.observe(window, 'load', function(){
 			,width: n.width
 			,height: n.height
 			,subTreeHeight: n.subTreeHeight
+			,tags: adhoc.allTags[n.id]
 		};
 		var children = [];
 		for(var i=0; i<n.children.length; ++i){
@@ -4511,6 +4615,33 @@ Event.observe(window, 'load', function(){
 			adhoc.renameNode(adhoc.allNodes[n.references[i]], pkg, name, n.id, true);
 		}
 	}
+	// Changes the tags on a node
+	adhoc.changeTags = function(n, tagString){
+		// Determine if this action should be bound, then record it
+		var prevAction = adhoc.history.index>0 ? adhoc.history.history[adhoc.history.index-1] : null;
+		var ref1 = n.referenceId
+			? n.referenceId
+			: n.id;
+		if(prevAction){
+			var ref2 = adhoc.allNodes[prevAction.parentId].referenceId
+				? adhoc.allNodes[prevAction.parentId].referenceId
+				: prevAction.parentId;
+		}else{
+			var ref2 = null;
+		}
+		var bind = prevAction
+			&& ref1 == ref2
+			&& (['rename','tags','datatype','childdatatype','comment'].indexOf(prevAction.action) >= 0);
+		adhoc.history.record('tags', tagString, n, false);
+
+		// Change the actual tags
+		var newTags = [];
+		var tags = tagString.split(',');
+		for(var i=0; i<tags.length; ++i){
+			newTags.push(tags[i].trim("\\s"));
+		}
+		adhoc.allTags[n.id] = newTags;
+	}
 	// Changes the dataType of a single node
 	adhoc.changeDatatype = function(n, type){
 		// If this is a reference, go for the main node
@@ -4532,7 +4663,7 @@ Event.observe(window, 'load', function(){
 		}
 		var bind = prevAction
 			&& ref1 == ref2
-			&& (['rename','datatype','childdatatype','comment'].indexOf(prevAction.action) >= 0);
+			&& (['rename','tags','datatype','childdatatype','comment'].indexOf(prevAction.action) >= 0);
 		adhoc.history.record('datatype', type, n, bind);
 
 		// Change this node's type and the types of all its references
@@ -4563,7 +4694,7 @@ Event.observe(window, 'load', function(){
 		}
 		var bind = prevAction
 			&& ref1 == ref2
-			&& (['rename','datatype','childdatatype','comment'].indexOf(prevAction.action) >= 0);
+			&& (['rename','tags','datatype','childdatatype','comment'].indexOf(prevAction.action) >= 0);
 		adhoc.history.record('childdatatype', type, n, bind);
 
 		// Change this node's child datatype and the types of all its references
@@ -4578,7 +4709,7 @@ Event.observe(window, 'load', function(){
 		var prevAction = adhoc.history.index>0 ? adhoc.history.history[adhoc.history.index-1] : null;
 		var bind = prevAction
 			&& prevAction.parentId==n.id
-			&& (['rename','datatype','childdatatype','comment'].indexOf(prevAction.action) >= 0);
+			&& (['rename','tags','datatype','childdatatype','comment'].indexOf(prevAction.action) >= 0);
 		adhoc.history.record('comment', cmnt, n, bind);
 		n.value = cmnt ? cmnt : null;
 	}
@@ -4783,14 +4914,15 @@ Event.observe(window, 'load', function(){
 			n.references = newNode.references;
 			n.x = newNode.x;
 			n.y = newNode.y;
-			n.highlighted = newNode.highlighted
-			n.detached = newNode.detached
-			n.moveClick = newNode.moveClick
-			n.moveTarget = newNode.moveTarget
-			n.movePos = newNode.movePos
+			n.highlighted = newNode.highlighted;
+			n.detached = newNode.detached;
+			n.moveClick = newNode.moveClick;
+			n.moveTarget = newNode.moveTarget;
+			n.movePos = newNode.movePos;
 			n.width = newNode.width;
 			n.height = newNode.height;
 			n.subTreeHeight = newNode.subTreeHeight;
+			adhoc.allTags[newNode.id] = newNode.tags;
 
 			// Add to the list of all nodes and the action registry
 			adhoc.allNodes[newNode.id] = n;
@@ -4873,6 +5005,41 @@ Event.observe(window, 'load', function(){
 		return newNode;
 	}
 
+	// Apply multiple tags to nodes by id
+	adhoc.applyTags = function(nodeTags){
+		if(!nodeTags) return;
+		for(var i in nodeTags){
+			var tags = nodeTags[typeof(i)=="number" ? i : parseInt(i)];
+			if(!adhoc.allTags[i]) adhoc.allTags[i] = [];
+			for(var j=0; j<tags.length; ++j){
+				adhoc.allTags[i].push(tags[j]);
+			}
+		}
+	}
+	// Get back a pruned list of tags from all the nodes
+	adhoc.gleanTags = function(){
+		var ret = {};
+		for(var i in adhoc.allTags){
+			if(adhoc.allTags[i] && adhoc.allTags[i].length)
+				ret[i] = adhoc.allTags[i];
+		}
+		return ret;
+	}
+	// Get the tags associated with a particular node
+	adhoc.getTagsByNode = function(n){
+		if(!n.id) return [];
+		if(!adhoc.allTags[n.id]) adhoc.allTags[n.id] = [];
+		return adhoc.allTags[n.id];
+	}
+	// Get the nodes associated with a particular tag
+	adhoc.getNodesByTag = function(t){
+		ret = [];
+		for(var i in adhoc.allTags){
+			if(adhoc.allTags[i].indexOf(t) >= 0) ret.push(adhoc.allNodes[i]);
+		}
+		return ret;
+	}
+
 	// New package
 	adhoc.newProject = function(){
 		adhoc.promptFlag('New Package: Are you sure?', ['Yes','No'], function(val){
@@ -4885,6 +5052,7 @@ Event.observe(window, 'load', function(){
 			adhoc.lastId = 0;
 			adhoc.registeredActions = [];
 			adhoc.allNodes = [];
+			adhoc.allTags = {};
 
 			// Create a new root node
 			adhoc.rootNode = adhoc.createNode(
@@ -4926,6 +5094,9 @@ Event.observe(window, 'load', function(){
 				,projectid: adhoc.setting('projectId')
 				,projectname: adhoc.setting('projectName')
 				,xsrftoken: $('xsrfToken').innerHTML
+			}
+			,requestHeaders: {
+				'ADHOC-tags': Object.toJSON(adhoc.gleanTags())
 			}
 			,onFailure: function(t){
 				// Reactivate the save button, and report the error
@@ -4988,9 +5159,14 @@ Event.observe(window, 'load', function(){
 				adhoc.lastId = 0;
 				adhoc.registeredActions = [];
 				adhoc.allNodes = [];
+				adhoc.allTags = {};
 
-				// Get the root node
+				// Get node structure from response body and tags from headers
 				adhoc.rootNode = adhoc.unserialize(t.responseText.rtrim("\\s"));
+				var tagsStruct = null;
+				try{ tagsStruct = t.getResponseHeader('ADHOC-tags').evalJSON(); }
+				catch(e){} // tags mangled or not present
+				if(tagsStruct) adhoc.applyTags(tagsStruct);
 
 				// Reset controls
 				$('controls').addClassName('collapsed');

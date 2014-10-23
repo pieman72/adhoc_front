@@ -7,6 +7,9 @@ $remote = (substr($server,0,strrpos($server,'.')) == substr($remote,0,strrpos($r
 	? gethostbyname($host)
 	: $remote;
 
+// Get request headers
+$headers = apache_request_headers();
+
 // Load user settings
 $settings = (isset($_COOKIE)&&isset($_COOKIE['adhocSettings']) ? json_decode(urldecode($_COOKIE['adhocSettings'])) : (object)array());
 
@@ -53,6 +56,7 @@ $binary = str_replace(
 $hash = md5($binary);
 $projectId = $_POST['projectid'];
 $projectName = $_POST['projectname'];
+$tags = isset($headers['ADHOC-tags']) ? $headers['ADHOC-tags'] : '';
 
 // If not logged in, throw an error
 if(!count($errors) && !isset($_SESSION['username'])){
@@ -69,6 +73,7 @@ if(!count($errors)){
 				ON u.id = p.user
 		SET
 			p.project_name = ?
+			,p.tags = ?
 			,p.project_hash = UNHEX(?)
 			,datetime_updated = CURRENT_TIMESTAMP
 		WHERE
@@ -79,10 +84,12 @@ if(!count($errors)){
 		INSERT INTO front_projects (
 			user
 			,project_name
+			,tags
 			,project_hash
 			,datetime_updated
 		) SELECT
 			u.id
+			,?
 			,?
 			,UNHEX(?)
 			,CURRENT_TIMESTAMP
@@ -96,14 +103,16 @@ if(!count($errors)){
 		$errors[] = "Could not prepare database statement: ".$dbConn->error;
 	}
 	if(!count($errors)){
-		if($projectId && !mysqli_stmt_bind_param($query, 'ssss'
+		if($projectId && !mysqli_stmt_bind_param($query, 'sssss'
 			,$projectName
+			,$tags
 			,$hash
 			,$projectId
 			,$_SESSION['username']
 		)) $errors[] = "Could not bind database parameters: ".$query->error;
-		if(!$projectId && !mysqli_stmt_bind_param($query, 'sss'
+		if(!$projectId && !mysqli_stmt_bind_param($query, 'ssss'
 			,$projectName
+			,$tags
 			,$hash
 			,$_SESSION['username']
 		)) $errors[] = "Could not bind database parameters: ".$query->error;
