@@ -25,3 +25,10 @@ FileETag -INode +MTime +Size
 	ExpiresByType text/javascript "access plus 10 years"
 	ExpiresByType application/javascript "access plus 10 years"
 </IfModule>
+
+# Serve regular users the stable JS
+<IfModule mod_rewrite.c>
+	RewriteEngine on
+	RewriteCond %{HTTP_COOKIE} !beta[^a-z]*true
+	RewriteRule adhoc.js adhoc_stable.js
+</IfModule>

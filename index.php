@@ -169,7 +169,7 @@ if(!count($errors) && (!isset($_SESSION['username']) || $_SESSION['username'])){
 	<link rel="stylesheet" href="//static.harveyserv.ath.cx/adhoc/css/prism.css" type="text/css"/>
 	<link rel="stylesheet" href="style.css" type="text/css"/>
 </head>
-<body class="<?=(isset($settings->colorScheme) ? $settings->colorScheme : 'light')?>">
+<body class="<?=(isset($settings->colorScheme) ? $settings->colorScheme : 'light')?><?=(isset($settings->beta)&&$settings->beta ? ' beta' : '')?>">
 	<div id="page">
 		<?=Nxj_UI::lightbox(array(
 			'id'            => 'theLightbox'
@@ -438,6 +438,8 @@ if(!count($errors) && (!isset($_SESSION['username']) || $_SESSION['username'])){
 			<pre><code id="generatedCode"></code></pre>
 		</div>
 	</div>
+
+	<div class="betaBox">Beta</div>
 
 	<div id="xsrfToken" style="display:none;"><?=(isset($_SESSION['xsrftoken']) ? $_SESSION['xsrftoken'] : '')?></div>
 

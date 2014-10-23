@@ -41,6 +41,7 @@ Event.observe(window, 'load', function(){
 	};
 	adhoc.settings = {
 		dbg: false
+		,beta: false
 		,colorScheme: 'light'
 		,showNullNodes: true
 		,labelConnectors: 1
@@ -3408,6 +3409,7 @@ Event.observe(window, 'load', function(){
 
 		// Reset canvas parameters
 		var ctx = adhoc.canvas.getContext('2d');
+		ctx.setLineDash = ctx.setLineDash || function(args){};
 		var nodeColor;
 		ctx.lineWidth = (6.0*adhoc.display_scale)<<0;
 		ctx.font = ((20.0*adhoc.display_scale)<<0)+'px Arial';
