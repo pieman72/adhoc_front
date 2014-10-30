@@ -1606,10 +1606,10 @@ Event.observe(window, 'load', function(){
 		}
 
 		// Create a child dataType field when appropriate
-		if(n.which == adhoc.nodeWhich.LITERAL_ARRAY
-				|| n.which == adhoc.nodeWhich.LITERAL_HASH
-				|| n.dataType == adhoc.nodeDataTypes.ARRAY
-				|| n.dataType == adhoc.nodeDataTypes.HASH
+		if((n.dataType == adhoc.nodeDataTypes.ARRAY
+				|| n.dataType == adhoc.nodeDataTypes.HASH)
+				&& n.childType != adhoc.nodeChildType.PARAMETER
+				&& n.childType != adhoc.nodeChildType.INITIALIZATION
 			){
 			row = $(document.createElement('tr'));
 			cellR = $(document.createElement('td'));
@@ -1798,6 +1798,38 @@ Event.observe(window, 'load', function(){
 		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
 		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
 		$('theLightbox').addClassName('widthAuto');
+		$('theLightbox').show();
+		return false;
+	}
+	// Show the similarity analysis for a node
+	adhoc.promptAnalysis = function(n){
+		// Add a title
+		var LBtitle = $$('#theLightbox .nxj_lightboxTitle')[0];
+		LBtitle.update('Analysis for node '+n.id);
+
+		// Create the new lightbox content
+		var cont = $(document.createElement('div'));
+		cont.addClassName('nxj_lightboxContent');
+
+//TODO
+		// Compute various metrics
+		var output = "";
+		output += 'Type: '				+ n.nodeType + '<br/>';
+		output += 'Which: '				+ n.which + '<br/>';
+		output += 'ChildType: '			+ n.childType + '<br/>';
+		output += 'DataType: '			+ n.dataType + '<br/>';
+		output += 'ChildDataType: '		+ n.childDataType + '<br/>';
+		output += 'NumChildren: '		+ n.children.length + '<br/>';
+		output += 'SubtreeDepth: '		+ adhoc.subTreeDepthNode(n) + '<br/>';
+		output += 'UserTags: '			+ adhoc.getTagsByNode(n).join(', ') + '<br/>';
+		output += 'SimulatedExecution: '+ '?' + '<br/>';
+		cont.update(output);
+
+		// Delete old lightbox content and add the new one, then show
+		adhoc.removeAutocomplete();
+		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
+		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
+		$('theLightbox').removeClassName('widthAuto');
 		$('theLightbox').show();
 		return false;
 	}
@@ -2690,17 +2722,8 @@ Event.observe(window, 'load', function(){
 								,default: 1
 							}
 						], function(val, disp){
-							if(val != adhoc.nodeDataTypes.VOID) adhoc.createNode(
-								null
-								,newArray
-								,null
-								,adhoc.nodeTypes.LITERAL
-								,adhoc.nodeWhich.LITERAL_INT
-								,adhoc.nodeChildType.INDEX
-								,null
-								,val
-								,-1
-							);
+							if(val != adhoc.nodeDataTypes.VOID)
+								newArray.childDataType = val;
 						});
 						break;
 
@@ -3078,8 +3101,12 @@ Event.observe(window, 'load', function(){
 
 			// (CTRL+a) Select generated code
 			case 65:
-				if(adhoc.alternateKeys && $('output').visible()){ Event.stop(e);
-					adhoc.selectText($('generatedCode'));
+				if(adhoc.alternateKeys){
+					if($('output').visible()){ Event.stop(e);
+						adhoc.selectText($('generatedCode'));
+					}else if(adhoc.selectedNode && !$('theLightbox').visible()){ Event.stop(e);
+						adhoc.promptAnalysis(adhoc.selectedNode);
+					}
 				}
 				break;
 
@@ -3395,6 +3422,16 @@ Event.observe(window, 'load', function(){
 		adhoc.renderNode(adhoc.rootNode);
 	}
 
+	// Recursively determine the depth of a node's subtree (including itself)
+	adhoc.subTreeDepthNode = function(n){
+		var maxDepth = 1;
+		var countSelf = (n.childType==adhoc.nodeChildType.INDEX ? 0 : 1);
+		for(var i=0; i<n.children.length; ++i){
+			var d = adhoc.subTreeDepthNode(n.children[i]);
+			if(d+countSelf > maxDepth) maxDepth = d+countSelf;
+		}
+		return maxDepth;
+	}
 	// Recursively determine the display heights of each subtree
 	adhoc.subTreeHeightNode = function(n){
 		var isHolder = n.nodeType == adhoc.nodeTypes.GROUP
@@ -4638,7 +4675,8 @@ Event.observe(window, 'load', function(){
 		var newTags = [];
 		var tags = tagString.split(',');
 		for(var i=0; i<tags.length; ++i){
-			newTags.push(tags[i].trim("\\s"));
+			var t = tags[i].trim("\\s");
+			if(t) newTags.push(t);
 		}
 		adhoc.allTags[n.id] = newTags;
 	}
@@ -5053,6 +5091,7 @@ Event.observe(window, 'load', function(){
 			adhoc.registeredActions = [];
 			adhoc.allNodes = [];
 			adhoc.allTags = {};
+			adhoc.setting('projectName', 'New Project');
 
 			// Create a new root node
 			adhoc.rootNode = adhoc.createNode(
@@ -5070,7 +5109,6 @@ Event.observe(window, 'load', function(){
 			// Reset controls
 			$('controls').addClassName('collapsed');
 			adhoc.setting('projectId', 0);
-			adhoc.setting('projectName', 'New Project');
 			$('projectName').value = adhoc.setting('projectName');
 			if(adhoc.setting('username')){
 				$('savePackageButton').removeClassName('disabled');

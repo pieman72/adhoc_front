@@ -56,7 +56,9 @@ $binary = str_replace(
 $hash = md5($binary);
 $projectId = $_POST['projectid'];
 $projectName = $_POST['projectname'];
-$tags = isset($headers['ADHOC-tags']) ? $headers['ADHOC-tags'] : '';
+$tags = isset($headers['ADHOC-tags'])
+	? JSON_decode($headers['ADHOC-tags'])
+	: null;
 
 // If not logged in, throw an error
 if(!count($errors) && !isset($_SESSION['username'])){
@@ -73,7 +75,6 @@ if(!count($errors)){
 				ON u.id = p.user
 		SET
 			p.project_name = ?
-			,p.tags = ?
 			,p.project_hash = UNHEX(?)
 			,datetime_updated = CURRENT_TIMESTAMP
 		WHERE
@@ -84,12 +85,10 @@ if(!count($errors)){
 		INSERT INTO front_projects (
 			user
 			,project_name
-			,tags
 			,project_hash
 			,datetime_updated
 		) SELECT
 			u.id
-			,?
 			,?
 			,UNHEX(?)
 			,CURRENT_TIMESTAMP
@@ -99,20 +98,18 @@ if(!count($errors)){
 			u.username = ? ;";
 	}
 	$query = mysqli_stmt_init($dbConn);
-	if(!count($errors) && !mysqli_stmt_prepare($query, $sql)){
+	if(!mysqli_stmt_prepare($query, $sql)){
 		$errors[] = "Could not prepare database statement: ".$dbConn->error;
 	}
 	if(!count($errors)){
-		if($projectId && !mysqli_stmt_bind_param($query, 'sssss'
+		if($projectId && !mysqli_stmt_bind_param($query, 'ssis'
 			,$projectName
-			,$tags
 			,$hash
 			,$projectId
 			,$_SESSION['username']
 		)) $errors[] = "Could not bind database parameters: ".$query->error;
-		if(!$projectId && !mysqli_stmt_bind_param($query, 'ssss'
+		if(!$projectId && !mysqli_stmt_bind_param($query, 'sss'
 			,$projectName
-			,$tags
 			,$hash
 			,$_SESSION['username']
 		)) $errors[] = "Could not bind database parameters: ".$query->error;
@@ -123,6 +120,90 @@ if(!count($errors)){
 	if(!count($errors) && !$projectId && !($projectId = mysqli_insert_id($dbConn))){
 		$errors[] = "Could not determin new project id";
 	}
+	// Try to insert the tags
+	while(!count($errors) && $tags){
+		$sql = "
+		INSERT IGNORE INTO tags (
+			name
+		) VALUES (
+			?
+		) ";
+		$query = mysqli_stmt_init($dbConn);
+		if(!mysqli_stmt_prepare($query, $sql)){
+			$errors[] = "Could not prepare database statement: ".$dbConn->error;
+		}
+		if(count($errors)) break;
+		foreach($tags as $nodeId=>$tagArray){
+			foreach($tagArray as $oneTag){
+				if(!mysqli_stmt_bind_param($query, 's', $oneTag)){
+					$errors[] = "Could not bind database parameters: ".$query->error;
+					break;
+				}
+				if(!mysqli_stmt_execute($query)){
+					$errors[] = "Query failed: ".$query->error;
+					break;
+				}
+			}
+		}
+		if(count($errors)) break;
+		$sql = "
+		DELETE FROM
+			front_project_tags
+		WHERE
+			projectId = ?; ";
+		$query = mysqli_stmt_init($dbConn);
+		if(!mysqli_stmt_prepare($query, $sql)){
+			$errors[] = "Could not prepare database statement: ".$dbConn->error;
+		}
+		if(!count($errors) && !mysqli_stmt_bind_param($query, 'i'
+				,$projectId
+			)){
+			$errors[] = "Could not bind database parameters: ".$query->error;
+		}
+		if(!count($errors) && !mysqli_stmt_execute($query)){
+			$errors[] = "Query failed: ".$query->error;
+		}
+		if(count($errors)) break;
+		$sql = "
+		INSERT IGNORE INTO front_project_tags (
+			projectId
+			,nodeId
+			,tagId
+		)SELECT
+			?
+			,?
+			,t.id
+		FROM
+			tags t
+		WHERE
+			t.name = ?
+		LIMIT
+			1; ";
+		$query = mysqli_stmt_init($dbConn);
+		if(!mysqli_stmt_prepare($query, $sql)){
+			$errors[] = "Could not prepare database statement: ".$dbConn->error;
+		}
+		foreach($tags as $nodeId=>$tagArray){
+			foreach($tagArray as $oneTag){
+				if(!mysqli_stmt_bind_param($query, 'iis'
+						,$projectId
+						,$nodeId
+						,$oneTag
+					)){
+					$errors[] = "Could not bind database parameters: ".$query->error;
+					break;
+				}
+				if(!mysqli_stmt_execute($query)){
+					$errors[] = "Query failed: ".$query->error;
+					break;
+				}
+			}
+		}
+
+		// We were just using the while to be able to break at any point...
+		break;
+	}
+
 
 	// If we're all good, try to write the binary file
 	if(!count($errors) && !file_put_contents("../generate/$hash.adh", $binary)){

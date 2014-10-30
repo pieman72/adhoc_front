@@ -51,10 +51,9 @@ if(!count($errors) && !isset($_SESSION['username'])){
 // Try to fetch the project's hash by the project ID
 if(!count($errors)){
 	$query = mysqli_stmt_init($dbConn);
-	if(!count($errors) && !mysqli_stmt_prepare($query, "
+	if(!mysqli_stmt_prepare($query, "
 		SELECT
 			LOWER(HEX(p.project_hash))
-			,p.tags
 			,u.username
 		FROM
 			front_projects p
@@ -76,7 +75,6 @@ if(!count($errors)){
 	}
 	if(!count($errors) && !mysqli_stmt_bind_result($query
 			,$fetchHash
-			,$fetchTags
 			,$fetchUser
 		)){
 		$errors[] = "Query failed: ".$query->error;
@@ -87,6 +85,51 @@ if(!count($errors)){
 	if(!count($errors) && $fetchUser!=$_SESSION['username']){
 		$errors[] = "Could not find project to load";
 	}
+	if(!count($errors)){
+		$query = mysqli_stmt_init($dbConn);
+		if(!mysqli_stmt_prepare($query, "
+			SELECT
+				pt.nodeId
+				,t.name
+			FROM
+				front_projects p
+				JOIN front_project_tags pt
+					ON p.id = pt.projectId
+				JOIN tags t
+					ON pt.tagid = t.id
+			WHERE
+				p.id = ?
+			ORDER BY
+				pt.nodeId; ")){
+			$errors[] = "Could not prepare database statement: ".$dbConn->error;
+		}
+	}
+	if(!count($errors) && !mysqli_stmt_bind_param($query, 's'
+			,$_POST['projectid']
+		)){
+		$errors[] = "Could not bind database parameters: ".$query->error;
+	}
+	if(!count($errors) && !mysqli_stmt_execute($query)){
+		$errors[] = "Query failed: ".$query->error;
+	}
+	if(!count($errors) && !mysqli_stmt_bind_result($query
+			,$fetchNodeId
+			,$fetchTagName
+		)){
+		$errors[] = "Query failed: ".$query->error;
+	}
+	$fetchTags = new stdClass();
+	while(!count($errors) && ($fetchStatus=$query->fetch())){
+		if(!isset($fetchTags->$fetchNodeId))
+			$fetchTags->$fetchNodeId = array();
+		$nodeTagArray = $fetchTags->$fetchNodeId;
+		$nodeTagArray[] = $fetchTagName;
+		$fetchTags->$fetchNodeId = $nodeTagArray;
+	}
+	if($fetchStatus === false){
+		$errors[] = "Query failed: ".$query->error;
+	}
+	$fetchTags = JSON_encode($fetchTags);
 
 	// If we're all good, try to load the project file by its hash
 	if(!count($errors)){
