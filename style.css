@@ -106,6 +106,12 @@ label {
 	margin-top:-3px;
 	padding:1px 5px;
 	}
+#lb_input_acList .actionListSpacer {
+	background:url('//static.harveyserv.ath.cx/adhoc/img/actionListSpacer.png') repeat 0 0;
+	float:left;
+	height:31px;
+	margin-top:-4px;
+	}
 #lb_input_acList .actionListItem.actionDefin {
 	border:2px solid #2FDF00;
 	}

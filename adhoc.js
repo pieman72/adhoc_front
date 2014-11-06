@@ -1832,7 +1832,7 @@ Event.observe(window, 'load', function(){
 						!namePart
 						|| n.name.match(new RegExp('^'+namePart, 'i'))
 					)){
-					newItemNameHTML = "<span>&nbsp;</span><span class=\"actionListItem "+(n.which==adhoc.nodeWhich.ACTION_DEFIN?'actionDefin':'actionCall')+"\">"+n.name+"</span>";
+					newItemNameHTML = "<span>&nbsp;</span><span class=\"actionListSpacer\" style=\"width:"+(i*20)+"px;\"></span><span class=\"actionListItem "+(n.which==adhoc.nodeWhich.ACTION_DEFIN?'actionDefin':'actionCall')+"\">"+n.name+"</span>";
 					l.push({
 						value: n.name
 						,reminder: n.id + (n.value ? " - "+n.value : '')
