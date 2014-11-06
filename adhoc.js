@@ -973,7 +973,8 @@ Event.observe(window, 'load', function(){
 		}
 	};
 	// Validate the name of an action, and possibly check that it is not already defined
-	adhoc.validateActionName = function(v, notExist){
+	adhoc.validateActionName = function(v, notExist, emptyOk){
+		if(emptyOk && !v) return;
 		if(!v.match(/^[_a-zA-Z][ _a-zA-Z0-9]*$/)){
 			return 'Not a valid action name';
 		}
@@ -984,6 +985,10 @@ Event.observe(window, 'load', function(){
 	// Validate the name of an action, and check that it is not already defined
 	adhoc.validateActionDefName = function(v){
 		return adhoc.validateActionName(v, true);
+	}
+	// Validate the name of an action, but allow empty
+	adhoc.validateActionNameOrEmpty = function(v){
+		return adhoc.validateActionName(v, false, true);
 	}
 	// Validate the name of a new paclage
 	adhoc.validatePackageName = function(v){
@@ -1098,6 +1103,7 @@ Event.observe(window, 'load', function(){
 		cont.appendChild(butt);
 
 		// Delete old lightbox content and add the new one, then show
+		adhoc.alternateKeys = false;
 		adhoc.removeAutocomplete();
 		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
 		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
@@ -1181,13 +1187,14 @@ Event.observe(window, 'load', function(){
 
 		// Delete old lightbox content and add the new one, then show
 		adhoc.removeAutocomplete();
+		adhoc.alternateKeys = false;
 		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
 		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
 		$('theLightbox').removeClassName('widthAuto');
 		$('theLightbox').show();
 	}
 	// Prompt the user for a value
-	adhoc.promptValue = function(prmpt, dflt, vldt, algnR, callBack, searchFunc, sorryText){
+	adhoc.promptValue = function(prmpt, dflt, vldt, algnR, callBack, searchFunc, sorryText, allowEmpty){
 		// Add the prompt text as the title
 		var LBtitle = $$('#theLightbox .nxj_lightboxTitle')[0];
 		LBtitle.removeClassName('LBTitleError').removeClassName('LBTitleWarn').update(prmpt);
@@ -1255,7 +1262,7 @@ Event.observe(window, 'load', function(){
 			holder.appendChild(acList);
 
 			// Attach the autocomplete functions to the input
-			adhoc.attachAutocomplete(inp, rem, hid, acList, searchFunc, function(){}, vldt, sorryText);
+			adhoc.attachAutocomplete(inp, rem, hid, acList, searchFunc, function(){}, vldt, sorryText, allowEmpty);
 		}
 
 		// Add a break
@@ -1282,6 +1289,7 @@ Event.observe(window, 'load', function(){
 		cont.appendChild(butt);
 
 		// Delete old lightbox content and add the new one, then show
+		adhoc.alternateKeys = false;
 		adhoc.removeAutocomplete();
 		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
 		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
@@ -1794,12 +1802,57 @@ Event.observe(window, 'load', function(){
 		cont.appendChild(butt);
 
 		// Delete old lightbox content and add the new one, then show
+		adhoc.alternateKeys = false;
 		adhoc.removeAutocomplete();
 		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
 		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
 		$('theLightbox').addClassName('widthAuto');
 		$('theLightbox').show();
 		return false;
+	}
+	// Popup a map of all action definition nodes
+	adhoc.promptActionList = function(){
+		prmpt = 'Jump to Action'
+		dflt = '';
+		vldt = adhoc.validateActionNameOrEmpty;
+		algnR = false;
+		callBack = function(val, rem, hid){
+			if(!isNaN(parseInt(hid)) && isFinite(hid) && parseInt(hid)){
+				$('theLightbox').hide();
+				adhoc.snapToNode(adhoc.allNodes[parseInt(hid)]);
+			}
+		}
+		searchFunc = function(part){
+			// Create an empty list of actions to return
+			var out = [];
+
+			// Create recursive search function, and call it
+			var searchActionList = function(namePart, n, l, i){
+				if(n.nodeType == adhoc.nodeTypes.ACTION && (
+						!namePart
+						|| n.name.match(new RegExp('^'+namePart, 'i'))
+					)){
+					newItemNameHTML = "<span>&nbsp;</span><span class=\"actionListItem "+(n.which==adhoc.nodeWhich.ACTION_DEFIN?'actionDefin':'actionCall')+"\">"+n.name+"</span>";
+					l.push({
+						value: n.name
+						,reminder: n.id + (n.value ? " - "+n.value : '')
+						,hidden: n.id
+						,code: newItemNameHTML
+					});
+					++i;
+				}
+				for(var j=0; j<n.children.length; ++j)
+					searchActionList(namePart, n.children[j], l, i);
+			}
+			searchActionList(part, adhoc.rootNode, out, 0);
+
+			// Return the final list
+			return out;
+		}
+		sorryText = 'No actions used with that name';
+		allowEmpty = true;
+		adhoc.promptValue(prmpt, dflt, vldt, algnR, callBack, searchFunc, sorryText, allowEmpty);
+		$('theLightbox').addClassName('widthAuto');
 	}
 	// Show the similarity analysis for a node
 	adhoc.promptAnalysis = function(n){
@@ -1826,6 +1879,7 @@ Event.observe(window, 'load', function(){
 		cont.update(output);
 
 		// Delete old lightbox content and add the new one, then show
+		adhoc.alternateKeys = false;
 		adhoc.removeAutocomplete();
 		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
 		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
@@ -1852,6 +1906,7 @@ Event.observe(window, 'load', function(){
 		frame.observe('load', function(){ this.contentWindow.focus(); });
 
 		// Delete old lightbox content and add the new one, then show
+		adhoc.alternateKeys = false;
 		adhoc.removeAutocomplete();
 		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
 		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
@@ -1877,7 +1932,7 @@ Event.observe(window, 'load', function(){
 		});
 	}
 	// Function to attach and operate the autocomplete
-	adhoc.attachAutocomplete = function(input, reminder, hidden, list, acSearchFunc, acLoadFunc, validate, acSorryText){
+	adhoc.attachAutocomplete = function(input, reminder, hidden, list, acSearchFunc, acLoadFunc, validate, acSorryText, allowEmpty){
 		// Autocomplete globals
 		var acLock = null;
 		var acOpen = false;
@@ -1890,7 +1945,7 @@ Event.observe(window, 'load', function(){
 
 			// Get the search term from the input, close the list if none
 			var term = $F(input);
-			if(!term || validate(term)) return acClose();
+			if((!term&&!allowEmpty) || validate(term)) return acClose();
 
 			// Get the currently selected item if there is one
 			var selectedItems = $$('.acItem.selected');
@@ -1988,7 +2043,7 @@ Event.observe(window, 'load', function(){
 		// Given a term, do a search, and update the autocomplete results
 		function acSearch(term){
 			// If there's no search term, become inactive
-			if(!term){
+			if(!term && !allowEmpty){
 				input.up().removeClassName('searchLoading');
 				return;
 			}
@@ -2017,8 +2072,12 @@ Event.observe(window, 'load', function(){
 					elem.setAttribute('data-value', item.value || '');
 					elem.setAttribute('data-reminder', item.reminder || '');
 					elem.setAttribute('data-hidden', item.hidden || '');
+					elem.setAttribute('data-code', item.code ? '1' : '0');
 					elem.update(
-						item.value.replace(acRxp, '<span class="match">$1</span>')
+						(item.code
+							? item.code
+							: item.value.replace(acRxp, '<span class="match">$1</span>')
+						)
 						+ ' <span class="reminder">'
 						+ item.reminder
 						+ '</span>'
@@ -3124,6 +3183,13 @@ Event.observe(window, 'load', function(){
 				}
 				break;
 
+			// (CTRL+j) Popup of all actions by name
+			case 74:
+				if(adhoc.alternateKeys){ Event.stop(e);
+					adhoc.promptActionList();
+				}
+				break;
+
 			// (CTRL+k) Toggle the debugger
 			case 75:
 				if(adhoc.alternateKeys){ Event.stop(e);
@@ -3134,14 +3200,14 @@ Event.observe(window, 'load', function(){
 
 			// (CTRL+l) Load a file
 			case 76:
-				if(adhoc.alternateKeys){ Event.stop(e);
+				if(adhoc.alternateKeys && !$('theLightbox').visible()){ Event.stop(e);
 					$('projectLightbox').show();
 				}
 				break;
 
 			// (CTRL+s) Save a file
 			case 83:
-				if(adhoc.alternateKeys){ Event.stop(e);
+				if(adhoc.alternateKeys && !$('theLightbox').visible()){ Event.stop(e);
 					adhoc.saveProject();
 				}
 				break;
@@ -3986,6 +4052,9 @@ Event.observe(window, 'load', function(){
 
 	// Recursively determine whether the click landed in a node
 	adhoc.getClickedNode = function(n, click){
+		// Skip folded nodes
+		if(n.parent && n.parent.folded) return null;
+
 		// Check the children
 		for(var i=0; i<n.children.length; ++i){
 			var temp = adhoc.getClickedNode(n.children[i], click);
@@ -4009,6 +4078,9 @@ Event.observe(window, 'load', function(){
 	}
 	// Recursively determine which node (if any) the click landed near
 	adhoc.getClosestNode = function(n, best, click){
+		// Skip folded nodes
+		if(n.parent && n.parent.folded) return best;
+
 		// Skip detached blocks and indices
 		if(n.detached) return best;
 
@@ -4181,6 +4253,7 @@ Event.observe(window, 'load', function(){
 	adhoc.snapToNode = function(n){
 		adhoc.display_x = (n.x + n.width/2.0)*adhoc.display_scale - parseInt(adhoc.canvas.getAttribute('width'))/2.0;
 		adhoc.display_y = (n.y + n.height/2.0)*adhoc.display_scale - parseInt(adhoc.canvas.getAttribute('height'))/2.0;
+		adhoc.refreshRender();
 	}
 
 	// Generate a function to find variables by name in a given scope
@@ -4203,6 +4276,7 @@ Event.observe(window, 'load', function(){
 							value: n
 							,reminder: (myScope.which==adhoc.nodeWhich.CONTROL_LOOP ? '(Loop)' : myScope.name)
 							,hidden: myScope.scopeVars[i].id
+							,code: false
 						});
 					}
 				}
@@ -4229,6 +4303,7 @@ Event.observe(window, 'load', function(){
 					value: n
 					,reminder: adhoc.registeredActions[i].package
 					,hidden: adhoc.registeredActions[i].id
+					,code: false
 				});
 			}
 		}
@@ -4244,6 +4319,7 @@ Event.observe(window, 'load', function(){
 					value: n
 					,reminder: 'System'
 					,hidden: null
+					,code: false
 				});
 			}
 		}
@@ -5271,6 +5347,7 @@ Event.observe(window, 'load', function(){
 				$('zoomPrcent').update(100);
 				adhoc.resetHistory();
 				adhoc.refreshRender();
+				adhoc.snapToNode(adhoc.rootNode);
 			}
 			,onFailure: function(t){
 				adhoc.error(t.responseText);
