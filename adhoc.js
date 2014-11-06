@@ -938,15 +938,15 @@ Event.observe(window, 'load', function(){
 
 	// Convert an int to a 3-byte string
 	adhoc.intTo3Byte = function(i){
-		var out = String.fromCharCode(i%256);
-		i >>= 8;
-		out = String.fromCharCode(i%256) + out;
-		i >>= 8;
-		return String.fromCharCode(i%256) + out;
+		var out = String.fromCharCode(i%128);
+		i >>= 7;
+		out = String.fromCharCode(i%128) + out;
+		i >>= 7;
+		return String.fromCharCode(i%128) + out;
 	}
 	// Convert a 3-byte string to an int
 	adhoc.intFrom3Byte = function(s){
-		return (((s.charCodeAt(0)<<8)+s.charCodeAt(1))<<8)+s.charCodeAt(2);
+		return (((s.charCodeAt(0)<<7)+s.charCodeAt(1))<<7)+s.charCodeAt(2);
 	}
 
 	// Validate integer values
@@ -4326,18 +4326,9 @@ Event.observe(window, 'load', function(){
 			break;
 
 		case adhoc.nodeWhich.ACTION_DEFIN:
-			for(var i=0; i<n.children.length; ++i){
-				if(n.children[i].which != adhoc.nodeWhich.CONTROL_RETRN) continue;
-				if(dt == adhoc.nodeDataTypes.VOID){
-					dt = n.children[i].dataType;
-					cdt = n.children[i].childDataType;
-				}
-				if(n.children[i].dataType==adhoc.nodeDataTypes.MIXED || dt!=n.children[i].dataType){
-					dt = adhoc.nodeDataTypes.MIXED;
-					cdt = adhoc.nodeDataTypes.MIXED;
-					break;
-				}
-			}
+			var retTypes = adhoc.getReturnedDataTypes(n);
+			dt = retTypes[0];
+			cdt = retTypes[1];
 			break;
 
 		case adhoc.nodeWhich.ACTION_CALL:
@@ -4493,6 +4484,40 @@ Event.observe(window, 'load', function(){
 		}
 		n.dataType = dt;
 		n.childDataType = cdt;
+	}
+	// Determine what datatypes a statement can return
+	adhoc.getReturnedDataTypes = function(n){
+		var dt = adhoc.nodeDataTypes.VOID;
+		var cdt = adhoc.nodeDataTypes.VOID;
+		for(var i=0; i<n.children.length; ++i){
+			// Check the type of a control-return
+			if(n.children[i].which == adhoc.nodeWhich.CONTROL_RETRN){
+				var tempDt = n.children[i].dataType;
+				var tempCdt = n.children[i].childDataType;
+			// Check the type of statement which may contain
+			}else if(n.children[i].childType == adhoc.nodeChildType.STATEMENT
+					|| n.children[i].childType == adhoc.nodeChildType.CASE
+					|| n.children[i].childType == adhoc.nodeChildType.PARENT
+					|| n.children[i].childType == adhoc.nodeChildType.CHILD
+					|| n.children[i].childType == adhoc.nodeChildType.IF
+					|| n.children[i].childType == adhoc.nodeChildType.ELSE
+				){
+				var tempBoth = adhoc.getReturnedDataTypes(n.children[i]);
+				tempDt = tempBoth[0];
+				tempCdt = tempBoth[1];
+			}else continue;
+
+			if(dt == adhoc.nodeDataTypes.VOID){
+				dt = tempDt;
+				cdt = tempCdt;
+			}
+			if(tempDt==adhoc.nodeDataTypes.MIXED || dt!=tempDt){
+				dt = adhoc.nodeDataTypes.MIXED;
+				cdt = adhoc.nodeDataTypes.MIXED;
+				break;
+			}
+		}
+		return [tempDt, tempCdt];
 	}
 
 	// Function to serialize a node and its children for binary
@@ -5041,6 +5066,36 @@ Event.observe(window, 'load', function(){
 
 		// Return the node itself for recursive calls
 		return newNode;
+	}
+	// Rebase node IDs (debugging features)
+	adhoc.rebaseAllNodeIds = function(){
+		adhoc.lastId = 0;
+		adhoc.newIds = [];
+		adhoc.allNodes = [];
+		adhoc.rebaseNodeId(adhoc.rootNode);
+		for(var i=1; i<adhoc.lastId; ++i){
+			var n = adhoc.allNodes[i];
+			n.referenceId = adhoc.newIds[n.referenceId];
+			for(var j=0; j<n.references.length; ++j){
+				n.references[j] = adhoc.newIds[n.references[j]];
+			}
+		}
+		delete adhoc.newIds;
+		if(adhoc.setting('username')){
+			$('savePackageButton').removeClassName('disabled');
+			$('savePackageButton').update('Save');
+		}
+	}
+	adhoc.rebaseNodeId = function(n){
+		if(!n || !n.id) return;
+		var oldId = n.id;
+		var newId = ++adhoc.lastId;
+		adhoc.newIds[oldId] = newId;
+		adhoc.allNodes[newId] = n;
+		n.id = newId;
+		for(var i=0; i<n.children.length; ++i){
+			adhoc.rebaseNodeId(n.children[i]);
+		}
 	}
 
 	// Apply multiple tags to nodes by id
