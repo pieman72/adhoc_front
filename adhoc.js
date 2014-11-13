@@ -4281,24 +4281,32 @@ Event.observe(window, 'load', function(){
 	}
 	// Zooms the view in
 	adhoc.zoomIn = function(){
+		var center_x = (adhoc.display_x + parseFloat(adhoc.canvas.getAttribute('width'))/2.0)/adhoc.display_scale;
+		var center_y = (adhoc.display_y + parseFloat(adhoc.canvas.getAttribute('height'))/2.0)/adhoc.display_scale;
 		if($('zoomIn').hasClassName('disabled')) return;
 		$('zoomPrcent').update(((adhoc.display_scale *= 1.2)*100).toPrecision(3));
 		if(adhoc.display_scale > 8) $('zoomIn').addClassName('disabled');
 		$('zoomOut').removeClassName('disabled');
+		adhoc.display_x = center_x*adhoc.display_scale - parseFloat(adhoc.canvas.getAttribute('width'))/2.0;
+		adhoc.display_y = center_y*adhoc.display_scale - parseFloat(adhoc.canvas.getAttribute('height'))/2.0;
 		adhoc.refreshRender();
 	}
 	// Zooms the view out
 	adhoc.zoomOut = function(){
+		var center_x = (adhoc.display_x + parseFloat(adhoc.canvas.getAttribute('width'))/2.0)/adhoc.display_scale;
+		var center_y = (adhoc.display_y + parseFloat(adhoc.canvas.getAttribute('height'))/2.0)/adhoc.display_scale;
 		if($('zoomOut').hasClassName('disabled')) return;
 		$('zoomPrcent').update(((adhoc.display_scale /= 1.2)*100).toPrecision(3));
 		if(adhoc.display_scale < 0.12) $('zoomOut').addClassName('disabled');
 		$('zoomIn').removeClassName('disabled');
+		adhoc.display_x = center_x*adhoc.display_scale - parseFloat(adhoc.canvas.getAttribute('width'))/2.0;
+		adhoc.display_y = center_y*adhoc.display_scale - parseFloat(adhoc.canvas.getAttribute('height'))/2.0;
 		adhoc.refreshRender();
 	}
 	// Pans the canvas to the specified node
 	adhoc.snapToNode = function(n){
-		adhoc.display_x = (n.x + n.width/2.0)*adhoc.display_scale - parseInt(adhoc.canvas.getAttribute('width'))/2.0;
-		adhoc.display_y = (n.y + n.height/2.0)*adhoc.display_scale - parseInt(adhoc.canvas.getAttribute('height'))/2.0;
+		adhoc.display_x = (n.x + n.width/2.0)*adhoc.display_scale - parseFloat(adhoc.canvas.getAttribute('width'))/2.0;
+		adhoc.display_y = (n.y + n.height/2.0)*adhoc.display_scale - parseFloat(adhoc.canvas.getAttribute('height'))/2.0;
 		adhoc.refreshRender();
 	}
 
