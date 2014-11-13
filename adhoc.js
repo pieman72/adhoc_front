@@ -1885,44 +1885,47 @@ Event.observe(window, 'load', function(){
 		output += 'Tags: '				+ (analysis.tags.length ? analysis.tags.join(', ') : '<i>none</i>') + '<br/>';
 		cont.update(output);
 
-		// Create a holder for the analysis results to return to
-		var landingZone = $(document.createElement('div')).addClassName('loading');
-		landingZone.setAttribute('id', 'analysisLanding');
-		cont.appendChild(landingZone);
+		// If this is an action definition, we can compare it against known actions
+		if(n.which == adhoc.nodeWhich.ACTION_DEFIN){
+			// Create a holder for the analysis results to return to
+			var landingZone = $(document.createElement('div')).addClassName('loading');
+			landingZone.setAttribute('id', 'analysisLanding');
+			cont.appendChild(landingZone);
 
-		// Send AJAX request for analysis results
-		new Ajax.Request('analyze/', {
-			parameters: {
-				name			: n.name
-				,package		: n.package
-				,totalLoops		: analysis.totalLoops
-				,maxLoopNest	: analysis.maxLoopNest
-				,condReturns	: analysis.conditionalReturns
-				,actionVerb		: analysis.actionVerb
-				,nodeCount		: analysis.nodeCount
-				,childCount		: analysis.childCount
-				,inputsVoid		: analysis.inputTypes[0]
-				,inputsBool		: analysis.inputTypes[1]
-				,inputsInt		: analysis.inputTypes[2]
-				,inputsFloat	: analysis.inputTypes[3]
-				,inputsString	: analysis.inputTypes[4]
-				,inputsArray	: analysis.inputTypes[5]
-				,inputsHash		: analysis.inputTypes[6]
-				,inputsStruct	: analysis.inputTypes[7]
-				,inputsAction	: analysis.inputTypes[8]
-				,inputsMixed	: analysis.inputTypes[9]
-				,outputType		: analysis.outputType
-				,userTags		: (analysis.tags.length ? analysis.tags.join(',') : '')
-				,xsrftoken		: $('xsrfToken').innerHTML
-			}
-			,onSuccess: function(t){
-				if(!$('analysisLanding')) return;
-				$('analysisLanding').update(t.responseText);
-			}
-			,onFailure: function(t){
-				adhoc.message('Warning: Analysis Failed', t.responseText);
-			}
-		});
+			// Send AJAX request for analysis results
+			new Ajax.Request('analyze/', {
+				parameters: {
+					name			: n.name
+					,package		: n.package
+					,totalLoops		: analysis.totalLoops
+					,maxLoopNest	: analysis.maxLoopNest
+					,condReturns	: analysis.conditionalReturns
+					,actionVerb		: analysis.actionVerb
+					,nodeCount		: analysis.nodeCount
+					,childCount		: analysis.childCount
+					,inputsVoid		: analysis.inputTypes[0]
+					,inputsBool		: analysis.inputTypes[1]
+					,inputsInt		: analysis.inputTypes[2]
+					,inputsFloat	: analysis.inputTypes[3]
+					,inputsString	: analysis.inputTypes[4]
+					,inputsArray	: analysis.inputTypes[5]
+					,inputsHash		: analysis.inputTypes[6]
+					,inputsStruct	: analysis.inputTypes[7]
+					,inputsAction	: analysis.inputTypes[8]
+					,inputsMixed	: analysis.inputTypes[9]
+					,outputType		: analysis.outputType
+					,userTags		: (analysis.tags.length ? analysis.tags.join(',') : '')
+					,xsrftoken		: $('xsrfToken').innerHTML
+				}
+				,onSuccess: function(t){
+					if(!$('analysisLanding')) return;
+					$('analysisLanding').removeClassName('loading').update(t.responseText);
+				}
+				,onFailure: function(t){
+					adhoc.message('Warning: Analysis Failed', t.responseText);
+				}
+			});
+		}
 
 		// Delete old lightbox content and add the new one, then show
 		adhoc.alternateKeys = false;

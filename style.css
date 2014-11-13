@@ -118,6 +118,18 @@ label {
 #lb_input_acList .actionListItem.actionCall {
 	border:2px solid #5FD7FF;
 	}
+#analysisLanding {
+	border:1px solid;
+	margin-top:15px;
+	min-height:40px;
+	padding:5px 10px;
+	}
+#analysisLanding.loading {
+	background:url('//static.harveyserv.ath.cx/adhoc/img/loadingBarLight.gif') no-repeat center center;
+	}
+.dark #analysisLanding.loading {
+	background:url('//static.harveyserv.ath.cx/adhoc/img/loadingBarDark.gif') no-repeat center center;
+	}
 #lb_input_error,
 #lb_comment_error,
 #lb_tags_error {
