@@ -1027,9 +1027,9 @@ Event.observe(window, 'load', function(){
 	adhoc.message = function(t, s){
 		// Add a title
 		var LBtitle = $$('#theLightbox .nxj_lightboxTitle')[0];
-		if(t == 'Error') LBtitle.addClassName('LBTitleError');
+		if(t.indexOf('Error') === 0) LBtitle.addClassName('LBTitleError');
 		else LBtitle.removeClassName('LBTitleError');
-		if(t == 'Warning') LBtitle.addClassName('LBTitleWarn');
+		if(t.indexOf('Warning') === 0) LBtitle.addClassName('LBTitleWarn');
 		else LBtitle.removeClassName('LBTitleWarn');
 		LBtitle.update(t);
 
@@ -1819,7 +1819,11 @@ Event.observe(window, 'load', function(){
 		callBack = function(val, rem, hid){
 			if(!isNaN(parseInt(hid)) && isFinite(hid) && parseInt(hid)){
 				$('theLightbox').hide();
-				adhoc.snapToNode(adhoc.allNodes[parseInt(hid)]);
+				var n = adhoc.allNodes[parseInt(hid)];
+				if(adhoc.selectedNode) adhoc.selectedNode.selected = false;
+				n.selected = true;
+				adhoc.selectedNode = n;
+				adhoc.snapToNode(n);
 			}
 		}
 		searchFunc = function(part){
@@ -1858,32 +1862,74 @@ Event.observe(window, 'load', function(){
 	adhoc.promptAnalysis = function(n){
 		// Add a title
 		var LBtitle = $$('#theLightbox .nxj_lightboxTitle')[0];
-		LBtitle.update('Analysis for node '+n.id);
+		LBtitle.removeClassName('LBTitleError').removeClassName('LBTitleWarn').update('Analysis for node '+n.id);
 
 		// Create the new lightbox content
 		var cont = $(document.createElement('div'));
 		cont.addClassName('nxj_lightboxContent');
 
-//TODO
+		// Get analysis information
+		analysis = adhoc.analyzeNode(n);
+
 		// Compute various metrics
 		var output = "";
-		output += 'Type: '				+ n.nodeType + '<br/>';
-		output += 'Which: '				+ n.which + '<br/>';
-		output += 'ChildType: '			+ n.childType + '<br/>';
-		output += 'DataType: '			+ n.dataType + '<br/>';
-		output += 'ChildDataType: '		+ n.childDataType + '<br/>';
-		output += 'NumChildren: '		+ n.children.length + '<br/>';
-		output += 'SubtreeDepth: '		+ adhoc.subTreeDepthNode(n) + '<br/>';
-		output += 'UserTags: '			+ adhoc.getTagsByNode(n).join(', ') + '<br/>';
-		output += 'SimulatedExecution: '+ '?' + '<br/>';
+		output += 'Total Loops: '		+ analysis.totalLoops + '<br/>';
+		output += 'Max Loop Nest: '		+ analysis.maxLoopNest + '<br/>';
+		output += 'Cond. Returns: '		+ analysis.conditionalReturns + '<br/>';
+		output += 'Action Verb: '		+ "'"+analysis.actionVerb+"'" + '<br/>';
+		output += 'Node Count: '		+ analysis.nodeCount + '<br/>';
+		output += 'Child Count: '		+ analysis.childCount + '<br/>';
+		output += 'Input Types: '		+ analysis.inputTypes.join(', ') + '<br/>';
+		output += 'Output Type: '		+ analysis.outputType + '<br/>';
+		output += 'Actions Called: '	+ analysis.actionsCalled + '<br/>';
+		output += 'Tags: '				+ (analysis.tags.length ? analysis.tags.join(', ') : '<i>none</i>') + '<br/>';
 		cont.update(output);
+
+		// Create a holder for the analysis results to return to
+		var landingZone = $(document.createElement('div')).addClassName('loading');
+		landingZone.setAttribute('id', 'analysisLanding');
+		cont.appendChild(landingZone);
+
+		// Send AJAX request for analysis results
+		new Ajax.Request('analyze/', {
+			parameters: {
+				name			: n.name
+				,package		: n.package
+				,totalLoops		: analysis.totalLoops
+				,maxLoopNest	: analysis.maxLoopNest
+				,condReturns	: analysis.conditionalReturns
+				,actionVerb		: analysis.actionVerb
+				,nodeCount		: analysis.nodeCount
+				,childCount		: analysis.childCount
+				,inputsVoid		: analysis.inputTypes[0]
+				,inputsBool		: analysis.inputTypes[1]
+				,inputsInt		: analysis.inputTypes[2]
+				,inputsFloat	: analysis.inputTypes[3]
+				,inputsString	: analysis.inputTypes[4]
+				,inputsArray	: analysis.inputTypes[5]
+				,inputsHash		: analysis.inputTypes[6]
+				,inputsStruct	: analysis.inputTypes[7]
+				,inputsAction	: analysis.inputTypes[8]
+				,inputsMixed	: analysis.inputTypes[9]
+				,outputType		: analysis.outputType
+				,userTags		: (analysis.tags.length ? analysis.tags.join(',') : '')
+				,xsrftoken		: $('xsrfToken').innerHTML
+			}
+			,onSuccess: function(t){
+				if(!$('analysisLanding')) return;
+				$('analysisLanding').update(t.responseText);
+			}
+			,onFailure: function(t){
+				adhoc.message('Warning: Analysis Failed', t.responseText);
+			}
+		});
 
 		// Delete old lightbox content and add the new one, then show
 		adhoc.alternateKeys = false;
 		adhoc.removeAutocomplete();
 		$$('#theLightbox .nxj_lightboxContent').each(Element.remove);
 		$$('#theLightbox .nxj_lightbox')[0].appendChild(cont);
-		$('theLightbox').removeClassName('widthAuto');
+		$('theLightbox').addClassName('widthAuto');
 		$('theLightbox').show();
 		return false;
 	}
@@ -4856,11 +4902,15 @@ Event.observe(window, 'load', function(){
 	adhoc.updatePackageName = function(n, oldP, newP){
 		if(n.package == newP) return;
 		if(n.package == oldP) n.package = newP;
-		for(var i=0; i<n.children.length; ++i){
-			adhoc.updatePackageName(n.children[i], oldP, newP);
+		if(n.children){
+			for(var i=0; i<n.children.length; ++i){
+				adhoc.updatePackageName(n.children[i], oldP, newP);
+			}
 		}
-		for(var i=0; i<n.references.length; ++i){
-			adhoc.updatePackageName(n.references[i], oldP, newP);
+		if(n.references){
+			for(var i=0; i<n.references.length; ++i){
+				adhoc.updatePackageName(n.references[i], oldP, newP);
+			}
 		}
 	}
 	// Reset the indices of a container-type node
@@ -5207,6 +5257,44 @@ Event.observe(window, 'load', function(){
 			if(adhoc.allTags[i].indexOf(t) >= 0) ret.push(adhoc.allNodes[i]);
 		}
 		return ret;
+	}
+
+	// Analyze a node using ADHOC heuristics!
+	adhoc.analyzeNode = function(n){
+		var a = {
+			totalLoops: (n.which==adhoc.nodeWhich.CONTROL_LOOP?1:0)
+			,maxLoopNest: (n.which==adhoc.nodeWhich.CONTROL_LOOP?1:0)
+			,returns: (n.which==adhoc.nodeWhich.CONTROL_RETRN?1:0)
+			,conditionalReturns: 0
+			,actionVerb: n.name ? n.name.split(' ')[0] : ''
+			,nodeCount: 1
+			,childCount: n.children.length
+			,inputTypes: [0,0,0,0,0,0,0,0,0,0]
+			,outputType: n.dataType || adhoc.nodeDataTypes.VOID
+			,actionsCalled: '?'
+			,tags: adhoc.getTagsByNode(n)
+		};
+		var myMaxLoopNest = a.maxLoopNest;
+		for(var i=0; i<n.children.length; ++i){
+			var c = n.children[i];
+			var ca = adhoc.analyzeNode(c);
+			a.totalLoops += ca.totalLoops;
+			a.maxLoopNest = Math.max(a.maxLoopNest, ca.maxLoopNest+myMaxLoopNest);
+			(a.conditionalReturns =
+				a.conditionalReturns
+				|| ca.conditionalReturns
+				|| ca.returns && (
+					c.which == adhoc.nodeWhich.CONTROL_IF
+					|| c.which == adhoc.nodeWhich.CONTROL_LOOP
+					|| c.which == adhoc.nodeWhich.CONTROL_CASE
+					|| c.which == adhoc.nodeWhich.CONTROL_FORK
+				)
+			) ? 1 : 0;
+			a.nodeCount += ca.nodeCount;
+			if(c.childType == adhoc.nodeChildType.PARAMETER)
+				++a.inputTypes[c.dataType || adhoc.nodeDataTypes.VOID];
+		}
+		return a;
 	}
 
 	// New package

@@ -38,18 +38,17 @@ label {
 	width:auto;
 	}
 #theLightbox .nxj_input {
+	box-sizing:border-box;
 	font-size:20px;
-	width:370px;
-	}
-#theLightbox.widthAuto .nxj_input {
-	width:790px;
+	height:32px;
+	width:100%;
 	}
 #theLightbox .searchHolder {
 	float:left;
 	height:32px;
 	overflow:visible;
 	position:relative;
-	width:380px;
+	width:100%;
 	z-index:0;
 	}
 .nxj_lightboxTitle.LBTitleError {
@@ -68,7 +67,8 @@ label {
 	z-index:1;
 	}
 #theLightbox.widthAuto #lb_input_acList {
-	width:798px;
+	box-sizing:border-box;
+	width:100%;
 	}
 #lb_input_acList .acItem {
 	color:#000000;

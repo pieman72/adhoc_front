@@ -118,7 +118,7 @@ if(!count($errors)){
 		$errors[] = "Query failed: ".$query->error;
 	}
 	if(!count($errors) && !$projectId && !($projectId = mysqli_insert_id($dbConn))){
-		$errors[] = "Could not determin new project id";
+		$errors[] = "Could not determine new project id";
 	}
 	// Try to insert the tags
 	while(!count($errors) && $tags){
