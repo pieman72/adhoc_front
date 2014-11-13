@@ -117,7 +117,7 @@ if(!count($errors)){
 	if(!mysqli_stmt_prepare($query, $sql)){
 		$errors[] = "Could not prepare database statement: ".$dbConn->error;
 	}
-	if(!count($errors) && !mysqli_stmt_bind_param($query, 'idididsdididididididididididididid'
+	if(!count($errors) && !mysqli_stmt_bind_param($query, 'idididsdidididididididididididididd'
 		,$_POST['totalLoops']	,$weight_totalLoops
 		,$_POST['maxLoopNest']	,$weight_maxLoopNest
 		,$_POST['condReturns']	,$weight_condReturns

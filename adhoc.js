@@ -864,7 +864,7 @@ Event.observe(window, 'load', function(){
 			[ // VARIABLE_ASIGN
 				{
 					childType: adhoc.nodeChildType.EXPRESSION
-					,min: 1
+					,min: 0
 					,max: 1
 				}
 			]
@@ -3286,7 +3286,7 @@ Event.observe(window, 'load', function(){
 		}
 		// Handle key up
 		var keyUpFunc = function(e){
-			var key = e.which || window.event.keyCode;
+			var key = e.which || !window.event || window.event.keyCode;
 			switch(key){
 			// (CTRL/CMD) Set alternamte key mode off
 			case Event.KEY_CONTROL:
@@ -4453,6 +4453,8 @@ Event.observe(window, 'load', function(){
 		case adhoc.nodeWhich.CONTROL_FORK:
 		case adhoc.nodeWhich.CONTROL_CNTNU:
 		case adhoc.nodeWhich.CONTROL_BREAK:
+			dt = adhoc.nodeDataTypes.VOID;
+			cdt = adhoc.nodeDataTypes.VOID;
 			break;
 
 		case adhoc.nodeWhich.ACTION_DEFIN:
@@ -4564,6 +4566,9 @@ Event.observe(window, 'load', function(){
 				)){
 				dt = n.children[0].dataType;
 				cdt = n.children[0].childDataType;
+			}else{
+				dt = n.dataType;
+				cdt = n.childDataType;
 			}
 			break;
 
