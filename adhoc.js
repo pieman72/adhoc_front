@@ -4307,8 +4307,12 @@ Event.observe(window, 'load', function(){
 		adhoc.refreshRender();
 	}
 	// Pans the canvas to the specified node
-	adhoc.snapToNode = function(n){
-		adhoc.display_x = (n.x + n.width/2.0)*adhoc.display_scale - parseFloat(adhoc.canvas.getAttribute('width'))/2.0;
+	adhoc.snapToNode = function(n, leftAlign){
+		if(leftAlign){
+			adhoc.display_x = (n.x - n.width/2.0 - 10)*adhoc.display_scale;
+		}else{
+			adhoc.display_x = (n.x + n.width/2.0)*adhoc.display_scale - parseFloat(adhoc.canvas.getAttribute('width'))/2.0;
+		}
 		adhoc.display_y = (n.y + n.height/2.0)*adhoc.display_scale - parseFloat(adhoc.canvas.getAttribute('height'))/2.0;
 		adhoc.refreshRender();
 	}
@@ -5451,7 +5455,7 @@ Event.observe(window, 'load', function(){
 				$('zoomPrcent').update(100);
 				adhoc.resetHistory();
 				adhoc.refreshRender();
-				adhoc.snapToNode(adhoc.rootNode);
+				adhoc.snapToNode(adhoc.rootNode, true);
 			}
 			,onFailure: function(t){
 				adhoc.error(t.responseText);
