@@ -120,15 +120,73 @@ label {
 	}
 #analysisLanding {
 	border:1px solid;
+	box-sizing:border-box;
+	float:left;
 	margin-top:15px;
 	min-height:40px;
 	padding:5px 10px;
+	width:100%;
 	}
 #analysisLanding.loading {
 	background:url('//static.harveyserv.ath.cx/adhoc/img/loadingBarLight.gif') no-repeat center center;
 	}
 .dark #analysisLanding.loading {
 	background:url('//static.harveyserv.ath.cx/adhoc/img/loadingBarDark.gif') no-repeat center center;
+	}
+#graftList {
+	border-right:3px double;
+	box-sizing:border-box;
+	float:left;
+	max-height:400px;
+	overflow-y:visible;
+	width:30%;
+	}
+.graftListItem {
+	box-sizing:border-box;
+	cursor:pointer;
+	float:left;
+	width:100%;
+	}
+.graftListItem.selected {
+	background:#5FD7FF;
+	}
+.graftListItem .title {
+	font-size:20px;
+	}
+.graftListItem .data {
+	}
+#analysisLanding .floatLeft {
+	box-sizing:border-box;
+	padding-left:20px;
+	width:70%;
+	}
+#graftTable {
+	float:left;
+	width:100%;
+	}
+#graftTable table {
+	float:left;
+	width:100%;
+	}
+#graftTable th {
+	font-size:18px;
+	font-weight:bold;
+	text-align:center;
+	}
+#graftTable td {
+	border:2px solid;
+	height:23px;
+	}
+#graftTable .draggingL td.slotL,
+#graftTable .draggingR td.slotR {
+	border:2px dashed #5FD7FF;
+	}
+.paramL,
+.paramR {
+	text-align:center;
+	}
+#graftButton {
+	margin:20px auto 0;
 	}
 #lb_input_error,
 #lb_comment_error,
@@ -584,6 +642,7 @@ span.nxj_button.nxj_cssButton.disabled.saving:after {
 	font-size:20px;
 	left:15px;
 	position:absolute;
+	z-index:1000;
 	}
 .beta .betaBox {
 	display:block;

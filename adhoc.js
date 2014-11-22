@@ -1778,7 +1778,6 @@ Event.observe(window, 'load', function(){
 				,($('lb_node_package') ? $('lb_node_package').innerHTML : n.package)
 				,($('lb_node_name') ? $F('lb_node_name') : n.name)
 				,($('lb_node_ref') ? parseInt($F('lb_node_ref')) : n.referenceId)
-				,true
 			);
 			if($('lb_node_tags')) adhoc.changeTags(
 				n
@@ -1897,7 +1896,6 @@ Event.observe(window, 'load', function(){
 			// Create a holder for the analysis results to return to
 			var landingZone = $(document.createElement('div')).addClassName('loading');
 			landingZone.setAttribute('id', 'analysisLanding');
-			cont.appendChild(landingZone);
 
 			// Send AJAX request for analysis results
 			new Ajax.Request('analyze/', {
@@ -1953,8 +1951,11 @@ Event.observe(window, 'load', function(){
 					graftButton.setAttribute('id', 'graftButton');
 
 					// Add suggestions to graft list
-					var firstWordRegex = /^([^ ]*) /;
-					var boldFirstWord = function(matches, first){ return '<b>'+first+'</b> '; };
+					var firstWordRegex = /^([^ ]*)( .*)?$/;
+					var boldFirstWord = function(matches, first, rest){
+						return '<b>'+first+'</b>' + (rest?''+rest:'');
+					};
+					var getGraftRoot = null;
 					for(var i=0; i<matches.length; ++i){
 						var option = $(document.createElement('div')).addClassName('graftListItem');
 						var oneMatch = matches[i];
@@ -1979,6 +1980,7 @@ Event.observe(window, 'load', function(){
 							graftList.select('.selected').each(function(item){
 								item.removeClassName('selected');
 							});
+							getGraftRoot = null;
 
 							// Fetch the graft
 							new Ajax.Request('load/graft/', {
@@ -1995,12 +1997,13 @@ Event.observe(window, 'load', function(){
 									catch(e){} // tags mangled or not present
 // TODO apply tagStruct to graftRoot with remap
 									var graftAnalysis = adhoc.analyzeNode(graftRoot);
+									getGraftRoot = function(){ return graftRoot; }
 
 									// Create the parameter pairing lists
 									var tableInner = $(document.createElement('table'));
 									var row = $(document.createElement('tr'));
-									row.appendChild($(document.createElement('th')).update(n.name));
-									row.appendChild($(document.createElement('th')).update(graftRoot.name));
+									row.appendChild($(document.createElement('th')).update('Parameters in "'+n.name+'"'));
+									row.appendChild($(document.createElement('th')).update('Parameters in "'+graftRoot.name+'"'));
 									tableInner.appendChild(row);
 									var origParams = n.children.slice(0, analysis.parameterCount);
 									var graftParams = graftRoot.children.slice(0, graftAnalysis.parameterCount);
@@ -2036,12 +2039,12 @@ Event.observe(window, 'load', function(){
 										if(origParams[j]){
 											leftCell.appendChild($(document.createElement('div')).addClassName('paramL').update(
 												origParams[j].name
-											));
+											)).setAttribute('data-id', origParams[j].id);
 										}
 										if(graftParams[j]){
 											rightCell.appendChild($(document.createElement('div')).addClassName('paramR').update(
 												graftParams[j].name
-											));
+											)).setAttribute('data-id', graftParams[j].id);
 										}
 										tableInner.appendChild(row);
 									}
@@ -2101,15 +2104,28 @@ Event.observe(window, 'load', function(){
 						graftList.appendChild(option);
 					}
 
-					// Handle grafting
+					// Handle button click: collect pairs and call graft
 					graftButton.observe('click', function(){
-						if(this.hasClassName('disabled')) return;
-						// TODO
+						if(this.hasClassName('disabled') || !getGraftRoot) return;
+						var mapping = {};
+						var origSlots = $$('#graftTable .slotL');
+						var graftSlots = $$('#graftTable .slotR');
+						for(var i=0; i<origSlots.length; ++i){
+							var origParams = origSlots[i].select('.paramL');
+							var graftParams = graftSlots[i].select('.paramR');
+							if(origParams.length && graftParams.length){
+								mapping[origParams[0].getAttribute('data-id')]
+									= graftParams[0].getAttribute('data-id');
+							}
+						}
+						adhoc.graft(n, getGraftRoot(), mapping);
+						$('theLightbox').hide();
 					});
 
 					// Update the landing box with the loading controls
 					var graftAlignment = $(document.createElement('div')).addClassName('floatLeft');
 					graftAlignment.appendChild(graftTable);
+					graftAlignment.appendChild($(document.createElement('div')).addClassName('clear'));
 					graftAlignment.appendChild(graftButton);
 					landingZone.removeClassName('loading');
 					landingZone.appendChild(graftList);
@@ -2119,6 +2135,9 @@ Event.observe(window, 'load', function(){
 					adhoc.message('Warning: Analysis Failed', t.responseText);
 				}
 			});
+
+			cont.appendChild(landingZone);
+			cont.appendChild($(document.createElement('div')).addClassName('clear'));
 		}
 
 		// Delete old lightbox content and add the new one, then show
@@ -2411,6 +2430,7 @@ Event.observe(window, 'load', function(){
 				case 'revalue':
 				case 'comment':
 				case 'move':
+				case 'graft':
 					break;
 
 				case 'add':
@@ -2473,7 +2493,6 @@ Event.observe(window, 'load', function(){
 						adhoc.selectedNode = null;
 					}
 					adhoc.deleteNode(n);
-					adhoc.refreshRender();
 					break;
 
 				// Undo a move
@@ -2481,7 +2500,6 @@ Event.observe(window, 'load', function(){
 					var oldP = adhoc.allNodes[item.parentId].parent
 					adhoc.restoreNode(adhoc.allNodes[item.parentId], item.serial);
 					adhoc.moveNode(adhoc.allNodes[item.parentId], oldP, adhoc.allNodes[item.parentId].parent);
-					adhoc.refreshRender();
 					break;
 
 				// Undo a package change
@@ -2491,7 +2509,10 @@ Event.observe(window, 'load', function(){
 					adhoc.allNodes[item.parentId].package = item.target;
 					adhoc.updatePackageName(adhoc.allNodes[item.parentId], item.target, newP);
 					$('projectName').value = adhoc.allNodes[item.parentId].package;
-					adhoc.refreshRender();
+					break;
+
+				// Undo a graft (taken care of by other actions)
+				case 'graft':
 					break;
 
 				// Undo a rename
@@ -2511,17 +2532,17 @@ Event.observe(window, 'load', function(){
 				// Undo a general action
 				default:
 					adhoc.restoreNode(adhoc.allNodes[item.parentId], item.serial);
-					adhoc.refreshRender();
 				}
+
+				// If the next item is bound to this one, do it as well
+				if(item.bind) adhoc.history.undo();
+				else adhoc.refreshRender();
 
 				// Activate the 'save' button if user is logged in
 				if(adhoc.setting('username')){
 					$('savePackageButton').removeClassName('disabled');
 					$('savePackageButton').update('Save');
 				}
-
-				// If the next item is bound to this one, do it as well
-				if(item.bind) adhoc.history.undo();
 			}
 			,redo: function(){
 				// Get the item to be redone unless there are none
@@ -2533,7 +2554,6 @@ Event.observe(window, 'load', function(){
 				// Redo an add
 				case 'add':
 					adhoc.restoreNode(adhoc.allNodes[item.parentId], item.serial);
-					adhoc.refreshRender();
 					break;
 
 				// Redo a rename
@@ -2546,7 +2566,6 @@ Event.observe(window, 'load', function(){
 						adhoc.allNodes[item.parentId].package = adhoc.setting('projectName');
 						adhoc.allNodes[item.parentId].name = item.target;
 					}
-					adhoc.refreshRender();
 					break;
 
 				// Redo a tags change
@@ -2557,40 +2576,34 @@ Event.observe(window, 'load', function(){
 						newTags.push(tags[i].trim("\\s"));
 					}
 					adhoc.allTags[item.parentId] = newTags;
-					adhoc.refreshRender();
 					break;
 
 				// Redo a datatype change
 				case 'datatype':
 					adhoc.allNodes[item.parentId].dataType = item.target;
-					adhoc.refreshRender();
 					break;
 
 				// Redo a childdatatype change
 				case 'childdatatype':
 					adhoc.allNodes[item.parentId].childDataType = item.target;
-					adhoc.refreshRender();
 					break;
 
 				// Redo a revalue or a comment change
 				case 'revalue':
 				case 'comment':
 					adhoc.allNodes[item.parentId].value = item.target;
-					adhoc.refreshRender();
 					break;
 
 				// Redo a move
 				case 'move':
 					adhoc.allNodes[item.parentId].childType = item.target[1];
 					adhoc.moveNode(adhoc.allNodes[item.parentId], adhoc.allNodes[item.parentId].parent, adhoc.allNodes[item.target[0]]);
-					adhoc.refreshRender();
 					break;
 
 				// Redo a package change
 				case 'package':
 					adhoc.updatePackageName(adhoc.allNodes[item.parentId], adhoc.allNodes[item.parentId].package, item.target);
 					$('projectName').value = item.target;
-					adhoc.refreshRender();
 					break;
 
 				// Redo a deletion
@@ -2611,7 +2624,17 @@ Event.observe(window, 'load', function(){
 						adhoc.selectedNode = null;
 					}
 					adhoc.deleteNode(n);
-					adhoc.refreshRender();
+					break;
+
+				// Redo a graft
+				case 'graft':
+					adhoc.graft(
+						adhoc.allNodes[item.parentId]
+						,item.target.graftRoot
+						,item.target.mapping
+						,true
+					);
+					break;
 				}
 
 				// Activate the 'save' button if user is logged in
@@ -2625,9 +2648,13 @@ Event.observe(window, 'load', function(){
 				$('histBack').removeClassName('disabled');
 				if(adhoc.history.index == adhoc.history.history.length){
 					$('histFwd').addClassName('disabled');
-				// Otherwise, if the next item is bound to this one, do it as well
-				}else if(adhoc.history.history[adhoc.history.index].bind){
+				}
+
+				// If the next item is bound to this one, do it as well
+				if(adhoc.history.history[adhoc.history.index].bind){
 					adhoc.history.redo();
+				}else{
+					adhoc.refreshRender();
 				}
 			}
 		};
@@ -4977,7 +5004,7 @@ Event.observe(window, 'load', function(){
 	}
 
 	// Renames a single node, and possibly the package of its children
-	adhoc.renameNode = function(n, pkg, name, ref, recursive){
+	adhoc.renameNode = function(n, pkg, name, ref){
 		// Default the package name to the current package
 		pkg = pkg || adhoc.setting('projectName');
 
@@ -5074,9 +5101,9 @@ Event.observe(window, 'load', function(){
 			&& ref1 == ref2
 			&& (['rename','tags','datatype','childdatatype','comment'].indexOf(prevAction.action) >= 0);
 		adhoc.history.record('datatype', type, n, bind);
-
-		// Change this node's type and the types of all its references
 		n.dataType = type;
+
+		// Change the types of all this node's references
 		for(var i=0; i<n.references.length; ++i){
 			adhoc.history.record('datatype', type, adhoc.allNodes[n.references[i]], true);
 			adhoc.allNodes[n.references[i]].dataType = type;
@@ -5524,6 +5551,69 @@ Event.observe(window, 'load', function(){
 			}
 		}
 		return a;
+	}
+	// Graft a loaded subtree onto an existing action
+	adhoc.graft = function(n, graftRoot, mapping, redo){
+		var bind = 0;
+		// Map the children
+		while(n.children.length && n.children[0].id){
+			// Rename mapped new nodes
+			var oldNode = n.children[0];
+			if(mapping[oldNode.id]){
+				var newNode = adhoc.allNodes[mapping[oldNode.id]];
+				var child = oldNode.children ? oldNode.children[0] : null;
+				if(child){
+					if(!redo) adhoc.history.record(
+						'move'
+						,[newNode.id, child.childType]
+						,child
+						,!!bind++
+					);
+					adhoc.moveNode(child, oldNode, newNode);
+				}
+				if(!redo) adhoc.history.record(
+					'rename'
+					,oldNode.name
+					,newNode
+					,!!bind++
+				);
+				adhoc.renameNode(newNode, null, oldNode.name);
+			}
+			// Delete old nodes
+			if(!redo) adhoc.history.record('delete', oldNode.id, n, !!bind++);
+			adhoc.deleteNode(oldNode);
+		}
+
+		// Move the new children to the graft point
+		while(graftRoot.children.length && graftRoot.children[0].id){
+			var newNode = graftRoot.children[0];
+			if(!redo) adhoc.history.record(
+				'move'
+				,[n.id, newNode.childType]
+				,newNode
+				,!!bind++
+			);
+			adhoc.moveNode(newNode, graftRoot, n);
+		}
+
+		// Delete the graft stub
+		if(!redo) adhoc.history.record('delete', null, graftRoot, !!bind++);
+		adhoc.deleteNode(graftRoot);
+
+		// Reset the package of all the new nodes
+		if(!redo) adhoc.history.record('rename', n.name, n, !!bind++);
+		adhoc.renameNode(n, null, n.name, !!bind++);
+
+		// Log a history entry if appropriate, then refresh the view
+		if(!redo){
+			adhoc.history.record(
+				'graft'
+				,{graftRoot:graftRoot, mapping:mapping}
+				,n
+				,!!bind++
+			);
+		}
+		adhoc.refreshRender();
 	}
 
 	// New package
