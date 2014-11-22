@@ -20,19 +20,20 @@ $errors = array();
 $weight_totalLoops		= 1.0;
 $weight_maxLoopNest		= 1.0;
 $weight_condReturns		= 1.0;
-$weight_actionVerb		= 1.0;
+$weight_actionVerb		= 3.0;
 $weight_nodeCount		= 0.1;
+$weight_paramCount		= 1.0;
 $weight_childCount		= 1.0;
-$weight_inputsVoid		= 1.0;
-$weight_inputsBool		= 1.0;
-$weight_inputsInt		= 1.0;
-$weight_inputsFloat		= 1.0;
-$weight_inputsString	= 1.0;
-$weight_inputsArray		= 1.0;
-$weight_inputsHash		= 1.0;
-$weight_inputsStruct	= 1.0;
-$weight_inputsAction	= 1.0;
-$weight_inputsMixed		= 1.0;
+$weight_inputsVoid		= 0.5;
+$weight_inputsBool		= 0.5;
+$weight_inputsInt		= 0.5;
+$weight_inputsFloat		= 0.5;
+$weight_inputsString	= 0.5;
+$weight_inputsArray		= 0.5;
+$weight_inputsHash		= 0.5;
+$weight_inputsStruct	= 0.5;
+$weight_inputsAction	= 0.5;
+$weight_inputsMixed		= 0.5;
 $weight_outputType		= 1.0;
 $scale_diffSegmenting	= 5;
 
@@ -91,6 +92,7 @@ if(!count($errors)){
 					+ ABS(l.condReturns - ?) * ?
 					+ CASE WHEN l.actionVerb = ? THEN 0 ELSE ? END
 					+ ABS(l.nodeCount - ?) * ?
+					+ ABS(l.paramCount - ?) * ?
 					+ ABS(l.childCount - ?) * ?
 					+ ABS(l.inputsVoid - ?) * ?
 					+ ABS(l.inputsBool - ?) * ?
@@ -117,12 +119,13 @@ if(!count($errors)){
 	if(!mysqli_stmt_prepare($query, $sql)){
 		$errors[] = "Could not prepare database statement: ".$dbConn->error;
 	}
-	if(!count($errors) && !mysqli_stmt_bind_param($query, 'idididsdidididididididididididididd'
+	if(!count($errors) && !mysqli_stmt_bind_param($query, 'idididsdididididididididididididididd'
 		,$_POST['totalLoops']	,$weight_totalLoops
 		,$_POST['maxLoopNest']	,$weight_maxLoopNest
 		,$_POST['condReturns']	,$weight_condReturns
 		,$_POST['actionVerb']	,$weight_actionVerb
 		,$_POST['nodeCount']	,$weight_nodeCount
+		,$_POST['paramCount']	,$weight_paramCount
 		,$_POST['childCount']	,$weight_childCount
 		,$_POST['inputsVoid']	,$weight_inputsVoid
 		,$_POST['inputsBool']	,$weight_inputsBool
@@ -166,6 +169,7 @@ if(!count($errors)){
 		$errors[] = "Query failed: ".$query->error;
 	}
 	if(!count($errors)){
+		header('Content-type: application/json');
 		echo JSON_encode($fetchLogics);
 	}
 }

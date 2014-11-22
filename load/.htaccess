@@ -3,5 +3,6 @@
     RewriteEngine On
     RewriteBase /adhoc_demo/load/
     RewriteRule ^index\.php$ - [L]
+    RewriteRule ^graft/$ /adhoc_demo/load/graft/index.php [L]
     RewriteRule . /adhoc_demo/load/index.php [L,R=302]
 </IfModule>

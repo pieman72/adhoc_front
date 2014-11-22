@@ -116,10 +116,10 @@ if(!count($errors) && (!isset($_SESSION['username']) || $_SESSION['username'])){
 	if(!count($errors) && !mysqli_stmt_prepare($query, "
 		SELECT
 			p.id
-			,p.project_name
-			,LOWER(HEX(p.project_hash))
-			,p.datetime_created
-			,p.datetime_updated
+			,p.projectName
+			,LOWER(HEX(p.projectHash))
+			,p.datetimeCreated
+			,p.datetimeUpdated
 		FROM
 			front_projects p
 			JOIN front_users u
@@ -127,7 +127,7 @@ if(!count($errors) && (!isset($_SESSION['username']) || $_SESSION['username'])){
 		WHERE
 			u.username = ?
 		ORDER BY
-			p.datetime_updated DESC; ")){
+			p.datetimeUpdated DESC; ")){
 		$errors[] = "Could not prepare database statement: ".$dbConn->error;
 	}
 	if(!count($errors) && !mysqli_stmt_bind_param($query, 's'

@@ -1,5 +1,5 @@
 <? // Load application config
-$conf = parse_ini_file('../config.ini');
+$conf = parse_ini_file('../../config.ini');
 $host = $_SERVER['HTTP_HOST'];
 $server = $_SERVER['SERVER_ADDR'];
 $remote = $_SERVER['REMOTE_ADDR'];
@@ -38,35 +38,32 @@ if(!count($errors)){
 	}
 }
 
-// If no project id provided, throw an error
-if(!isset($_POST['projectid'])){
-	$errors[] = "No project id provided";
+// If no logic id provided, throw an error
+if(!isset($_POST['logicid'])){
+	$errors[] = "No logic id provided";
 }
 
 // If not logged in, throw an error
 if(!count($errors) && !isset($_SESSION['username'])){
-	$errors[] = "You must be logged in to load projects";
+	$errors[] = "You must be logged in to load logic grafts";
 }
 
-// Try to fetch the project's hash by the project ID
+// Try to fetch the logic's hash by the logic ID
 if(!count($errors)){
 	$query = mysqli_stmt_init($dbConn);
 	if(!mysqli_stmt_prepare($query, "
 		SELECT
-			LOWER(HEX(p.projectHash))
-			,u.username
+			LOWER(HEX(l.projectHash)) hash
 		FROM
-			front_projects p
-			JOIN front_users u
-				ON u.id = p.user
+			logics l
 		WHERE
-			p.id = ?
+			l.id = ?
 		LIMIT
 			1; ")){
 		$errors[] = "Could not prepare database statement: ".$dbConn->error;
 	}
 	if(!count($errors) && !mysqli_stmt_bind_param($query, 'i'
-			,$_POST['projectid']
+			,$_POST['logicid']
 		)){
 		$errors[] = "Could not bind database parameters: ".$query->error;
 	}
@@ -75,35 +72,31 @@ if(!count($errors)){
 	}
 	if(!count($errors) && !mysqli_stmt_bind_result($query
 			,$fetchHash
-			,$fetchUser
 		)){
 		$errors[] = "Query failed: ".$query->error;
 	}
 	if(!count($errors) && !$query->fetch()){
-		$errors[] = "Could not find project to load";
-	}
-	if(!count($errors) && $fetchUser!=$_SESSION['username']){
-		$errors[] = "Could not find project to load";
+		$errors[] = "Could not find logic graft to load";
 	}
 	if(!count($errors)){
 		$query = mysqli_stmt_init($dbConn);
 		if(!mysqli_stmt_prepare($query, "
 			SELECT
-				pt.nodeId
+				lt.nodeId
 				,t.name
 			FROM
-				front_project_tags pt
+				logic_tags lt
 				JOIN tags t
-					ON pt.tagid = t.id
+					ON lt.tagid = t.id
 			WHERE
-				pt.projectId = ?
+				lt.logicId = ?
 			ORDER BY
-				pt.nodeId; ")){
+				lt.nodeId; ")){
 			$errors[] = "Could not prepare database statement: ".$dbConn->error;
 		}
 	}
 	if(!count($errors) && !mysqli_stmt_bind_param($query, 'i'
-			,$_POST['projectid']
+			,$_POST['logicid']
 		)){
 		$errors[] = "Could not bind database parameters: ".$query->error;
 	}
@@ -124,20 +117,17 @@ if(!count($errors)){
 		$nodeTagArray[] = $fetchTagName;
 		$fetchTags->$fetchNodeId = $nodeTagArray;
 	}
-	if($fetchStatus === false){
-		$errors[] = "Query failed: ".$query->error;
-	}
 	$fetchTags = JSON_encode($fetchTags);
 
-	// If we're all good, try to load the project file by its hash
+	// If we're all good, try to load the logic file by its hash
 	if(!count($errors)){
 		try{
 			header('Content-type: application/adhoc');
 			header("ADHOC-tags: $fetchTags");
-			readfile("../generate/$fetchHash.adh");
+			readfile("../../generate/$fetchHash.adh");
 			exit;
 		}catch(Exception $e){
-			$errors[] = "Could not load project file";
+			$errors[] = "Could not load logic graft";
 		}
 	}
 }
@@ -145,5 +135,5 @@ if(!count($errors)){
 // Handle any errors
 if(count($errors)){
 	header('HTTP/1.0 400 Bad Request');
-	echo implode('<br/>\n', $errors);
+	echo implode('<br/>', $errors);
 }

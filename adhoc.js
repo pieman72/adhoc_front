@@ -1862,7 +1862,11 @@ Event.observe(window, 'load', function(){
 	adhoc.promptAnalysis = function(n){
 		// Add a title
 		var LBtitle = $$('#theLightbox .nxj_lightboxTitle')[0];
-		LBtitle.removeClassName('LBTitleError').removeClassName('LBTitleWarn').update('Analysis for node '+n.id);
+		LBtitle.removeClassName('LBTitleError').removeClassName('LBTitleWarn').update(
+			n.which==adhoc.nodeWhich.ACTION_DEFIN
+				? 'Analysis for "'+n.name+'"'
+				: 'Analysis for node '+n.id
+		);
 
 		// Create the new lightbox content
 		var cont = $(document.createElement('div'));
@@ -1872,18 +1876,21 @@ Event.observe(window, 'load', function(){
 		analysis = adhoc.analyzeNode(n);
 
 		// Compute various metrics
-		var output = "";
-		output += 'Total Loops: '		+ analysis.totalLoops + '<br/>';
-		output += 'Max Loop Nest: '		+ analysis.maxLoopNest + '<br/>';
-		output += 'Cond. Returns: '		+ analysis.conditionalReturns + '<br/>';
-		output += 'Action Verb: '		+ "'"+analysis.actionVerb+"'" + '<br/>';
-		output += 'Node Count: '		+ analysis.nodeCount + '<br/>';
-		output += 'Child Count: '		+ analysis.childCount + '<br/>';
-		output += 'Input Types: '		+ analysis.inputTypes.join(', ') + '<br/>';
-		output += 'Output Type: '		+ analysis.outputType + '<br/>';
-		output += 'Actions Called: '	+ analysis.actionsCalled + '<br/>';
-		output += 'Tags: '				+ (analysis.tags.length ? analysis.tags.join(', ') : '<i>none</i>') + '<br/>';
-		cont.update(output);
+		if(adhoc.setting('dbg')){
+			var output = "";
+			output += 'Total Loops: '		+ analysis.totalLoops + '<br/>';
+			output += 'Max Loop Nest: '		+ analysis.maxLoopNest + '<br/>';
+			output += 'Cond. Returns: '		+ analysis.conditionalReturns + '<br/>';
+			output += 'Action Verb: '		+ "'"+analysis.actionVerb+"'" + '<br/>';
+			output += 'Node Count: '		+ analysis.nodeCount + '<br/>';
+			output += 'Parameter Count: '	+ analysis.parameterCount + '<br/>';
+			output += 'Child Count: '		+ analysis.childCount + '<br/>';
+			output += 'Input Types: '		+ analysis.inputTypes.join(', ') + '<br/>';
+			output += 'Output Type: '		+ analysis.outputType + '<br/>';
+			output += 'Actions Called: '	+ analysis.actionsCalled + '<br/>';
+			output += 'Tags: '				+ (analysis.tags.length ? analysis.tags.join(', ') : '<i>none</i>') + '<br/>';
+			cont.update(output);
+		}
 
 		// If this is an action definition, we can compare it against known actions
 		if(n.which == adhoc.nodeWhich.ACTION_DEFIN){
@@ -1902,6 +1909,7 @@ Event.observe(window, 'load', function(){
 					,condReturns	: analysis.conditionalReturns
 					,actionVerb		: analysis.actionVerb
 					,nodeCount		: analysis.nodeCount
+					,paramCount		: analysis.parameterCount
 					,childCount		: analysis.childCount
 					,inputsVoid		: analysis.inputTypes[0]
 					,inputsBool		: analysis.inputTypes[1]
@@ -1918,8 +1926,194 @@ Event.observe(window, 'load', function(){
 					,xsrftoken		: $('xsrfToken').innerHTML
 				}
 				,onSuccess: function(t){
+					// If popup closed before Ajax returned
 					if(!$('analysisLanding')) return;
-					$('analysisLanding').removeClassName('loading').update(t.responseText);
+
+					// Make sure there are results
+					try{
+						var matches = t.responseText.evalJSON();
+						if(!matches || !matches.length) throw "No similar actions were found";
+					}catch(e){
+						adhoc.error(e.message);
+						return;
+					}
+
+					// Construct the grafting controls
+					var graftList = $(document.createElement('div'));
+					graftList.setAttribute('id', 'graftList');
+					var graftTable = $(document.createElement('div'));
+					graftTable.setAttribute('id', 'graftTable');
+					var graftButton = $(document.createElement('a'))
+						.addClassName('nxj_button')
+						.addClassName('nxj_cssButton')
+						.addClassName('green')
+						.addClassName('disabled')
+						.update('Graft To Tree');
+					graftButton.setAttribute('href', 'javascript:void(0);');
+					graftButton.setAttribute('id', 'graftButton');
+
+					// Add suggestions to graft list
+					var firstWordRegex = /^([^ ]*) /;
+					var boldFirstWord = function(matches, first){ return '<b>'+first+'</b> '; };
+					for(var i=0; i<matches.length; ++i){
+						var option = $(document.createElement('div')).addClassName('graftListItem');
+						var oneMatch = matches[i];
+
+						// Update option with textual information
+						option.appendChild($(document.createElement('div')).addClassName('title').update(
+							oneMatch.name.replace(firstWordRegex, boldFirstWord)
+						));
+						option.appendChild($(document.createElement('div')).addClassName('clear'));
+						option.appendChild($(document.createElement('div')).addClassName('data').update(
+							'Package: ' + oneMatch.package
+							+ '<br/>' + 'Variation: ' + oneMatch.diff
+							+ '<br/>' + 'Code reviewed: ' + (oneMatch.confirmed ? 'yes' : 'no')
+						));
+
+						// On click, show the graft details on the right
+						option.observe('click', function(){
+							// Deselect the previous match and clear its data
+							var clickedOption = this;
+							graftButton.addClassName('disabled');
+							graftTable.addClassName('loading').update('');
+							graftList.select('.selected').each(function(item){
+								item.removeClassName('selected');
+							});
+
+							// Fetch the graft
+							new Ajax.Request('load/graft/', {
+								parameters: {
+									logicid: oneMatch.id
+									,xsrftoken: $('xsrfToken').innerHTML
+								}
+								,onSuccess: function(t){
+									// Get node structure from response body and tags from headers
+									var remap = {};
+									var graftRoot = adhoc.unserialize(t.responseText.rtrim("\\s"), remap);
+									var tagsStruct = null;
+									try{ tagsStruct = t.getResponseHeader('ADHOC-tags').evalJSON(); }
+									catch(e){} // tags mangled or not present
+// TODO apply tagStruct to graftRoot with remap
+									var graftAnalysis = adhoc.analyzeNode(graftRoot);
+
+									// Create the parameter pairing lists
+									var tableInner = $(document.createElement('table'));
+									var row = $(document.createElement('tr'));
+									row.appendChild($(document.createElement('th')).update(n.name));
+									row.appendChild($(document.createElement('th')).update(graftRoot.name));
+									tableInner.appendChild(row);
+									var origParams = n.children.slice(0, analysis.parameterCount);
+									var graftParams = graftRoot.children.slice(0, graftAnalysis.parameterCount);
+
+									// Try to match pairs
+									var paramMin = Math.min(
+										analysis.parameterCount
+										,graftAnalysis.parameterCount
+									);
+									for(var j=0; j<paramMin; ++j){
+										var bestRank = -1;
+										var bestIndex = -1;
+										for(var k=j; k<graftAnalysis.parameterCount; ++k){
+											var rank = (origParams[j].name == graftParams[k].name ? 8 : 0)
+												+ (origParams[j].dataType == graftParams[k].dataType ? 4 : 0)
+												+ (origParams[j].childDataType == graftParams[k].childDataType ? 2 : 0)
+												+ (origParams[j].children.length == graftParams[k].children.length ? 1 : 0);
+											if(rank > bestRank){
+												bestIndex = k;
+												bestRank = rank;
+											}
+										}
+										var temp = graftParams[j];
+										graftParams[j] = graftParams[bestIndex];
+										graftParams[bestIndex] = temp;
+									}
+
+									// Add the params to their respective rows
+									for(var j=0; j<analysis.parameterCount+graftAnalysis.parameterCount; ++j){
+										row = $(document.createElement('tr'));
+										var leftCell = row.appendChild($(document.createElement('td')).addClassName('slotL'));
+										var rightCell = row.appendChild($(document.createElement('td')).addClassName('slotR'));
+										if(origParams[j]){
+											leftCell.appendChild($(document.createElement('div')).addClassName('paramL').update(
+												origParams[j].name
+											));
+										}
+										if(graftParams[j]){
+											rightCell.appendChild($(document.createElement('div')).addClassName('paramR').update(
+												graftParams[j].name
+											));
+										}
+										tableInner.appendChild(row);
+									}
+									graftTable.appendChild(tableInner);
+
+									// Toggle draggable-ness of rows
+									function moveDraggable(param, toSlot){
+										var fromSlot = $(param.parentNode);
+										if(toSlot.hasClassName('slotL') != fromSlot.hasClassName('slotL'))
+											return false;
+
+										var otherParam = $(toSlot.firstChild);
+										if(otherParam) toSlot.removeChild(otherParam);
+										fromSlot.removeChild(param);
+										if(otherParam) fromSlot.appendChild(otherParam);
+										toSlot.appendChild(param);
+									}
+									function startDraggable(param){
+										if(param.element.hasClassName('paramL')){
+											tableInner.removeClassName('draggingR');
+											tableInner.addClassName('draggingL');
+										}else{
+											tableInner.removeClassName('draggingL');
+											tableInner.addClassName('draggingR');
+										}
+									}
+									function endDraggable(){
+										tableInner.removeClassName('draggingL');
+										tableInner.removeClassName('draggingR');
+									}
+									tableInner.select('.paramL, .paramR').each(function(item){
+										new Draggable(item, {
+											reverteffect: null
+											,ghosting: true
+											,revert: true
+											,onStart: startDraggable
+											,onEnd: endDraggable
+										});
+									});
+									tableInner.select('.slotL, .slotR').each(function(item){
+										Droppables.add(item, {
+											hoverclass: 'hovering'
+											,onDrop: moveDraggable
+										});
+									});
+
+									// Update selection status
+									clickedOption.addClassName('selected');
+									graftTable.removeClassName('loading');
+									graftButton.removeClassName('disabled');
+								}
+								,onFailure: function(t){
+									adhoc.error(t.responseText);
+								}
+							});
+						});
+						graftList.appendChild(option);
+					}
+
+					// Handle grafting
+					graftButton.observe('click', function(){
+						if(this.hasClassName('disabled')) return;
+						// TODO
+					});
+
+					// Update the landing box with the loading controls
+					var graftAlignment = $(document.createElement('div')).addClassName('floatLeft');
+					graftAlignment.appendChild(graftTable);
+					graftAlignment.appendChild(graftButton);
+					landingZone.removeClassName('loading');
+					landingZone.appendChild(graftList);
+					landingZone.appendChild(graftAlignment);
 				}
 				,onFailure: function(t){
 					adhoc.message('Warning: Analysis Failed', t.responseText);
@@ -3361,8 +3555,9 @@ Event.observe(window, 'load', function(){
 	* @param n - (optional) The new node's name
 	* @param v - (optional) The new node's value
 	* @param f - (optional) The id of the node the new node will reference
+	* @param g - (optional) Boolean, true if this is for a graft
 	*/
-	adhoc.createNode = function(i, p, r, t, w, c, k, n, v, f){
+	adhoc.createNode = function(i, p, r, t, w, c, k, n, v, f, g){
 //TODO: add datatype and childdatatype
 		// Set the type, which, and childType if they're not passed
 		if(!t) t = adhoc.nodeTypes.TYPE_NULL;
@@ -3510,7 +3705,7 @@ Event.observe(window, 'load', function(){
 		}
 
 		// Record the addition and refresh the canvas
-		if(p && t!=adhoc.nodeTypes.TYPE_NULL){
+		if(p && t!=adhoc.nodeTypes.TYPE_NULL && !g){
 			adhoc.history.record('add', newNode.id, p);
 			adhoc.refreshRender();
 		}
@@ -4682,7 +4877,7 @@ Event.observe(window, 'load', function(){
 		return out;
 	}
 	// Function to unserialize binary into a node
-	adhoc.unserialize = function(s){
+	adhoc.unserialize = function(s, remap){
 		// Get the node parts from the input string
 		var tempNode = {};
 		tempNode.id = adhoc.intFrom3Byte(s.substr(0, 3));
@@ -4705,6 +4900,14 @@ Event.observe(window, 'load', function(){
 		tempNode.name = (parts[1]=="NULL" ? null : parts[1]);
 		tempNode.value = (parts[2]=="NULL" ? null : parts[2]);
 
+		// Handle remapping (for grafts)
+		if(remap){
+			if(!remap[tempNode.id]) remap[tempNode.id] = adhoc.nextId();
+			tempNode.id = remap[tempNode.id];
+			tempNode.parentId = remap[tempNode.parentId];
+			tempNode.referenceId = remap[tempNode.referenceId];
+		}
+
 		// Create a new node from the parts
 		var newNode = adhoc.createNode(
 			tempNode.id
@@ -4717,6 +4920,7 @@ Event.observe(window, 'load', function(){
 			,tempNode.name
 			,tempNode.value
 			,tempNode.referenceId
+			,remap ? true : false
 		);
 		if(tempNode.dataType){
 			newNode.dataType = tempNode.dataType;
@@ -4729,7 +4933,7 @@ Event.observe(window, 'load', function(){
 		// Continue until we've exhaused the string
 		s = s.substr(offset+1);
 		if(!s) return newNode;
-		adhoc.unserialize(s);
+		adhoc.unserialize(s, remap);
 		return newNode;
 	}
 	// Function to serialize a node and its children for the history manager
@@ -5288,7 +5492,8 @@ Event.observe(window, 'load', function(){
 			,conditionalReturns: 0
 			,actionVerb: n.name ? n.name.split(' ')[0] : ''
 			,nodeCount: 1
-			,childCount: n.children.length
+			,parameterCount: 0
+			,childCount: 0
 			,inputTypes: [0,0,0,0,0,0,0,0,0,0]
 			,outputType: n.dataType || adhoc.nodeDataTypes.VOID
 			,actionsCalled: '?'
@@ -5311,8 +5516,12 @@ Event.observe(window, 'load', function(){
 				)
 			) ? 1 : 0;
 			a.nodeCount += ca.nodeCount;
-			if(c.childType == adhoc.nodeChildType.PARAMETER)
+			if(c.childType == adhoc.nodeChildType.PARAMETER){
 				++a.inputTypes[c.dataType || adhoc.nodeDataTypes.VOID];
+				++a.parameterCount;
+			}else{
+				++a.childCount;
+			}
 		}
 		return a;
 	}

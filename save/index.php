@@ -74,9 +74,9 @@ if(!count($errors)){
 			JOIN front_users u
 				ON u.id = p.user
 		SET
-			p.project_name = ?
-			,p.project_hash = UNHEX(?)
-			,datetime_updated = CURRENT_TIMESTAMP
+			p.projectName = ?
+			,p.projectHash = UNHEX(?)
+			,datetimeUpdated = CURRENT_TIMESTAMP
 		WHERE
 			p.id = ?
 			AND u.username = ? ;";
@@ -84,9 +84,9 @@ if(!count($errors)){
 		$sql = "
 		INSERT INTO front_projects (
 			user
-			,project_name
-			,project_hash
-			,datetime_updated
+			,projectName
+			,projectHash
+			,datetimeUpdated
 		) SELECT
 			u.id
 			,?
