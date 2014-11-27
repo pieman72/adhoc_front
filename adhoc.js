@@ -918,15 +918,150 @@ Event.observe(window, 'load', function(){
 	];
 	// List of system actions that ADHOC supports
 	adhoc.systemActions = [
-		{
-			package: 'system'
-			,name: 'print'
-			,argc: -1
+		// General
+		{ // type
+			package: 'System'
+			,name: 'type'
+			,argv: {
+				item: adhoc.nodeDataTypes.MIXED
+			}
+			,dataType: adhoc.nodeDataTypes.INT
+			,childDataType: adhoc.nodeDataTypes.VOID
 		}
-		,{
-			package: 'system'
-			,name: 'cat'
-			,argc: -1
+		,{ // size
+			package: 'System'
+			,name: 'size'
+			,argv: {
+				item: adhoc.nodeDataTypes.MIXED
+			}
+			,dataType: adhoc.nodeDataTypes.INT
+			,childDataType: adhoc.nodeDataTypes.VOID
+		}
+		,{ // count
+			package: 'System'
+			,name: 'count'
+			,argv: {
+				item: adhoc.nodeDataTypes.MIXED
+			}
+			,dataType: adhoc.nodeDataTypes.INT
+			,childDataType: adhoc.nodeDataTypes.VOID
+		}
+		,{ // toString
+			package: 'System'
+			,name: 'toString'
+			,argv: {
+				item: adhoc.nodeDataTypes.MIXED
+			}
+			,dataType: adhoc.nodeDataTypes.STRING
+			,childDataType: adhoc.nodeDataTypes.VOID
+		}
+
+		// I/O
+		,{ // print
+			package: 'System'
+			,name: 'print'
+			,argv: {
+				item: adhoc.nodeDataTypes.MIXED
+				,'...': adhoc.nodeDataTypes.MIXED
+			}
+			,dataType: adhoc.nodeDataTypes.VOID
+			,childDataType: adhoc.nodeDataTypes.VOID
+		}
+		,{ // println
+			package: 'System'
+			,name: 'println'
+			,argv: {
+				item: adhoc.nodeDataTypes.MIXED
+				,'...': adhoc.nodeDataTypes.MIXED
+			}
+			,dataType: adhoc.nodeDataTypes.VOID
+			,childDataType: adhoc.nodeDataTypes.VOID
+		}
+		,{ // prompt
+			package: 'System'
+			,name: 'prompt'
+			,argv: {
+				item: adhoc.nodeDataTypes.MIXED
+			}
+			,dataType: adhoc.nodeDataTypes.BOOL
+			,childDataType: adhoc.nodeDataTypes.MIXED
+		}
+		,{ // write
+			package: 'System'
+			,name: 'write'
+			,argv: {
+				stream: adhoc.nodeDataTypes.STRUCT
+				,data: adhoc.nodeDataTypes.STRING
+				,maxLen: adhoc.nodeDataTypes.INT
+			}
+			,dataType: adhoc.nodeDataTypes.INT
+			,childDataType: adhoc.nodeDataTypes.VOID
+		}
+		,{ // read
+			package: 'System'
+			,name: 'read'
+			,argv: {
+				stream: adhoc.nodeDataTypes.STRUCT
+				,buffer: adhoc.nodeDataTypes.STRING
+				,maxLen: adhoc.nodeDataTypes.INT
+			}
+			,dataType: adhoc.nodeDataTypes.INT
+			,childDataType: adhoc.nodeDataTypes.VOID
+		}
+
+		// Strings
+		,{ // append to string
+			package: 'System'
+			,name: 'append to string'
+			,argv: {
+				baseString: adhoc.nodeDataTypes.STRING
+				,item: adhoc.nodeDataTypes.MIXED
+			}
+			,dataType: adhoc.nodeDataTypes.STRING
+			,childDataType: adhoc.nodeDataTypes.VOID
+		}
+		,{ // concat
+			package: 'System'
+			,name: 'concat'
+			,argv: {
+				item: adhoc.nodeDataTypes.STRING
+				,'...': adhoc.nodeDataTypes.STRING
+			}
+			,dataType: adhoc.nodeDataTypes.STRING
+			,childDataType: adhoc.nodeDataTypes.VOID
+		}
+		,{ // substring string from index of length
+			package: 'System'
+			,name: 'substring'
+			,argv: {
+				baseString: adhoc.nodeDataTypes.STRING
+				,index: adhoc.nodeDataTypes.INT
+				,length: adhoc.nodeDataTypes.INT
+			}
+			,dataType: adhoc.nodeDataTypes.STRING
+			,childDataType: adhoc.nodeDataTypes.VOID
+		}
+		,{ // splice string with string from index to length
+			package: 'System'
+			,name: 'splice string'
+			,argv: {
+				baseString: adhoc.nodeDataTypes.STRING
+				,replacement: adhoc.nodeDataTypes.STRING
+				,index: adhoc.nodeDataTypes.INT
+				,length: adhoc.nodeDataTypes.INT
+			}
+			,dataType: adhoc.nodeDataTypes.STRING
+			,childDataType: adhoc.nodeDataTypes.VOID
+		}
+		,{ // find index in string of string
+			package: 'System'
+			,name: 'find in string'
+			,argv: {
+				baseString: adhoc.nodeDataTypes.STRING
+				,targetsString: adhoc.nodeDataTypes.STRING
+			}
+			,dataType: adhoc.nodeDataTypes.INT
+			,childDataType: adhoc.nodeDataTypes.VOID
 		}
 	];
 	// List of user-defined actions
@@ -4641,21 +4776,21 @@ Event.observe(window, 'load', function(){
 	// Compare two types for casting
 	adhoc.resolveTypes = function(a, b){
 		// Handle edge cases
-		if(a == adhoc.nodeDataTypes.TYPE_MIXED
-				|| b == adhoc.nodeDataTypes.TYPE_MIXED
-				|| a == adhoc.nodeDataTypes.TYPE_ACTN
-				|| b == adhoc.nodeDataTypes.TYPE_ACTN
-				|| a == adhoc.nodeDataTypes.TYPE_STRCT
-				|| b == adhoc.nodeDataTypes.TYPE_STRCT
+		if(a == adhoc.nodeDataTypes.MIXED
+				|| b == adhoc.nodeDataTypes.MIXED
+				|| a == adhoc.nodeDataTypes.ACTION
+				|| b == adhoc.nodeDataTypes.ACTION
+				|| a == adhoc.nodeDataTypes.STRUCT
+				|| b == adhoc.nodeDataTypes.STRUCT
 				|| a == adhoc.nodeDataTypes.VOID
 				|| b == adhoc.nodeDataTypes.VOID
 			) return adhoc.nodeDataTypes.VOID;
 		if(a == b) return a;
 		if(a < b) return adhoc.resolveTypes(b, a);
-		if(a==adhoc.nodeDataTypes.TYPE_HASH && b==adhoc.nodeDataTypes.TYPE_ARRAY)
-			return adhoc.nodeDataTypes.TYPE_HASH;
-		if(a == adhoc.nodeDataTypes.TYPE_HASH) return adhoc.nodeDataTypes.VOID;
-		if(a == adhoc.nodeDataTypes.TYPE_ARRAY) return adhoc.nodeDataTypes.VOID;
+		if(a==adhoc.nodeDataTypes.HASH && b==adhoc.nodeDataTypes.ARRAY)
+			return adhoc.nodeDataTypes.HASH;
+		if(a == adhoc.nodeDataTypes.HASH) return adhoc.nodeDataTypes.VOID;
+		if(a == adhoc.nodeDataTypes.ARRAY) return adhoc.nodeDataTypes.VOID;
 
 		// Handle casts
 		return a;
@@ -4695,6 +4830,12 @@ Event.observe(window, 'load', function(){
 		case adhoc.nodeWhich.ACTION_CALL:
 			if(n.package == 'System'){
 				// TODO
+				for(var i=0; i<adhoc.systemActions.length; ++i){
+					if(adhoc.systemActions[i].name != n.name) continue;
+					dt = adhoc.systemActions[i].dataType;
+					cdt = adhoc.systemActions[i].childDataType;
+					break;
+				}
 			}else if(n.referenceId && adhoc.allNodes[n.referenceId]){
 				dt = adhoc.allNodes[n.referenceId].dataType;
 				cdt = adhoc.allNodes[n.referenceId].childDataType;
