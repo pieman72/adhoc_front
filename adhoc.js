@@ -531,8 +531,8 @@ Event.observe(window, 'load', function(){
 			,[ // CONTROL_LOOP
 				{
 					childType: adhoc.nodeChildType.INITIALIZATION
-					,min: 1
-					,max: 1
+					,min: 0
+					,max: null
 				},{
 					childType: adhoc.nodeChildType.CONDITION
 					,min: 1
@@ -5118,7 +5118,7 @@ Event.observe(window, 'load', function(){
 			if(n.children[i].which == adhoc.nodeWhich.CONTROL_RETRN){
 				var tempDt = n.children[i].dataType;
 				var tempCdt = n.children[i].childDataType;
-			// Check the type of statement which may contain
+			// Check the types of statements which may contain returns
 			}else if(n.children[i].childType == adhoc.nodeChildType.STATEMENT
 					|| n.children[i].childType == adhoc.nodeChildType.CASE
 					|| n.children[i].childType == adhoc.nodeChildType.PARENT
@@ -5141,7 +5141,7 @@ Event.observe(window, 'load', function(){
 				break;
 			}
 		}
-		return [tempDt, tempCdt];
+		return [dt, cdt];
 	}
 
 	// Function to serialize a node and its children for binary
@@ -5778,7 +5778,7 @@ Event.observe(window, 'load', function(){
 		var a = {
 			totalLoops: (n.which==adhoc.nodeWhich.CONTROL_LOOP?1:0)
 			,maxLoopNest: (n.which==adhoc.nodeWhich.CONTROL_LOOP?1:0)
-			,returns: (n.which==adhoc.nodeWhich.CONTROL_RETRN?1:0)
+			,returns: 0
 			,conditionalReturns: 0
 			,actionVerb: n.name ? n.name.split(' ')[0] : ''
 			,nodeCount: 1
@@ -5795,8 +5795,12 @@ Event.observe(window, 'load', function(){
 			var ca = adhoc.analyzeNode(c);
 			a.totalLoops += ca.totalLoops;
 			a.maxLoopNest = Math.max(a.maxLoopNest, ca.maxLoopNest+myMaxLoopNest);
-			(a.conditionalReturns =
-				a.conditionalReturns
+			a.returns = (a.returns
+				|| ca.returns
+				|| n.which == adhoc.nodeWhich.CONTROL_RETRN
+				|| c.which == adhoc.nodeWhich.CONTROL_RETRN
+			) ? 1 : 0;
+			a.conditionalReturns = (a.conditionalReturns
 				|| ca.conditionalReturns
 				|| ca.returns && (
 					c.which == adhoc.nodeWhich.CONTROL_IF
