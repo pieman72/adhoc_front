@@ -67,11 +67,6 @@ $tags = isset($headers['ADHOC-tags'])
 	? JSON_decode($headers['ADHOC-tags'])
 	: null;
 
-// If not logged in, throw an error
-if(!count($errors) && !isset($_SESSION['username'])){
-	$errors[] = "You must be logged in to save projects";
-}
-
 // Try to update the project in the database
 if(!count($errors)){
 	$sql = "

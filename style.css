@@ -183,7 +183,17 @@ label {
 	}
 .paramL,
 .paramR {
+	cursor:pointer;
+	cursor:-moz-grab;
+	cursor:grab;
 	text-align:center;
+	}
+.paramL.moving,
+.paramR.moving {
+	cursor:pointer;
+	cursor:ns-resize;
+	cursor:-moz-grabbing;
+	cursor:grabbing;
 	}
 #graftButton {
 	margin:20px auto 0;

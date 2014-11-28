@@ -2070,6 +2070,9 @@ Event.observe(window, 'load', function(){
 					,userTags		: (analysis.tags.length ? analysis.tags.join(',') : '')
 					,xsrftoken		: $('xsrfToken').innerHTML
 				}
+				,requestHeaders: {
+					'ADHOC-tags': Object.toJSON(adhoc.gleanTags())
+				}
 				,onSuccess: function(t){
 					// If popup closed before Ajax returned
 					if(!$('analysisLanding')) return;
@@ -2106,6 +2109,7 @@ Event.observe(window, 'load', function(){
 					for(var i=0; i<matches.length; ++i){
 						var option = $(document.createElement('div')).addClassName('graftListItem');
 						var oneMatch = matches[i];
+						option.setAttribute('data-id', oneMatch.id);
 
 						// Update option with textual information
 						option.appendChild($(document.createElement('div')).addClassName('title').update(
@@ -2132,7 +2136,7 @@ Event.observe(window, 'load', function(){
 							// Fetch the graft
 							new Ajax.Request('load/graft/', {
 								parameters: {
-									logicid: oneMatch.id
+									logicid: $(this).getAttribute('data-id')
 									,xsrftoken: $('xsrfToken').innerHTML
 								}
 								,onSuccess: function(t){
@@ -2142,7 +2146,6 @@ Event.observe(window, 'load', function(){
 									var tagsStruct = null;
 									try{ tagsStruct = t.getResponseHeader('ADHOC-tags').evalJSON(); }
 									catch(e){} // tags mangled or not present
-// TODO apply tagStruct to graftRoot with remap
 									var graftAnalysis = adhoc.analyzeNode(graftRoot);
 									getGraftRoot = function(){ return graftRoot; }
 
@@ -2199,15 +2202,27 @@ Event.observe(window, 'load', function(){
 
 									// Toggle draggable-ness of rows
 									function moveDraggable(param, toSlot){
+										// Remove jank positioning styles
+										param.removeAttribute('style');
+										var otherParam = $(toSlot.firstChild);
+										if(otherParam){
+											otherParam.removeAttribute('style');
+										}
+
+										// Return false if move is invalid
 										var fromSlot = $(param.parentNode);
 										if(toSlot.hasClassName('slotL') != fromSlot.hasClassName('slotL'))
 											return false;
+										if(fromSlot.hasClassName('hovering'))
+											return false;
 
-										var otherParam = $(toSlot.firstChild);
-										if(otherParam) toSlot.removeChild(otherParam);
+										// Move the params
 										fromSlot.removeChild(param);
-										if(otherParam) fromSlot.appendChild(otherParam);
 										toSlot.appendChild(param);
+										if(otherParam){
+											toSlot.removeChild(otherParam);
+											fromSlot.appendChild(otherParam);
+										}
 									}
 									function startDraggable(param){
 										if(param.element.hasClassName('paramL')){
@@ -2217,10 +2232,12 @@ Event.observe(window, 'load', function(){
 											tableInner.removeClassName('draggingL');
 											tableInner.addClassName('draggingR');
 										}
+										param.element.addClassName('moving');
 									}
-									function endDraggable(){
+									function endDraggable(param){
 										tableInner.removeClassName('draggingL');
 										tableInner.removeClassName('draggingR');
+										param.element.removeClassName('moving');
 									}
 									tableInner.select('.paramL, .paramR').each(function(item){
 										new Draggable(item, {
@@ -2282,9 +2299,99 @@ Event.observe(window, 'load', function(){
 					adhoc.message('Warning: Analysis Failed', t.responseText);
 				}
 			});
-
 			cont.appendChild(landingZone);
 			cont.appendChild($(document.createElement('div')).addClassName('clear'));
+
+			// For administrative purposes, add a button to save the analysis
+			if(adhoc.setting('username') == 'kenny'){
+				var saveAnalysisButton = $(document.createElement('a'))
+					.addClassName('nxj_button')
+					.addClassName('nxj_cssButton')
+					.update('Save Analysis');
+				saveAnalysisButton.setAttribute('href', 'javascript:void(0);');
+				saveAnalysisButton.setAttribute('id', 'saveAnalysisButton');
+				saveAnalysisButton.observe('click', function(){
+					new Ajax.Request('generate/', {
+						parameters: {
+							binary: adhoc.serialize(n, true)
+							,language: 'c'
+							,executable: 0
+							,dbg: 0
+							,xsrftoken: $('xsrfToken').innerHTML
+						}
+						,onFailure: function(t){
+							adhoc.error("Request failed.\n\n"+t.responseText);
+						}
+						,onSuccess: function(t){
+							// Parse out the results and display any errors
+							var results = t.responseText.evalJSON();
+							if(results.error.length){
+								// Get the error data
+								var erRxp = /\u001B\[([0-9]+;)*[0-9]+m((Error)|(Warning)):\u001B\[([0-9]+;)*[0-9]+m /g;
+								var erMsg = results.error.join('<br/>');
+								var erHeader = erMsg.match(erRxp);
+								var erStatus = erHeader ? erHeader[0].match(/Error|Warning/)[0] : 'Error';
+								erMsg = erMsg.replace(erRxp, '');
+								adhoc.message(erStatus, erMsg);
+
+								// Highlight error nodes, if they exist
+								var errorNode = null;
+								if(results.nodeId && (errorNode=adhoc.allNodes[results.nodeId])){
+									errorNode.error = erMsg;
+									adhoc.snapToNode(errorNode);
+								}
+
+								// If the errors are fatal, return;
+								if(erStatus == 'Error') return adhoc.refreshRender();
+							}
+							adhoc.refreshRender();
+
+							// Now pass the generated hash to the analyze/save/
+							new Ajax.Request('analyze/save/', {
+								parameters: {
+									projectHash		: results.hash
+									,name			: n.name
+									,package		: n.package
+									,totalLoops		: analysis.totalLoops
+									,maxLoopNest	: analysis.maxLoopNest
+									,condReturns	: analysis.conditionalReturns
+									,actionVerb		: analysis.actionVerb
+									,nodeCount		: analysis.nodeCount
+									,paramCount		: analysis.parameterCount
+									,childCount		: analysis.childCount
+									,inputsVoid		: analysis.inputTypes[0]
+									,inputsBool		: analysis.inputTypes[1]
+									,inputsInt		: analysis.inputTypes[2]
+									,inputsFloat	: analysis.inputTypes[3]
+									,inputsString	: analysis.inputTypes[4]
+									,inputsArray	: analysis.inputTypes[5]
+									,inputsHash		: analysis.inputTypes[6]
+									,inputsStruct	: analysis.inputTypes[7]
+									,inputsAction	: analysis.inputTypes[8]
+									,inputsMixed	: analysis.inputTypes[9]
+									,outputType		: analysis.outputType
+									,userTags		: (analysis.tags.length ? analysis.tags.join(',') : '')
+									,xsrftoken		: $('xsrfToken').innerHTML
+								}
+								,requestHeaders: {
+									'ADHOC-tags': Object.toJSON(adhoc.gleanTags())
+								}
+								,onFailure: function(t){
+									adhoc.error("Request failed.\n\n"+t.responseText);
+								}
+								,onSuccess: function(t){
+									adhoc.message(
+										'Success'
+										,'Action, <code>'+n.name+'</code>, successfully added to logic database!'
+									);
+								}
+							});
+						}
+					});
+				});
+				cont.appendChild($(document.createElement('div')).addClassName('clear')).setAttribute('style', 'margin-top:10px;');
+				cont.appendChild(saveAnalysisButton);
+			}
 		}
 
 		// Delete old lightbox content and add the new one, then show
@@ -5038,7 +5145,7 @@ Event.observe(window, 'load', function(){
 	}
 
 	// Function to serialize a node and its children for binary
-	adhoc.serialize = function(n){
+	adhoc.serialize = function(n, isPartial){
 		var out =
 			adhoc.intTo3Byte(n.id)
 			+ adhoc.intTo3Byte(n.parent ? n.parent.id : 0)
@@ -5052,7 +5159,10 @@ Event.observe(window, 'load', function(){
 			+ '"' + (n.name ? n.name : 'NULL') + '"'
 			+ '"' + ((n.value!==null&&n.value!==undefined) ? n.value : 'NULL') + '"';
 		for(var i=0; i<n.children.length; ++i){
-			out += adhoc.serialize(n.children[i]);
+			var continuePartial = isPartial
+				&& n.children[i].childType==adhoc.nodeChildType.PARAMETER;
+			if(isPartial && n.childType==adhoc.nodeChildType.PARAMETER) continue;
+			out += adhoc.serialize(n.children[i], continuePartial);
 		}
 		return out;
 	}
@@ -5936,7 +6046,8 @@ Event.observe(window, 'load', function(){
 					// Get the error data
 					var erRxp = /\u001B\[([0-9]+;)*[0-9]+m((Error)|(Warning)):\u001B\[([0-9]+;)*[0-9]+m /g;
 					var erMsg = results.error.join('<br/>');
-					var erStatus = erMsg.match(erRxp)[0].match(/Error|Warning/)[0];
+					var erHeader = erMsg.match(erRxp);
+					var erStatus = erHeader ? erHeader[0].match(/Error|Warning/)[0] : 'Error';
 					erMsg = erMsg.replace(erRxp, '');
 					adhoc.message(erStatus, erMsg);
 
