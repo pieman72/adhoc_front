@@ -1063,6 +1063,18 @@ Event.observe(window, 'load', function(){
 			,dataType: adhoc.nodeDataTypes.INT
 			,childDataType: adhoc.nodeDataTypes.VOID
 		}
+
+		// Arrays
+		,{ // append to array one item
+			package: 'System'
+			,name: 'append to array'
+			,argv: {
+				baseArray: adhoc.nodeDataTypes.ARRAY
+				,item: adhoc.nodeDataTypes.MIXED
+			}
+			,dataType: adhoc.nodeDataTypes.VOID
+			,childDataType: adhoc.nodeDataTypes.VOID
+		}
 	];
 	// List of user-defined actions
 	adhoc.registeredActions = [];
