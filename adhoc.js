@@ -5135,7 +5135,7 @@ Event.observe(window, 'load', function(){
 				dt = tempDt;
 				cdt = tempCdt;
 			}
-			if(tempDt==adhoc.nodeDataTypes.MIXED || dt!=tempDt){
+			if(tempDt==adhoc.nodeDataTypes.MIXED || (dt!=tempDt && tempDt!=adhoc.nodeDataTypes.VOID)){
 				dt = adhoc.nodeDataTypes.MIXED;
 				cdt = adhoc.nodeDataTypes.MIXED;
 				break;
