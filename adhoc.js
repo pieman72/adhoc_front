@@ -1065,6 +1065,16 @@ Event.observe(window, 'load', function(){
 		}
 
 		// Arrays
+		,{ // Check whether baseArray[index] has been set
+			package: 'System'
+			,name: 'isset array'
+			,argv: {
+				baseArray: adhoc.nodeDataTypes.ARRAY
+				,index: adhoc.nodeDataTypes.INT
+			}
+			,dataType: adhoc.nodeDataTypes.BOOL
+			,childDataType: adhoc.nodeDataTypes.VOID
+		}
 		,{ // append to array one item
 			package: 'System'
 			,name: 'append to array'
