@@ -5,6 +5,21 @@ Event.KEY_COMMAND2 = 93;
 Event.KEY_COMMAND3 = 224;
 Event.KEY_SPACE = 32;
 
+// Add handling for scroll wheel
+Object.extend(Event, {
+	wheel: function(e){
+		e = e || window.event;
+		var delta = 0;
+		if(e.wheelDelta){
+			delta = e.wheelDelta/120;
+			if(window.opera) delta *= -1;
+		}else if(e.detail){
+			delta = e.detail / -3;
+		}
+		return Math.round(delta);
+	}
+});
+
 // Not sure why JavaScript doesn't include this...
 String.prototype.ltrim = function(s){
 	return this.replace(new RegExp("^"+s+"+"), "");
@@ -1116,6 +1131,7 @@ Event.observe(window, 'load', function(){
 	}
 	// Validate string values
 	adhoc.validateString = function(v){
+		if(v == "") return false;
 		var escaped = v.replace(/\\./g, '');
 		if(escaped.indexOf('"') >= 0)
 			return 'Must escape double-quotes: \\"';
@@ -3439,6 +3455,14 @@ Event.observe(window, 'load', function(){
 			adhoc.display_y = starty + startpy - Event.pointerY(e);
 			adhoc.refreshRender();
 		};
+		// Handle mouse wheel
+		var wheelFunc = function(e){
+			if(Event.wheel(e) == 1){
+				adhoc.zoomIn();
+			}else{
+				adhoc.zoomOut();
+			}
+		}
 		// Handle key down
 		var keyDownFunc = function(e){
 			var key = e.which || window.event.keyCode;
@@ -3797,6 +3821,8 @@ Event.observe(window, 'load', function(){
 		adhoc.canvas.observe('touchend', upFunc);
 		adhoc.canvas.observe('mousemove', moveFunc);
 		adhoc.canvas.observe('touchmove', moveFunc);
+		Event.observe(adhoc.canvas, 'mousewheel', wheelFunc);
+		Event.observe(adhoc.canvas, 'DOMMouseScroll', wheelFunc);
 		Event.observe(window, 'keydown', keyDownFunc);
 		Event.observe(window, 'keyup', keyUpFunc);
 
@@ -3826,6 +3852,42 @@ Event.observe(window, 'load', function(){
 		// Ready the history buttons
 		$('histBack').observe('click', adhoc.history.undo);
 		$('histFwd').observe('click', adhoc.history.redo);
+
+		// Create pulse function to keep sessions alive
+		setInterval(function(){
+			if(adhoc.setting('username')){
+				new Ajax.Request('keepalive/', {
+					parameters: {
+						username: adhoc.setting('username')
+						,passhash: adhoc.setting('password')
+						,xsrftoken: $('xsrfToken').innerHTML
+					}
+					,onSuccess: function(t){
+						if(t.responseText){
+							$('xsrfToken').update(t.responseText);
+						}
+					}
+					,onFailure: function(t){
+						if(t.responseText){
+							$('xsrfToken').update(t.responseText);
+						}else{
+							adhoc.error('Your session may have expired. Try <a href="./" target="_blank">clicking here</a> to login in another tab');
+						}
+					}
+				});
+			}
+		}, 10*60*1000);
+
+		// Handle window close
+		Event.observe(window, 'beforeunload', function(e){
+			if($('savePackageButton').hasClassName('disabled')
+					|| adhoc.history.index==0
+				) return true;
+			var msg = "You have unsaved changes. Are you sure you want to close the page?";
+			var evt = e || window.event;
+			if(evt) evt.returnValue = msg;
+			return msg;
+		});
 
 		// Bind to the window
 		window.adhoc = adhoc;
@@ -4496,7 +4558,7 @@ Event.observe(window, 'load', function(){
 			ctx.strokeRect(
 				(n.x-(n.width/2.0)) * adhoc.display_scale - adhoc.display_x
 				,(n.y-(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
-				,(size.width+10) * adhoc.display_scale
+				,size.width + 10 * adhoc.display_scale
 				,20 * adhoc.display_scale
 			);
 		}
@@ -4510,13 +4572,13 @@ Event.observe(window, 'load', function(){
 			var size = ctx.measureText(n.id);
 			ctx.fillText(
 				n.id
-				,(n.x+(n.width/2.0)-(size.width+5)) * adhoc.display_scale - adhoc.display_x
+				,(n.x+(n.width/2.0)-5) * adhoc.display_scale - size.width - adhoc.display_x
 				,(n.y+(n.height/2.0)-6) * adhoc.display_scale - adhoc.display_y
 			);
 			ctx.strokeRect(
-				(n.x+(n.width/2.0)-(size.width+10)) * adhoc.display_scale - adhoc.display_x
+				(n.x+(n.width/2.0)-10) * adhoc.display_scale - size.width - adhoc.display_x
 				,(n.y+(n.height/2.0)-20) * adhoc.display_scale - adhoc.display_y
-				,(size.width+10) * adhoc.display_scale
+				,size.width + 10 * adhoc.display_scale
 				,20 * adhoc.display_scale
 			);
 		}
@@ -4766,7 +4828,7 @@ Event.observe(window, 'load', function(){
 	adhoc.foldNode = function(n){
 		if(!n.children.length) return;
 		n.folded = !n.folded;
-		adhoc.refreshRender();
+		adhoc.snapToNode(n);
 	}
 	// Zooms the view in
 	adhoc.zoomIn = function(){

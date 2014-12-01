@@ -39,7 +39,7 @@ if(isset($_SESSION['username'])){
 	exit;
 }
 
-// If registration was submitted, try to register the user
+// If login was submitted, try to log the user in
 if(isset($_POST['submitted'])){
 	// Get the user credentials from input
 	if(!isset($_POST['username']) || !$_POST['username']){
@@ -56,7 +56,7 @@ if(isset($_POST['submitted'])){
 	$settings->username = $_POST['username'];
 	$settings->remember = ($_POST['remember']=='1');
 
-	// Try to create the user
+	// Try to fetch the user
 	$query = mysqli_stmt_init($dbConn);
 	if(!count($errors) && !mysqli_stmt_prepare($query, "
 		SELECT

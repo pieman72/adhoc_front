@@ -17,12 +17,12 @@ $settings = (isset($_COOKIE)&&isset($_COOKIE['adhocSettings']) ? json_decode(url
 $errors = array();
 
 // Weights for different factors
-$weight_totalLoops		= 1.0;
-$weight_maxLoopNest		= 1.0;
-$weight_condReturns		= 1.0;
-$weight_actionVerb		= 3.0;
-$weight_nodeCount		= 0.1;
-$weight_paramCount		= 1.0;
+$weight_totalLoops		= 4.0;
+$weight_maxLoopNest		= 6.0;
+$weight_condReturns		= 3.0;
+$weight_actionVerb		= 5.0;
+$weight_nodeCount		= 0.05;
+$weight_paramCount		= 3.0;
 $weight_childCount		= 1.0;
 $weight_inputsVoid		= 0.5;
 $weight_inputsBool		= 0.5;
@@ -34,7 +34,7 @@ $weight_inputsHash		= 0.5;
 $weight_inputsStruct	= 0.5;
 $weight_inputsAction	= 0.5;
 $weight_inputsMixed		= 0.5;
-$weight_outputType		= 1.0;
+$weight_outputType		= 3.0;
 $scale_diffSegmenting	= 5;
 
 // Start the session
@@ -109,7 +109,7 @@ if(!count($errors)){
 			FLOOR(data.diff / ?) ASC
 			,data.isConfirmed DESC
 			,data.diff ASC
-		LIMIT 5; ";
+		LIMIT 10; ";
 	$query = mysqli_stmt_init($dbConn);
 	if(!mysqli_stmt_prepare($query, $sql)){
 		$errors[] = "Could not prepare database statement: ".$dbConn->error;
