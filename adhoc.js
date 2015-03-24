@@ -220,7 +220,7 @@ Event.observe(window, 'load', function(){
 			['Plus', '+']
 			,['Minus', '-']
 			,['Times', '*']
-			,['Divided By', '&#247;']
+			,['Divided By', '÷']
 			,['Modulo', '%']
 			,['Raised To', '^']
 			,['Or', '||']
@@ -1100,6 +1100,24 @@ Event.observe(window, 'load', function(){
 			,dataType: adhoc.nodeDataTypes.VOID
 			,childDataType: adhoc.nodeDataTypes.VOID
 		}
+		,{ // Find value of max in array
+			package: 'System'
+			,name: 'find max value'
+			,argv: {
+				inputArray: adhoc.nodeDataTypes.ARRAY
+			}
+			,dataType: adhoc.nodeDataTypes.MIXED
+			,childDataType: adhoc.nodeDataTypes.VOID
+		}
+		,{ // Find index of max in array
+			package: 'System'
+			,name: 'find max value index'
+			,argv: {
+				inputArray: adhoc.nodeDataTypes.ARRAY
+			}
+			,dataType: adhoc.nodeDataTypes.INT
+			,childDataType: adhoc.nodeDataTypes.VOID
+		}
 	];
 	// List of user-defined actions
 	adhoc.registeredActions = [];
@@ -1787,10 +1805,8 @@ Event.observe(window, 'load', function(){
 		}
 
 		// Create a child dataType field when appropriate
-		if((n.dataType == adhoc.nodeDataTypes.ARRAY
-				|| n.dataType == adhoc.nodeDataTypes.HASH)
-				&& n.childType != adhoc.nodeChildType.PARAMETER
-				&& n.childType != adhoc.nodeChildType.INITIALIZATION
+		if(n.dataType == adhoc.nodeDataTypes.ARRAY
+				|| n.dataType == adhoc.nodeDataTypes.HASH
 			){
 			row = $(document.createElement('tr'));
 			cellR = $(document.createElement('td'));
@@ -1863,7 +1879,7 @@ Event.observe(window, 'load', function(){
 				}
 				// Disable ones that fail to cast some children
 				for(var j=0; j<n.children.length; ++j){
-					if(!n.children[j].children[0].dataType) continue;
+					if(!n.children[j].children.length || !n.children[j].children[0].dataType) continue;
 					if(adhoc.resolveTypes(opts2[i].value,n.children[j].children[0].dataType) != opts2[i].value){
 						opts2[i].disabled = true;
 					}
@@ -1896,7 +1912,9 @@ Event.observe(window, 'load', function(){
 		}
 
 		// Create a comment field when appropriate
-		if(n.childType == adhoc.nodeChildType.STATEMENT){
+		if(n.nodeType == adhoc.nodeTypes.ACTION
+				|| n.childType == adhoc.nodeChildType.STATEMENT
+			){
 			row = $(document.createElement('tr'));
 			cellR = $(document.createElement('td'));
 			cellL = $(document.createElement('td'));
@@ -3472,7 +3490,7 @@ Event.observe(window, 'load', function(){
 			case Event.KEY_COMMAND1:
 			case Event.KEY_COMMAND2:
 			case Event.KEY_COMMAND3:
-				adhoc.alternateKeys = true;
+				if(!$('theLightbox').visible()) adhoc.alternateKeys = true;
 				break;
 
 			// (ESC) close dialogs and deselect nodes
@@ -3805,7 +3823,7 @@ Event.observe(window, 'load', function(){
 			case Event.KEY_COMMAND1:
 			case Event.KEY_COMMAND2:
 			case Event.KEY_COMMAND3:
-				adhoc.alternateKeys = false;
+				if(!$('theLightbox').visible()) adhoc.alternateKeys = false;
 				break;
 
 			// (Unknown) Do nothing
@@ -4393,7 +4411,7 @@ Event.observe(window, 'load', function(){
 				if(n.which == adhoc.nodeWhich.LITERAL_STRNG) title = '"'+title+'"'
 				var size = ctx.measureText(title);
 				size.height = 20;
-				n.width = size.width + 30;
+				n.width = (size.width / adhoc.display_scale) + 30;
 				n.height = size.height + 80;
 
 				// Print label text
@@ -4828,6 +4846,7 @@ Event.observe(window, 'load', function(){
 	adhoc.foldNode = function(n){
 		if(!n.children.length) return;
 		n.folded = !n.folded;
+		adhoc.refreshRender();
 		adhoc.snapToNode(n);
 	}
 	// Zooms the view in
