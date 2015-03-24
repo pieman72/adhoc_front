@@ -80,7 +80,7 @@ if(!count($errors)
 			,$settingsTemp
 			,strtotime('+1 year')
 			,'/adhoc_demo/'
-			,''
+			,'harveyserv.ath.cx'
 		);
 		if($settings->remember){
 			$settingsTemp = json_decode($settingsTemp);
@@ -98,7 +98,7 @@ if(!isset($_SESSION['username']) || !$_SESSION['username']){
 		,''
 		,strtotime('+1 year')
 		,'/adhoc_demo/'
-		,''
+		,'harveyserv.ath.cx'
 	);
 	$settings = (object) array();
 

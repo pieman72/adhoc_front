@@ -1210,7 +1210,9 @@ Event.observe(window, 'load', function(){
 
 		// Set the value in memory, and in the cookie, then return it
 		adhoc.settings[s] = v;
-		document.cookie = 'adhocSettings='+encodeURIComponent(Object.toJSON(adhoc.settings))+';path=/adhoc_demo/';
+		expires = new Date();
+		expires.setMonth(expires.getYear() + 1);
+		document.cookie = 'adhocSettings='+Object.toJSON(adhoc.settings)+';expires='+expires+';domain=.harveyserv.ath.cx;path=/adhoc_demo/';
 		return v;
 	}
 
