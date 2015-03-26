@@ -48,6 +48,8 @@ class Nxj_UI {
 					$name = $n;
 					break;
 				}
+				$unit = self::TIME_SECOND;
+				$name = 'second';
 			}
 		}
 		$diff = floor($diff/$unit);

@@ -1671,10 +1671,11 @@ Event.observe(window, 'load', function(){
 		row = $(document.createElement('tr'));
 		cellR = $(document.createElement('td'));
 		cellL = $(document.createElement('td'));
-		cellL.addClassName('attrName').update('Tags');
+		cellL.addClassName('attrName').update('General Tags');
 		var tagsInput = $(document.createElement('input'));
 		tagsInput.addClassName('nxj_input').setAttribute('id', 'lb_node_tags');
-		tagsInput.value = adhoc.getTagsByNode(n).join(', ');
+		var tags = adhoc.getTagsByNode(n);
+		tagsInput.value = tags ? tags['general'].join(', ') : "";
 		var tagsError = $(document.createElement('div'));
 		tagsError.setAttribute('id', 'lb_tags_error');
 		tagsInput.observe('keyup', function(e){
@@ -1974,6 +1975,7 @@ Event.observe(window, 'load', function(){
 			);
 			if($('lb_node_tags')) adhoc.changeTags(
 				n
+				,'general'
 				,$F('lb_node_tags')
 			);
 			if($('lb_select_input') && n.dataType != parseInt($F('lb_select_input'))) adhoc.changeDatatype(
@@ -2080,7 +2082,7 @@ Event.observe(window, 'load', function(){
 			output += 'Input Types: '		+ analysis.inputTypes.join(', ') + '<br/>';
 			output += 'Output Type: '		+ analysis.outputType + '<br/>';
 			output += 'Actions Called: '	+ analysis.actionsCalled + '<br/>';
-			output += 'Tags: '				+ (analysis.tags.length ? analysis.tags.join(', ') : '<i>none</i>') + '<br/>';
+			output += 'General Tags: '		+ (analysis.generalTags.length ? analysis.generalTags.join(', ') : '<i>none</i>') + '<br/>';
 			cont.update(output);
 		}
 
@@ -2113,7 +2115,7 @@ Event.observe(window, 'load', function(){
 					,inputsAction	: analysis.inputTypes[8]
 					,inputsMixed	: analysis.inputTypes[9]
 					,outputType		: analysis.outputType
-					,userTags		: (analysis.tags.length ? analysis.tags.join(',') : '')
+					,userTags		: (analysis.generalTags.length ? analysis.generalTags.join(',') : '')
 					,xsrftoken		: $('xsrfToken').innerHTML
 				}
 				,requestHeaders: {
@@ -2416,7 +2418,7 @@ Event.observe(window, 'load', function(){
 									,inputsAction	: analysis.inputTypes[8]
 									,inputsMixed	: analysis.inputTypes[9]
 									,outputType		: analysis.outputType
-									,userTags		: (analysis.tags.length ? analysis.tags.join(',') : '')
+									,userTags		: (analysis.generalTags.length ? analysis.generalTags.join(',') : '')
 									,xsrftoken		: $('xsrfToken').innerHTML
 								}
 								,requestHeaders: {
@@ -2815,10 +2817,13 @@ Event.observe(window, 'load', function(){
 				case 'graft':
 					break;
 
+				// Undo a tag change
+				case 'tags':
+					adhoc.allTags[item.parentId] = item.target.evalJSON()['old'];
+					break;
+
 				// Undo a rename
 				case 'rename':
-				// Undo a tags change
-				case 'tags':
 				// Undo a revalue
 				case 'revalue':
 				// Undo a datatype change
@@ -2868,14 +2873,9 @@ Event.observe(window, 'load', function(){
 					}
 					break;
 
-				// Redo a tags change
+				// Redo a tag change
 				case 'tags':
-					var newTags = [];
-					var tags = item.target.split(',');
-					for(var i=0; i<tags.length; ++i){
-						newTags.push(tags[i].trim("\\s"));
-					}
-					adhoc.allTags[item.parentId] = newTags;
+					adhoc.allTags[item.parentId] = item.target.evalJSON()['new'];
 					break;
 
 				// Redo a datatype change
@@ -2951,7 +2951,8 @@ Event.observe(window, 'load', function(){
 				}
 
 				// If the next item is bound to this one, do it as well
-				if(adhoc.history.history[adhoc.history.index].bind){
+				var historyNext = adhoc.history.history[adhoc.history.index];
+				if(historyNext && historyNext.bind){
 					adhoc.history.redo();
 				}else{
 					adhoc.refreshRender();
@@ -4605,33 +4606,36 @@ Event.observe(window, 'load', function(){
 
 		// Show the node's tags
 		var nodeTags = adhoc.getTagsByNode(n);
-		if(nodeTags && nodeTags.length){
-			var tagWidth = 0;
-			ctx.setLineDash([2,2]);
-			for(var i=0; i<nodeTags.length; ++i){
-				var tagText = nodeTags[i];
-				ctx.strokeStyle = nodeColor;
-				ctx.fillStyle = adhoc.setting('colorScheme')=='dark' ? adhoc.textColorDark : adhoc.textColor;
-				ctx.lineWidth = (2.0*adhoc.display_scale)<<0;
-				ctx.font = ((12.0*adhoc.display_scale)<<0)+'px Arial';
-				var size = ctx.measureText(tagText);
-				if(tagWidth+(size.width/adhoc.display_scale)+14 > n.width){
-					tagText = "...";
-					size = ctx.measureText(tagText);
-					i = nodeTags.length;
+		if(nodeTags){
+			// General Tags
+			if(nodeTags['general'].length){
+				var tagWidth = 0;
+				ctx.setLineDash([2,2]);
+				for(var i=0; i<nodeTags['general'].length; ++i){
+					var tagText = nodeTags['general'][i];
+					ctx.strokeStyle = nodeColor;
+					ctx.fillStyle = adhoc.setting('colorScheme')=='dark' ? adhoc.textColorDark : adhoc.textColor;
+					ctx.lineWidth = (2.0*adhoc.display_scale)<<0;
+					ctx.font = ((12.0*adhoc.display_scale)<<0)+'px Arial';
+					var size = ctx.measureText(tagText);
+					if(tagWidth+(size.width/adhoc.display_scale)+14 > n.width){
+						tagText = "...";
+						size = ctx.measureText(tagText);
+						i = nodeTags['general'].length;
+					}
+					ctx.fillText(
+						tagText
+						,(n.x-(n.width/2.0)+5+tagWidth) * adhoc.display_scale - adhoc.display_x
+						,(n.y+(n.height/2.0)-6) * adhoc.display_scale - adhoc.display_y
+					);
+					ctx.strokeRect(
+						(n.x-(n.width/2.0)+tagWidth) * adhoc.display_scale - adhoc.display_x
+						,(n.y+(n.height/2.0)-20) * adhoc.display_scale - adhoc.display_y
+						,(size.width+10) * adhoc.display_scale
+						,20 * adhoc.display_scale
+					);
+					tagWidth += size.width+14;
 				}
-				ctx.fillText(
-					tagText
-					,(n.x-(n.width/2.0)+5+tagWidth) * adhoc.display_scale - adhoc.display_x
-					,(n.y+(n.height/2.0)-6) * adhoc.display_scale - adhoc.display_y
-				);
-				ctx.strokeRect(
-					(n.x-(n.width/2.0)+tagWidth) * adhoc.display_scale - adhoc.display_x
-					,(n.y+(n.height/2.0)-20) * adhoc.display_scale - adhoc.display_y
-					,(size.width+10) * adhoc.display_scale
-					,20 * adhoc.display_scale
-				);
-				tagWidth += size.width+14;
 			}
 		}
 
@@ -5346,7 +5350,7 @@ Event.observe(window, 'load', function(){
 			,width: n.width
 			,height: n.height
 			,subTreeHeight: n.subTreeHeight
-			,tags: adhoc.allTags[n.id]
+			,generalTags: adhoc.allTags[n.id]
 		};
 		var children = [];
 		for(var i=0; i<n.children.length; ++i){
@@ -5407,7 +5411,7 @@ Event.observe(window, 'load', function(){
 		}
 	}
 	// Changes the tags on a node
-	adhoc.changeTags = function(n, tagString){
+	adhoc.changeTags = function(n, tagCat, tagString){
 		// Determine if this action should be bound, then record it
 		var prevAction = adhoc.history.index>0 ? adhoc.history.history[adhoc.history.index-1] : null;
 		var ref1 = n.referenceId
@@ -5423,16 +5427,28 @@ Event.observe(window, 'load', function(){
 		var bind = prevAction
 			&& ref1 == ref2
 			&& (['rename','tags','datatype','childdatatype','comment'].indexOf(prevAction.action) >= 0);
-		adhoc.history.record('tags', tagString, n, false);
+
+		// Get new tag structure
+		var tags = {};
+		if(adhoc.allTags[n.id]){
+			for(var oneCat in adhoc.allTags[n.id]){
+				tags[oneCat] = adhoc.allTags[n.id][oneCat];
+			}
+		}
+		var newTags = tagString.split(',');
+		tags[tagCat] = [];
+		for(var i=0; i<newTags.length; ++i){
+			var t = newTags[i].trim('\\s').replace(/[^A-Za-z0-9_ ]/g, '');
+			if(t) tags[tagCat].push(t);
+		}
 
 		// Change the actual tags
-		var newTags = [];
-		var tags = tagString.split(',');
-		for(var i=0; i<tags.length; ++i){
-			var t = tags[i].trim("\\s");
-			if(t) newTags.push(t);
-		}
-		adhoc.allTags[n.id] = newTags;
+		var record = {
+			'new': tags
+			,'old': adhoc.allTags[n.id]
+		};
+		adhoc.history.record('tags', Object.toJSON(record), n, false);
+		adhoc.allTags[n.id] = tags;
 	}
 	// Changes the dataType of a single node
 	adhoc.changeDatatype = function(n, type){
@@ -5835,10 +5851,14 @@ Event.observe(window, 'load', function(){
 	adhoc.applyTags = function(nodeTags){
 		if(!nodeTags) return;
 		for(var i in nodeTags){
-			var tags = nodeTags[typeof(i)=="number" ? i : parseInt(i)];
-			if(!adhoc.allTags[i]) adhoc.allTags[i] = [];
-			for(var j=0; j<tags.length; ++j){
-				adhoc.allTags[i].push(tags[j]);
+			var tags = nodeTags[i];
+			i = typeof(i)=="number" ? i : parseInt(i);
+			if(!adhoc.allTags[i]) adhoc.allTags[i] = {};
+			for(var tagCat in tags){
+				adhoc.allTags[i][tagCat] = [];
+				for(var j=0; j<tags[tagCat].length; ++j){
+					adhoc.allTags[i][tagCat].push(tags[tagCat][j]);
+				}
 			}
 		}
 	}
@@ -5846,22 +5866,37 @@ Event.observe(window, 'load', function(){
 	adhoc.gleanTags = function(){
 		var ret = {};
 		for(var i in adhoc.allTags){
-			if(adhoc.allTags[i] && adhoc.allTags[i].length)
-				ret[i] = adhoc.allTags[i];
+			if(adhoc.allTags[i]){
+				var someTags = false;
+				for(var tagCat in adhoc.allTags[i]){
+					if(adhoc.allTags[i][tagCat].length) someTags = true;
+				}
+				if(someTags) ret[i] = adhoc.allTags[i]
+			}
 		}
 		return ret;
 	}
 	// Get the tags associated with a particular node
 	adhoc.getTagsByNode = function(n){
-		if(!n.id) return [];
-		if(!adhoc.allTags[n.id]) adhoc.allTags[n.id] = [];
+		if(!n.id || !adhoc.allTags[n.id] || !adhoc.allTags[n.id]['general']){
+			var ret = {};
+			for(var i in adhoc.allTags){
+				if(!adhoc.allTags[i] || !adhoc.allTags[i]['general']) continue;
+				for(var tagCat in adhoc.allTags[i]){
+					ret[tagCat] = [];
+				}
+				return ret;
+			}
+			return null;
+		}
 		return adhoc.allTags[n.id];
 	}
 	// Get the nodes associated with a particular tag
-	adhoc.getNodesByTag = function(t){
+	adhoc.getNodesByTag = function(cat, tag){
 		ret = [];
 		for(var i in adhoc.allTags){
-			if(adhoc.allTags[i].indexOf(t) >= 0) ret.push(adhoc.allNodes[i]);
+			if(adhoc.allTags[i][cat].indexOf(tag) >= 0)
+				ret.push(adhoc.allNodes[i]);
 		}
 		return ret;
 	}
@@ -5880,7 +5915,7 @@ Event.observe(window, 'load', function(){
 			,inputTypes: [0,0,0,0,0,0,0,0,0,0]
 			,outputType: n.dataType || adhoc.nodeDataTypes.VOID
 			,actionsCalled: '?'
-			,tags: adhoc.getTagsByNode(n)
+			,generalTags: adhoc.getTagsByNode(n) ? adhoc.getTagsByNode(n)['general'] : []
 		};
 		var myMaxLoopNest = a.maxLoopNest;
 		for(var i=0; i<n.children.length; ++i){

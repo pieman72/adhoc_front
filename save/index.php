@@ -133,15 +133,17 @@ if(!count($errors)){
 			$errors[] = "Could not prepare database statement: ".$dbConn->error;
 		}
 		if(count($errors)) break;
-		foreach($tags as $nodeId=>$tagArray){
-			foreach($tagArray as $oneTag){
-				if(!mysqli_stmt_bind_param($query, 's', $oneTag)){
-					$errors[] = "Could not bind database parameters: ".$query->error;
-					break;
-				}
-				if(!mysqli_stmt_execute($query)){
-					$errors[] = "Query failed: ".$query->error;
-					break;
+		foreach($tags as $nodeId=>$tagArrays){
+			foreach($tagArrays as $tagArray){
+				foreach($tagArray as $oneTag){
+					if(!mysqli_stmt_bind_param($query, 's', $oneTag)){
+						$errors[] = "Could not bind database parameters: ".$query->error;
+						break;
+					}
+					if(!mysqli_stmt_execute($query)){
+						$errors[] = "Query failed: ".$query->error;
+						break;
+					}
 				}
 			}
 		}
@@ -183,19 +185,21 @@ if(!count($errors)){
 		if(!mysqli_stmt_prepare($query, $sql)){
 			$errors[] = "Could not prepare database statement: ".$dbConn->error;
 		}
-		foreach($tags as $nodeId=>$tagArray){
-			foreach($tagArray as $oneTag){
-				if(!mysqli_stmt_bind_param($query, 'iis'
-						,$projectId
-						,$nodeId
-						,$oneTag
-					)){
-					$errors[] = "Could not bind database parameters: ".$query->error;
-					break;
-				}
-				if(!mysqli_stmt_execute($query)){
-					$errors[] = "Query failed: ".$query->error;
-					break;
+		foreach($tags as $nodeId=>$tagArrays){
+			foreach($tagArrays as $tagArray){
+				foreach($tagArray as $oneTag){
+					if(!mysqli_stmt_bind_param($query, 'iis'
+							,$projectId
+							,$nodeId
+							,$oneTag
+						)){
+						$errors[] = "Could not bind database parameters: ".$query->error;
+						break;
+					}
+					if(!mysqli_stmt_execute($query)){
+						$errors[] = "Query failed: ".$query->error;
+						break;
+					}
 				}
 			}
 		}

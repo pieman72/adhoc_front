@@ -118,10 +118,22 @@ if(!count($errors)){
 	}
 	$fetchTags = new stdClass();
 	while(!count($errors) && ($fetchStatus=$query->fetch())){
-		if(!isset($fetchTags->$fetchNodeId))
-			$fetchTags->$fetchNodeId = array();
+		if(!isset($fetchTags->$fetchNodeId)){
+			$fetchTags->$fetchNodeId = array(
+				'general' => array()
+				,'system' => array()
+				,'testing' => array()
+			);
+		}
 		$nodeTagArray = $fetchTags->$fetchNodeId;
-		$nodeTagArray[] = $fetchTagName;
+		switch(substr($fetchTagName, 0, 1)){
+		case '@':
+			$nodeTagArray['system'][] = $fetchTagName;
+		case '#':
+			$nodeTagArray['testing'][] = $fetchTagName;
+		default:
+			$nodeTagArray['general'][] = $fetchTagName;
+		}
 		$fetchTags->$fetchNodeId = $nodeTagArray;
 	}
 	if($fetchStatus === false){
