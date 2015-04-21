@@ -10,13 +10,10 @@ $remote = (substr($server,0,strrpos($server,'.')) == substr($remote,0,strrpos($r
 	? gethostbyname($host)
 	: $remote;
 
-// Load user settings
-$settings = (isset($_COOKIE)&&isset($_COOKIE['adhocSettings']) ? json_decode(urldecode($_COOKIE['adhocSettings'])) : (object)array());
-
 // Start collecting errors
 $errors = array();
 
-// Start the session
+// Re/start the session
 if(session_status()==PHP_SESSION_NONE){
     session_set_cookie_params(
         0
@@ -50,11 +47,6 @@ if(isset($_POST['submitted'])){
 	if(!isset($_POST['password']) || !$_POST['password']){
 		$errors[] = 'No password provided';
 	}
-
-	// Update settings based on input
-	if(isset($settings->password)) unset($settings->password);
-	$settings->username = $_POST['username'];
-	$settings->remember = ($_POST['remember']=='1');
 
 	// Try to fetch the user
 	$query = mysqli_stmt_init($dbConn);
@@ -103,7 +95,7 @@ if(isset($_POST['submitted'])){
 			,$settingsTemp
 			,strtotime('+1 year')
 			,'/adhoc_demo/'
-			,''
+			,'.harveyserv.ath.cx'
 		);
 		header('Location: /adhoc_demo/');
 		exit;
@@ -117,7 +109,7 @@ if(isset($_POST['submitted'])){
 	<link rel="stylesheet" href="//static.harveyserv.ath.cx/adhoc/css/ui.css" type="text/css"/>
 	<link rel="stylesheet" href="../style.css" type="text/css"/>
 </head>
-<body class="<?=(isset($settings->colorScheme) ? $settings->colorScheme : 'light')?>">
+<body class="light">
 	<div id="page">
 		<div style="padding:10px;">Don't have an account? <a href="../register/">Register</a> instead.</div>
 		<div class="clear"></div>

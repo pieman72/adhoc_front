@@ -32,7 +32,7 @@ if($dbConn->error){
 
 // If already logged in, pass back the current XSRF token, or make a new one
 if(isset($_SESSION['username'])){
-	if($_SESSION['username']==$_POST['username']){
+	if(isset($_POST['username']) && $_SESSION['username']==$_POST['username']){
 		if(!isset($_SESSION['xsrftoken']))
 			$_SESSION['xsrftoken'] = sha1(rand().$_SESSION['username']);
 		exit($_SESSION['xsrftoken']);
@@ -85,22 +85,37 @@ if(!count($errors) && !mysqli_stmt_bind_result($query
 if(!count($errors) && !$query->fetch()){
 	$errors[] = "Could not load user";
 }
+if(!count($errors) && !$query->close()){
+	$errors[] = "Could not close database connection";
+}
 
 // Add password back to settings (if requested) and pass settings in the cookie
 if(!count($errors)){
 	$_SESSION['username'] = $username;
-	if($_POST['remember']=='1'){
-		$settingsTemp = json_decode($settingsTemp);
-		$settingsTemp->password = sha1($_POST['password']);
-		$settingsTemp = json_encode($settingsTemp);
+	if($settings){
+		$query = mysqli_stmt_init($dbConn);
+		if(!count($errors) && !mysqli_stmt_prepare($query, "
+			UPDATE
+				front_users
+			SET
+				settings = ?
+			WHERE
+				username = ?;")){
+			$errors[] = "Could not prepare database statement: ".$dbConn->error;
+		}
+		if(!count($errors) && !mysqli_stmt_bind_param($query, 'ss'
+				,$settings
+				,$username
+			)){
+			$errors[] = "Could not bind database parameters: ".$query->error;
+		}
+		if(!count($errors) && !mysqli_stmt_execute($query)){
+			$errors[] = "Query failed: ".$query->error;
+		}
+		if(!count($errors) && !$query->close()){
+			$errors[] = "Could not close database connection";
+		}
 	}
-	setcookie(
-		'adhocSettings'
-		,$settingsTemp
-		,strtotime('+1 year')
-		,'/adhoc_demo/'
-		,''
-	);
 	if(!isset($_SESSION['xsrftoken']))
 		$_SESSION['xsrftoken'] = sha1(rand().$_SESSION['username']);
 	exit($_SESSION['xsrftoken']);

@@ -170,7 +170,7 @@ Event.observe(window, 'load', function(){
 		,ELSE:			12
 		,STORAGE:		13
 	};
-	// AST node dataTypes
+	// AST node datatypes
 	adhoc.nodeDataTypes = {
 		VOID:		0
 		,BOOL:		1
@@ -931,6 +931,17 @@ Event.observe(window, 'load', function(){
 		,'Action'
 		,'Mixed'
 	];
+	// Propagation schemes
+	adhoc.propagations = {
+		NONE: 0
+		,ANCESTORS: 1
+		,ANCESTORS_IF_SIBLINGS: 2
+		,PARENT: 3
+		,PARENT_IF_SIBLINGS: 4
+		,SIBLINGS: 5
+		,CHILDREN: 6
+		,DESCENDENTS: 7
+	};
 	// List of system actions that ADHOC supports
 	adhoc.systemActions = [
 		// General
@@ -1124,6 +1135,49 @@ Event.observe(window, 'load', function(){
 	// List of all nodes
 	adhoc.allNodes = [];
 	// Node tags
+	adhoc.tagTypes = [
+		{name: 'system', symbol: '@'}
+		,{name: 'testing', symbol: '#'}
+		,{name: 'general', symbol: ''}
+	];
+	adhoc.systemTags = {
+		'validated': {
+			propagation: adhoc.propagations.ANCESTORS_IF_SIBLINGS
+			,color: '#009000'
+			,symbol: 'V'
+		},'error': {
+			propagation: adhoc.propagations.ANCESTORS
+			,color: '#FF0000'
+			,symbol: 'E'
+//		},'': {
+//			propagation: adhoc.propagations.
+//			,color: '#'
+//			,symbol: ''
+		}
+    };
+	adhoc.testingTags = {
+		'tested': {
+			propagation: adhoc.propagations.ANCESTORS_IF_SIBLINGS
+			,color: '#00B020'
+			,symbol: 'T'
+		},'TODO': {
+			propagation: adhoc.propagations.NONE
+			,color: '#3080FF'
+			,symbol: 'D'
+		},'needs review': {
+			propagation: adhoc.propagations.DESCENDENTS
+			,color: '#604020'
+			,symbol: 'R'
+		},'possible problem': {
+			propagation: adhoc.propagations.CHILDREN
+			,color: '#CCCC00'
+			,symbol: 'P'
+//		},'': {
+//			propagation: adhoc.propagations.
+//			,color: '#'
+//			,symbol: ''
+		}
+    };
 	adhoc.allTags = {};
 
 	// Convert an int to a 3-byte string
@@ -2974,7 +3028,9 @@ Event.observe(window, 'load', function(){
 				adhoc.setting(i, loadedSettings[i]);
 			}
 		}else{
-			document.cookie = 'adhocSettings='+encodeURIComponent(Object.toJSON(adhoc.settings))+';path=/adhoc_demo/';
+			expires = new Date();
+			expires.setMonth(expires.getYear() + 1);
+			document.cookie = 'adhocSettings='+Object.toJSON(adhoc.settings)+';expires='+expires+';domain=.harveyserv.ath.cx;path=/adhoc_demo/';
 		}
 
 		// Activate new package button
@@ -3745,6 +3801,31 @@ Event.observe(window, 'load', function(){
 					}else if(adhoc.selectedNode && !$('theLightbox').visible()){ Event.stop(e);
 						adhoc.promptAnalysis(adhoc.selectedNode);
 					}
+				}
+				break;
+
+			// (CTRL+e) Manually trigger keepalive
+			case 69:
+				if(adhoc.alternateKeys){ Event.stop(e);
+					new Ajax.Request('keepalive/', {
+						parameters: {
+							username: adhoc.setting('username')
+							,passhash: adhoc.setting('password')
+							,xsrftoken: $('xsrfToken').innerHTML
+						}
+						,onSuccess: function(t){
+							if(t.responseText){
+								$('xsrfToken').update(t.responseText);
+							}
+						}
+						,onFailure: function(t){
+							if(t.responseText){
+								$('xsrfToken').update(t.responseText);
+							}else{
+								adhoc.error('Your session may have expired. Try <a href="./" target="_blank">clicking here</a> to login in another tab');
+							}
+						}
+					});
 				}
 				break;
 
@@ -4607,35 +4688,72 @@ Event.observe(window, 'load', function(){
 		// Show the node's tags
 		var nodeTags = adhoc.getTagsByNode(n);
 		if(nodeTags){
-			// General Tags
-			if(nodeTags['general'].length){
-				var tagWidth = 0;
-				ctx.setLineDash([2,2]);
-				for(var i=0; i<nodeTags['general'].length; ++i){
-					var tagText = nodeTags['general'][i];
-					ctx.strokeStyle = nodeColor;
-					ctx.fillStyle = adhoc.setting('colorScheme')=='dark' ? adhoc.textColorDark : adhoc.textColor;
-					ctx.lineWidth = (2.0*adhoc.display_scale)<<0;
-					ctx.font = ((12.0*adhoc.display_scale)<<0)+'px Arial';
-					var size = ctx.measureText(tagText);
-					if(tagWidth+(size.width/adhoc.display_scale)+14 > n.width){
-						tagText = "...";
-						size = ctx.measureText(tagText);
-						i = nodeTags['general'].length;
-					}
-					ctx.fillText(
-						tagText
-						,(n.x-(n.width/2.0)+5+tagWidth) * adhoc.display_scale - adhoc.display_x
-						,(n.y+(n.height/2.0)-6) * adhoc.display_scale - adhoc.display_y
-					);
-					ctx.strokeRect(
-						(n.x-(n.width/2.0)+tagWidth) * adhoc.display_scale - adhoc.display_x
-						,(n.y+(n.height/2.0)-20) * adhoc.display_scale - adhoc.display_y
-						,(size.width+10) * adhoc.display_scale
-						,20 * adhoc.display_scale
-					);
-					tagWidth += size.width+14;
+			var tagWidth = 0;
+			ctx.setLineDash([2,2]);
+
+			// System tags
+			for(var i=0; i<nodeTags['system'].length; ++i){
+				var tagText = nodeTags['system'][i];
+				ctx.fillStyle = adhoc.systemTags[tagText].color;
+				ctx.fillRect(
+					(n.x+(n.width/2.0)-(i*25)-20) * adhoc.display_scale - adhoc.display_x
+					,(n.y-(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
+					,20 * adhoc.display_scale
+					,20 * adhoc.display_scale
+				);
+				ctx.fillStyle = adhoc.setting('colorScheme')=='dark' ? adhoc.textColorDark : adhoc.textColor;
+				ctx.font = 'bold '+((14.0*adhoc.display_scale)<<0)+'px Arial';
+				ctx.fillText(
+					adhoc.systemTags[tagText].symbol
+					,(n.x+(n.width/2.0)-(i*25)-15) * adhoc.display_scale - adhoc.display_x
+					,(n.y-(n.height/2.0)+15) * adhoc.display_scale - adhoc.display_y
+				);
+			}
+
+			// Testing tags
+			for(var j=0; j<nodeTags['testing'].length; ++j){
+				var tagText = nodeTags['testing'][j];
+				ctx.fillStyle = adhoc.testingTags[tagText].color;
+				ctx.fillRect(
+					(n.x+(n.width/2.0)-((i+j)*25)-20) * adhoc.display_scale - adhoc.display_x
+					,(n.y-(n.height/2.0)) * adhoc.display_scale - adhoc.display_y
+					,20 * adhoc.display_scale
+					,20 * adhoc.display_scale
+				);
+				ctx.fillStyle = adhoc.setting('colorScheme')=='dark' ? adhoc.textColorDark : adhoc.textColor;
+				ctx.font = 'bold '+((14.0*adhoc.display_scale)<<0)+'px Arial';
+				ctx.fillText(
+					adhoc.testingTags[tagText].symbol
+					,(n.x+(n.width/2.0)-((i+j)*25)-15) * adhoc.display_scale - adhoc.display_x
+					,(n.y-(n.height/2.0)+15) * adhoc.display_scale - adhoc.display_y
+				);
+			}
+
+			// General tags
+			for(var i=0; i<nodeTags['general'].length; ++i){
+				var tagText = nodeTags['general'][i];
+				ctx.strokeStyle = nodeColor;
+				ctx.fillStyle = adhoc.setting('colorScheme')=='dark' ? adhoc.textColorDark : adhoc.textColor;
+				ctx.lineWidth = (2.0*adhoc.display_scale)<<0;
+				ctx.font = ((12.0*adhoc.display_scale)<<0)+'px Arial';
+				var size = ctx.measureText(tagText);
+				if(tagWidth+(size.width/adhoc.display_scale)+14 > n.width){
+					tagText = '...';
+					size = ctx.measureText(tagText);
+					i = nodeTags['general'].length;
 				}
+				ctx.fillText(
+					tagText
+					,(n.x-(n.width/2.0)+5+tagWidth) * adhoc.display_scale - adhoc.display_x
+					,(n.y+(n.height/2.0)-6) * adhoc.display_scale - adhoc.display_y
+				);
+				ctx.strokeRect(
+					(n.x-(n.width/2.0)+tagWidth) * adhoc.display_scale - adhoc.display_x
+					,(n.y+(n.height/2.0)-20) * adhoc.display_scale - adhoc.display_y
+					,(size.width+10) * adhoc.display_scale
+					,20 * adhoc.display_scale
+				);
+				tagWidth += size.width+14;
 			}
 		}
 
@@ -5702,6 +5820,8 @@ Event.observe(window, 'load', function(){
 			adhoc.registeredActions.splice(adhoc.registeredActions.indexOf(n), 1);
 		}
 		adhoc.allNodes[n.id] = null;
+
+		// Success
 		return true;
 	}
 	// Restore a node from a serialized string
@@ -5847,6 +5967,153 @@ Event.observe(window, 'load', function(){
 		}
 	}
 
+	// Add a tag to a node and apply propagation rules
+	adhoc.applyPropagationalTag = function(c, t, n, p){
+		// Don't operate on non-nodes
+		if(!n || !n.id) return;
+
+		// Create a tag oject if none present
+		if(!adhoc.allTags[n.id]){
+			adhoc.allTags[n.id] = {};
+			for(var i=0; i<adhoc.tagTypes.length; ++i){
+				adhoc.allTags[n.id][adhoc.tagTypes[i].name] = [];
+			}
+		}
+
+// TODO: record tag in history
+
+		// Add the tag if not already present
+		if(adhoc.allTags[n.id][c].indexOf(t) < 0){
+			adhoc.allTags[n.id][c].push(t);
+		}
+
+		// Apply propagation rules
+		var prop = c=='system'
+			? adhoc.systemTags[t].propagation
+			: adhoc.testingTags[t].propagation;
+		switch(prop){
+		case adhoc.propagations.ANCESTORS_IF_SIBLINGS:
+			if(!n.parent) break;
+			var allSibs = true;
+			for(var i=0; i<n.parent.children.length; ++i){
+				var sib = n.parent.children[i];
+				if(!sib.id || !adhoc.allTags[sib.id] || adhoc.allTags[sib.id][c].indexOf(t)<0){
+					allSibs = false;
+					break;
+				}
+			}
+			if(!allSibs) break;
+		case adhoc.propagations.ANCESTORS:
+			adhoc.applyPropagationalTag(c, t, n.parent, true);
+			break;
+
+		case adhoc.propagations.PARENT_IF_SIBLINGS:
+			if(p) break;
+			if(!n.parent) break;
+			var allSibs = true;
+			for(var i=0; i<n.parent.children.length; ++i){
+				var sib = n.parent.children[i];
+				if(!sib.id || !adhoc.allTags[sib.id] || adhoc.allTags[sib.id][c].indexOf(t)<0){
+					allSibs = false;
+					break;
+				}
+			}
+			if(!allSibs) break;
+		case adhoc.propagations.PARENT:
+			if(p) break;
+			adhoc.applyPropagationalTag(c, t, n.parent, true);
+			break;
+
+		case adhoc.propagations.SIBLINGS:
+			if(p) break;
+			if(!n.parent) break;
+			for(var i=0; i<n.parent.children.length; ++i){
+				adhoc.applyPropagationalTag(c, t, n.parent.children[i], true);
+			}
+			break;
+
+		case adhoc.propagations.CHILDREN:
+			if(p) break;
+		case adhoc.propagations.DESCENDENTS:
+			for(var i=0; i<n.children.length; ++i){
+				adhoc.applyPropagationalTag(c, t, n.children[i], true);
+			}
+			break;
+
+		default:
+			break;
+		}
+	}
+	// Remove a tag from a node and apply propagation rules
+	adhoc.removePropagationalTag = function(c, t, n, p){
+		// Don't operate on non-nodes
+		if(!n || !n.id) return;
+
+// TODO: record tag removal in history
+
+		// Remove the tag if already present
+		var index;
+		if(adhoc.allTags[n.id] && (index = adhoc.allTags[n.id][c].indexOf(t)) >= 0){
+			adhoc.allTags[n.id][c].splice(index, 1);
+		}
+
+		// Apply propagation rules
+		var prop = c=='system'
+			? adhoc.systemTags[t].propagation
+			: adhoc.testingTags[t].propagation;
+		switch(prop){
+		case adhoc.propagations.ANCESTORS:
+			if(!n.parent) break;
+			var anySibs = false;
+			for(var i=0; i<n.parent.children.length; ++i){
+				var sib = n.parent.children[i];
+				if(sib.id && adhoc.allTags[sib.id] && adhoc.allTags[sib.id][c].indexOf(t)>=0){
+					anySibs = true;
+					break;
+				}
+			}
+			if(anySibs) break;
+		case adhoc.propagations.ANCESTORS_IF_SIBLINGS:
+			adhoc.removePropagationalTag(c, t, n.parent, true);
+			break;
+
+		case adhoc.propagations.PARENT:
+			if(p) break;
+			if(!n.parent) break;
+			var anySibs = false;
+			for(var i=0; i<n.parent.children.length; ++i){
+				var sib = n.parent.children[i];
+				if(sib.id && adhoc.allTags[sib.id] && adhoc.allTags[sib.id][c].indexOf(t)>=0){
+					anySibs = true;
+					break;
+				}
+			}
+			if(!anySibs) break;
+		case adhoc.propagations.PARENT_IF_SIBLINGS:
+			if(p) break;
+			adhoc.removePropagationalTag(c, t, n.parent, true);
+			break;
+
+		case adhoc.propagations.SIBLINGS:
+			if(p) break;
+			if(!n.parent) break;
+			for(var i=0; i<n.parent.children.length; ++i){
+				adhoc.removePropagationalTag(c, t, n.parent.children[i], true);
+			}
+			break;
+
+		case adhoc.propagations.CHILDREN:
+			if(p) break;
+		case adhoc.propagations.DESCENDENTS:
+			for(var i=0; i<n.children.length; ++i){
+				adhoc.removePropagationalTag(c, t, n.children[i], true);
+			}
+			break;
+
+		default:
+			break;
+		}
+	}
 	// Apply multiple tags to nodes by id
 	adhoc.applyTags = function(nodeTags){
 		if(!nodeTags) return;
@@ -5880,14 +6147,10 @@ Event.observe(window, 'load', function(){
 	adhoc.getTagsByNode = function(n){
 		if(!n.id || !adhoc.allTags[n.id] || !adhoc.allTags[n.id]['general']){
 			var ret = {};
-			for(var i in adhoc.allTags){
-				if(!adhoc.allTags[i] || !adhoc.allTags[i]['general']) continue;
-				for(var tagCat in adhoc.allTags[i]){
-					ret[tagCat] = [];
-				}
-				return ret;
+			for(var i=0; i<adhoc.tagTypes.length; ++i){
+					ret[adhoc.tagTypes[i].name] = [];
 			}
-			return null;
+			return ret;
 		}
 		return adhoc.allTags[n.id];
 	}

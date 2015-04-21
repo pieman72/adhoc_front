@@ -4,13 +4,20 @@ include_once('ui.php');
 // Load application config
 $conf = parse_ini_file('config.ini');
 
-// Load user settings
-$settings = (isset($_COOKIE)&&isset($_COOKIE['adhocSettings']) ? json_decode(urldecode($_COOKIE['adhocSettings'])) : (object)array());
-
 // Start collecting errors
 $errors = array();
 
-// Start the session
+// Initialize a DB connection
+$dbConn = mysqli_connect($conf['mysql_host'], $conf['mysql_user'], $conf['mysql_pass'], $conf['mysql_db']);
+if($dbConn->error){
+	$errors[] = $dbConn->error;
+	$dbConn = null;
+}
+
+// Load user settings
+$settings = (isset($_COOKIE)&&isset($_COOKIE['adhocSettings']) ? json_decode(urldecode($_COOKIE['adhocSettings'])) : (object)array());
+
+// Re/start the session
 if(session_status()==PHP_SESSION_NONE){
     session_set_cookie_params(
         0
@@ -20,15 +27,7 @@ if(session_status()==PHP_SESSION_NONE){
     session_start();
 }
 
-// Initialize a DB connection
-$dbConn = mysqli_connect($conf['mysql_host'], $conf['mysql_user'], $conf['mysql_pass'], $conf['mysql_db']);
-if($dbConn->error){
-	$errors[] = $dbConn->error;
-	$dbConn = null;
-}
-
 // If the user is not logged in by session, try to log them in by cookie
-$username = null;
 if(!count($errors)
 		&& (
 			!isset($_SESSION['username'])
@@ -80,13 +79,8 @@ if(!count($errors)
 			,$settingsTemp
 			,strtotime('+1 year')
 			,'/adhoc_demo/'
-			,'harveyserv.ath.cx'
+			,'.harveyserv.ath.cx'
 		);
-		if($settings->remember){
-			$settingsTemp = json_decode($settingsTemp);
-			$settingsTemp->password = $settings->password;
-			$settingsTemp = json_encode($settingsTemp);
-		}
 		$settings = json_decode($settingsTemp);
 	}
 }
@@ -98,13 +92,14 @@ if(!isset($_SESSION['username']) || !$_SESSION['username']){
 		,''
 		,strtotime('+1 year')
 		,'/adhoc_demo/'
-		,'harveyserv.ath.cx'
+		,'.harveyserv.ath.cx'
 	);
 	$settings = (object) array();
+}
 
-// If the username was loaded, set a token for XSRF
-}else if(!isset($_SESSION['xsrftoken'])){
-	$_SESSION['xsrftoken'] = sha1(rand().$_SESSION['username']);
+// Set a token for XSRF
+if(!isset($_SESSION['xsrftoken'])){
+	$_SESSION['xsrftoken'] = sha1(rand().(isset($_SESSION['username']) ? $_SESSION['username'] : ''));
 }
 
 // If the user was found, try to load their projects
