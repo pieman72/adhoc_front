@@ -359,7 +359,8 @@ span.nxj_button.nxj_cssButton.disabled.saving:after {
 	float:left;
 	width:100%;
 	}
-.toolboxTab {
+.toolboxTab,
+#toolboxMenus .menuItem {
 	background:#EEEEEE;
 	border:1px solid transparent;
 	box-shadow:0 0 4px 3px #BBBBBB inset;
@@ -371,7 +372,8 @@ span.nxj_button.nxj_cssButton.disabled.saving:after {
 	min-height:24px;
 	padding:0 5px;
 	}
-.dark .toolboxTab {
+.dark .toolboxTab,
+.dark #toolboxMenus .menuItem {
 	background:#333333;
 	box-shadow:0 0 4px 3px #111111 inset;
 	}
@@ -468,6 +470,42 @@ span.nxj_button.nxj_cssButton.disabled.saving:after {
 .toolboxItemText {
 	float:left;
 	line-height:50px;
+	}
+#toolboxMenus {
+	bottom:1px;
+	left:0;
+	position:absolute;
+	width:20%;
+	}
+#toolboxMenus .menuItem {
+	box-sizing:border-box;
+	color:#000000;
+	text-align:center;
+	width:100%;
+	}
+.dark #toolboxMenus .menuItem {
+	color:#EEEEEE;
+	}
+#toolboxMenus .menuItem.open,
+#toolboxMenus .menuItem.active,
+.dark #toolboxMenus .menuItem.open
+.dark #toolboxMenus .menuItem.active {
+	border:1px solid #FFEF22;
+	color:#FFEF22;
+	}
+#toolboxMenus .menuItem .icon {
+	float:left;
+	margin:10px 5px;
+	}
+#toolboxMenus .submenu {
+	bottom:0;
+	display:none;
+	left:20%;
+	position:fixed;
+	width:250px;
+	}
+#toolboxMenus .open .submenu {
+	display:block;
 	}
 
 #canvas {

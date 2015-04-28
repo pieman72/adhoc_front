@@ -396,6 +396,8 @@ if(!count($errors) && (!isset($_SESSION['username']) || $_SESSION['username'])){
 				<div id="toolboxTabs"></div>
 				<div class="clear"></div>
 				<div id="toolboxItems"></div>
+				<div class="clear"></div>
+				<div id="toolboxMenus"></div>
 			</div>
 
 			<canvas id="canvas" class="floatLeft"></canvas>

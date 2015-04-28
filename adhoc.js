@@ -1180,6 +1180,136 @@ Event.observe(window, 'load', function(){
     };
 	adhoc.allTags = {};
 
+	// Toolbox menu items
+	adhoc.toolboxMenuItems = [
+		{title: 'Apply tag', label: 'Apply tag', action: null, submenu: [
+			{toolClass: 'tag'
+				,title: 'validated'
+				,label: 'Validated'
+				,target: 'tag-add-system-validated'
+				,icon: '//static.harveyserv.ath.cx/adhoc/img/icon_validated.png'
+				,action: function(e){
+					Event.stop(e);
+					adhoc.deactivateAllTools();
+					$('toolbox').className = this.addClassName('active').getAttribute('data-target');
+				}
+			},{toolClass: 'tag'
+				,title: 'error'
+				,label: 'Error'
+				,target: 'tag-add-system-error'
+				,icon: '//static.harveyserv.ath.cx/adhoc/img/icon_error.png'
+				,action: function(e){
+					Event.stop(e);
+					adhoc.deactivateAllTools();
+					$('toolbox').className = this.addClassName('active').getAttribute('data-target');
+				}
+			},{toolClass: 'tag'
+				,title: 'tested'
+				,label: 'Tested'
+				,target: 'tag-add-testing-tested'
+				,icon: '//static.harveyserv.ath.cx/adhoc/img/icon_tested.png'
+				,action: function(e){
+					Event.stop(e);
+					adhoc.deactivateAllTools();
+					$('toolbox').className = this.addClassName('active').getAttribute('data-target');
+				}
+			},{toolClass: 'tag'
+				,title: 'TODO'
+				,label: 'TODO'
+				,target: 'tag-add-testing-TODO'
+				,icon: '//static.harveyserv.ath.cx/adhoc/img/icon_TODO.png'
+				,action: function(e){
+					Event.stop(e);
+					adhoc.deactivateAllTools();
+					$('toolbox').className = this.addClassName('active').getAttribute('data-target');
+				}
+			},{toolClass: 'tag'
+				,title: 'needs review'
+				,label: 'Needs Review'
+				,target: 'tag-add-testing-needs_review'
+				,icon: '//static.harveyserv.ath.cx/adhoc/img/icon_needs_review.png'
+				,action: function(e){
+					Event.stop(e);
+					adhoc.deactivateAllTools();
+					$('toolbox').className = this.addClassName('active').getAttribute('data-target');
+				}
+			},{toolClass: 'tag'
+				,title: 'possible problem'
+				,label: 'Possible Problem'
+				,target: 'tag-add-testing-possible_problem'
+				,icon: '//static.harveyserv.ath.cx/adhoc/img/icon_possible_problem.png'
+				,action: function(e){
+					Event.stop(e);
+					adhoc.deactivateAllTools();
+					$('toolbox').className = this.addClassName('active').getAttribute('data-target');
+				}
+			}
+		]}
+		,{title: 'Remove tag', label: 'Remove tag', action: null, submenu: [
+			{toolClass: 'tag'
+				,title: 'validated'
+				,label: 'Validated'
+				,target: 'tag-remove-system-validated'
+				,icon: '//static.harveyserv.ath.cx/adhoc/img/icon_validated.png'
+				,action: function(e){
+					Event.stop(e);
+					adhoc.deactivateAllTools();
+					$('toolbox').className = this.addClassName('active').getAttribute('data-target');
+				}
+			},{toolClass: 'tag'
+				,title: 'error'
+				,label: 'Error'
+				,target: 'tag-remove-system-error'
+				,icon: '//static.harveyserv.ath.cx/adhoc/img/icon_error.png'
+				,action: function(e){
+					Event.stop(e);
+					adhoc.deactivateAllTools();
+					$('toolbox').className = this.addClassName('active').getAttribute('data-target');
+				}
+			},{toolClass: 'tag'
+				,title: 'tested'
+				,label: 'Tested'
+				,target: 'tag-remove-testing-tested'
+				,icon: '//static.harveyserv.ath.cx/adhoc/img/icon_tested.png'
+				,action: function(e){
+					Event.stop(e);
+					adhoc.deactivateAllTools();
+					$('toolbox').className = this.addClassName('active').getAttribute('data-target');
+				}
+			},{toolClass: 'tag'
+				,title: 'TODO'
+				,label: 'TODO'
+				,target: 'tag-remove-testing-TODO'
+				,icon: '//static.harveyserv.ath.cx/adhoc/img/icon_TODO.png'
+				,action: function(e){
+					Event.stop(e);
+					adhoc.deactivateAllTools();
+					$('toolbox').className = this.addClassName('active').getAttribute('data-target');
+				}
+			},{toolClass: 'tag'
+				,title: 'needs review'
+				,label: 'Needs Review'
+				,target: 'tag-remove-testing-needs_review'
+				,icon: '//static.harveyserv.ath.cx/adhoc/img/icon_needs_review.png'
+				,action: function(e){
+					Event.stop(e);
+					adhoc.deactivateAllTools();
+					$('toolbox').className = this.addClassName('active').getAttribute('data-target');
+				}
+			},{toolClass: 'tag'
+				,title: 'possible problem'
+				,label: 'Possible Problem'
+				,target: 'tag-remove-testing-possible_problem'
+				,icon: '//static.harveyserv.ath.cx/adhoc/img/icon_possible_problem.png'
+				,action: function(e){
+					Event.stop(e);
+					adhoc.deactivateAllTools();
+					$('toolbox').className = this.addClassName('active').getAttribute('data-target');
+				}
+			},
+		]}
+	];
+
 	// Convert an int to a 3-byte string
 	adhoc.intTo3Byte = function(i){
 		var out = String.fromCharCode(i%128);
@@ -2750,8 +2880,14 @@ Event.observe(window, 'load', function(){
 
 	// Deactivate toolbox tools
 	adhoc.deactivateAllTools = function(){
-		$$('.toolboxItem.active').each(function(active){
+		$$('#toolbox .active').each(function(active){
 			active.removeClassName('active');
+		});
+	}
+	// Close toolbox menus
+	adhoc.closeAllMenus = function(){
+		$$('#toolbox .open').each(function(open){
+			open.removeClassName('open');
 		});
 	}
 	// Selects the contents of an element
@@ -3143,7 +3279,7 @@ Event.observe(window, 'load', function(){
 		ctx.font = "20px Arial";
 		ctx.fillStyle = adhoc.textColor;
 
-		// Ready the toolbox categories
+		// Ready the toolbox node categories
 		var tab, item, icon, text, clear, passed=0, toolbox=$('toolbox'), toolboxTabs=$('toolboxTabs'), toolboxItems=$('toolboxItems');
 		for(var i=0,leni=adhoc.nodeTypeNames.length; i<leni; ++i){
 			// Print section headings (except null and assignment)
@@ -3171,6 +3307,7 @@ Event.observe(window, 'load', function(){
 				// Item
 				item = $(document.createElement('div'));
 				item.addClassName('toolboxItem').addClassName(adhoc.nodeTypeNames[i]);
+				item.setAttribute('data-toolClass', 'node');
 				item.setAttribute('data-type', i);
 				item.setAttribute('data-which', j+passed);
 				item.observe('click', function(){
@@ -3198,6 +3335,62 @@ Event.observe(window, 'load', function(){
 				toolboxItems.appendChild(clear);
 			}
 			passed += lenj;
+		}
+		// Ready the toolbox menu items
+		var constructMenus = function(menuArray){
+			var ret = [];
+			for(var i=0,leni=menuArray.length; i<leni; ++i){
+				// Create the menu item
+				var item = menuArray[i];
+				var menu = $(document.createElement('div')).addClassName('menuItem');
+				// Add the tool class
+				if(item.toolClass){
+					menu.setAttribute('data-toolClass', item.toolClass);
+				}
+				// Add a text label or image icon
+				if(item.label){
+					menu.update(item.label);
+				}
+				if(item.icon){
+					var img = $(document.createElement('img'));
+					img.addClassName('icon').setAttribute('src', item.icon);
+					menu.appendChild(img);
+				}
+				// Add the target
+				if(item.target){
+					menu.setAttribute('data-target', item.target);
+				}
+				// Add the title
+				if(item.title){
+					menu.setAttribute('title', item.title);
+				}
+				// Add the click action
+				if(item.action){
+					menu.observe('click', item.action);
+				}else{
+					menu.observe('click', function(){
+						var wasOpen = this.hasClassName('open');
+						adhoc.closeAllMenus();
+						if(!wasOpen) this.addClassName('open');
+					});
+				}
+				// Add a submenu
+				if(item.submenu){
+					var submenu = $(document.createElement('div')).addClassName('submenu');
+					menu.appendChild(submenu);
+					var submenuItems = constructMenus(item.submenu);
+					for(var j=0,lenj=submenuItems.length; j<lenj; ++j){
+						submenu.appendChild(submenuItems[j]);
+					}
+				}
+				// Add to the return list
+				ret.push(menu);
+			}
+			return ret;
+		}
+		var menuItems = constructMenus(adhoc.toolboxMenuItems);
+		for(var i=0,leni=menuItems.length; i<leni; ++i){
+			$('toolboxMenus').appendChild(menuItems[i]);
 		}
 
 		// Handle mouse down
@@ -3260,222 +3453,235 @@ Event.observe(window, 'load', function(){
 			if(adhoc.movingNode) return  adhoc.reattachNode(click);
 
 			// If a tool is active and a node was clicked, figure out what to do with it
-			var activeTools = $$('.toolboxItem.active');
+			var activeTools = $$('#toolbox .active');
 			if(activeTools.length && clickedNode){
-				// Get the tool's type, which, parent, and replacee
-				var type = parseInt(activeTools[0].getAttribute('data-type'));
-				var which = parseInt(activeTools[0].getAttribute('data-which'));
-				var prnt = (clickedNode.nodeType == adhoc.nodeTypes.TYPE_NULL) ? clickedNode.parent : clickedNode;
-				var repl = (prnt == clickedNode) ? null : clickedNode;
-				if(adhoc.selectedNode) adhoc.selectedNode.selected = false;
-				adhoc.selectedNode = prnt;
-				prnt.selected = true;
+				// Handle node-type tools
+				if(activeTools[0].getAttribute('data-toolClass') == 'node'){
+					// Get the tool's type, which, parent, and replacee
+					var type = parseInt(activeTools[0].getAttribute('data-type'));
+					var which = parseInt(activeTools[0].getAttribute('data-which'));
+					var prnt = (clickedNode.nodeType == adhoc.nodeTypes.TYPE_NULL) ? clickedNode.parent : clickedNode;
+					var repl = (prnt == clickedNode) ? null : clickedNode;
+					if(adhoc.selectedNode) adhoc.selectedNode.selected = false;
+					adhoc.selectedNode = prnt;
+					prnt.selected = true;
 
-				// For variables, determine the which from context
-				if(type == adhoc.nodeTypes.VARIABLE){
-					var neededChildren = adhoc.nodeWhichChildren[prnt.nodeType][adhoc.nodeWhichIndices[prnt.which][1]];
-					if(prnt.childType == adhoc.nodeChildType.INDEX) neededChildren = adhoc.nodeWhichChildren[0][1];
-					var assignOk = false;
+					// For variables, determine the which from context
+					if(type == adhoc.nodeTypes.VARIABLE){
+						var neededChildren = adhoc.nodeWhichChildren[prnt.nodeType][adhoc.nodeWhichIndices[prnt.which][1]];
+						if(prnt.childType == adhoc.nodeChildType.INDEX) neededChildren = adhoc.nodeWhichChildren[0][1];
+						var assignOk = false;
 
-					for(var i=0; i<neededChildren.length; ++i){
-						var role = neededChildren[i];
-						// Skip if the child's type is not allowed
-						if(adhoc.nodeChildTypeInfo[role.childType].nodeTypes.indexOf(adhoc.nodeTypes.VARIABLE) < 0) continue;
-						// Skip if the child's sub-type is not allowed
-						if(adhoc.nodeChildTypeInfo[role.childType].nodeNotWhich.indexOf(adhoc.nodeWhich.VARIABLE_ASIGN) >= 0) continue;
-						// Skip if the parent has already maxed the child's type
-						if(role.max!=null && adhoc.countChildrenOfType(prnt, role.childType, true)>=role.max) continue;
-						// Variable assignments are ok
-						assignOk = true;
-						break;
+						for(var i=0; i<neededChildren.length; ++i){
+							var role = neededChildren[i];
+							// Skip if the child's type is not allowed
+							if(adhoc.nodeChildTypeInfo[role.childType].nodeTypes.indexOf(adhoc.nodeTypes.VARIABLE) < 0) continue;
+							// Skip if the child's sub-type is not allowed
+							if(adhoc.nodeChildTypeInfo[role.childType].nodeNotWhich.indexOf(adhoc.nodeWhich.VARIABLE_ASIGN) >= 0) continue;
+							// Skip if the parent has already maxed the child's type
+							if(role.max!=null && adhoc.countChildrenOfType(prnt, role.childType, true)>=role.max) continue;
+							// Variable assignments are ok
+							assignOk = true;
+							break;
+						}
+						if(assignOk){
+							which = adhoc.nodeWhich.VARIABLE_ASIGN;
+						}else{
+							which = adhoc.nodeWhich.VARIABLE_EVAL;
+						}
 					}
-					if(assignOk){
-						which = adhoc.nodeWhich.VARIABLE_ASIGN;
-					}else{
-						which = adhoc.nodeWhich.VARIABLE_EVAL;
-					}
-				}
 
-				// Make a callback that takes a childType and does the rest of node creation
-				var createNodeWithType = function(childType){
-					// Make sure the child type is ok with the which
-					if(adhoc.nodeChildTypeInfo[childType].nodeTypes.indexOf(type) < 0
-							|| adhoc.nodeChildTypeInfo[childType].nodeNotWhich.indexOf(type) >= 0){
-						var typeName = adhoc.nodeWhichNames[type][adhoc.nodeWhichIndices[which][1]][0];
-						var roleName = adhoc.nodeChildTypeInfo[childType].label;
-						adhoc.error("A '"+typeName+"' node cannot fill the '"+roleName+"' role.");
+					// Make a callback that takes a childType and does the rest of node creation
+					var createNodeWithType = function(childType){
+						// Make sure the child type is ok with the which
+						if(adhoc.nodeChildTypeInfo[childType].nodeTypes.indexOf(type) < 0
+								|| adhoc.nodeChildTypeInfo[childType].nodeNotWhich.indexOf(type) >= 0){
+							var typeName = adhoc.nodeWhichNames[type][adhoc.nodeWhichIndices[which][1]][0];
+							var roleName = adhoc.nodeChildTypeInfo[childType].label;
+							adhoc.error("A '"+typeName+"' node cannot fill the '"+roleName+"' role.");
+							return;
+						}
+
+						// Ask for node info based on which
+						switch(which){
+						case adhoc.nodeWhich.ACTION_DEFIN:
+							// Prompt for an action name
+							adhoc.promptValue('Enter an action name:', '', adhoc.validateActionDefName, false, function(val){
+								adhoc.deactivateAllTools();
+								var n = adhoc.createNode(null, prnt, repl, type, which, childType, null, val);
+								if(n) setTimeout(function(){
+									adhoc.promptValue('Add a comment:', '', adhoc.validateComment, false, function(val){
+										n.value = val ? val : null;
+									});
+								}, 10);
+							});
+							break;
+
+						case adhoc.nodeWhich.ACTION_CALL:
+							// Prompt for an action name
+							adhoc.promptValue('Enter an action name:', '', adhoc.validateActionName, false, function(val, rem, hid){
+								adhoc.deactivateAllTools();
+								adhoc.createNode(null, prnt, repl, type, which, childType, rem, val, null, hid);
+							}, adhoc.actionSearch, 'Not found in loaded projects');
+							break;
+
+						case adhoc.nodeWhich.VARIABLE_ASIGN:
+						case adhoc.nodeWhich.VARIABLE_EVAL:
+							// Prompt for a variable name
+							adhoc.promptValue('Enter a variable name:', '', adhoc.validateIdentifier, false, function(val, rem, hid){
+								adhoc.deactivateAllTools();
+								adhoc.createNode(null, prnt, repl, type, which, childType, null, val, null, hid);
+							}, adhoc.genScopeSearch(prnt, false), 'New variable');
+							break;
+
+						case adhoc.nodeWhich.LITERAL_BOOL:
+							// Prompt for a boolean value
+							adhoc.promptFlag('Select a boolean value:', ['true', 'false'], function(val){
+								adhoc.deactivateAllTools();
+								adhoc.createNode(null, prnt, repl, type, which, childType, null, null, !val);
+							});
+							break;
+
+						case adhoc.nodeWhich.LITERAL_INT:
+							// Prompt for an integer value
+							adhoc.promptValue('Enter an integer:', '', adhoc.validateInt, true, function(val){
+								adhoc.deactivateAllTools();
+								adhoc.createNode(null, prnt, repl, type, which, childType, null, null, parseInt(val));
+							});
+							break;
+
+						case adhoc.nodeWhich.LITERAL_FLOAT:
+							// Prompt for a float value
+							adhoc.promptValue('Enter a float:', '', adhoc.validateFloat, true, function(val){
+								adhoc.deactivateAllTools();
+								adhoc.createNode(null, prnt, repl, type, which, childType, null, null, parseFloat(val));
+							});
+							break;
+
+						case adhoc.nodeWhich.LITERAL_STRNG:
+							// Prompt for a string value
+							adhoc.promptValue('Enter a string:', '', adhoc.validateString, false, function(val){
+								adhoc.deactivateAllTools();
+								adhoc.createNode(null, prnt, repl, type, which, childType, null, null, val);
+							});
+							break;
+
+						case adhoc.nodeWhich.LITERAL_ARRAY:
+						case adhoc.nodeWhich.LITERAL_HASH:
+							// Create the array/hash first
+							adhoc.deactivateAllTools();
+							var newArray = adhoc.createNode(null, prnt, repl, type, which, childType);
+							// Then prompt for a child data type
+							adhoc.promptSelect('Choose dataType held:', [
+								{
+									value: adhoc.nodeDataTypes.BOOL
+									,display: 'Bool'
+								},{
+									value: adhoc.nodeDataTypes.INT
+									,display: 'Int'
+								},{
+									value: adhoc.nodeDataTypes.FLOAT
+									,display: 'Float'
+								},{
+									value: adhoc.nodeDataTypes.STRING
+									,display: 'String'
+								},{
+									value: adhoc.nodeDataTypes.ARRAY
+									,display: 'Array'
+								},{
+									value: adhoc.nodeDataTypes.HASH
+									,display: 'Hash'
+								},{
+									value: adhoc.nodeDataTypes.STRUCT
+									,display: 'Struct'
+								},{
+									value: adhoc.nodeDataTypes.ACTION
+									,display: 'Action'
+								},{
+									value: adhoc.nodeDataTypes.MIXED
+									,display: 'Mixed - <i>(some languages only)</i>'
+									,default: 1
+								}
+							], function(val, disp){
+								if(val != adhoc.nodeDataTypes.VOID)
+									newArray.childDataType = val;
+							});
+							break;
+
+						case adhoc.nodeWhich.LITERAL_STRCT:
+							adhoc.deactivateAllTools();
+							adhoc.message('Warning', 'This type of literal is not yet implemented'); break;
+							adhoc.createNode(null, prnt, repl, type, which, childType);
+							break;
+
+						default:
+							adhoc.deactivateAllTools();
+							adhoc.createNode(null, prnt, repl, type, which, childType);
+						}
+					}
+
+					// If we're dealing with a replacement, so take that role
+					if(repl){
+						createNodeWithType(repl.childType);
 						return;
 					}
 
-					// Ask for node info based on which
-					switch(which){
-					case adhoc.nodeWhich.ACTION_DEFIN:
-						// Prompt for an action name
-						adhoc.promptValue('Enter an action name:', '', adhoc.validateActionDefName, false, function(val){
-							adhoc.deactivateAllTools();
-							var n = adhoc.createNode(null, prnt, repl, type, which, childType, null, val);
-							if(n) setTimeout(function(){
-								adhoc.promptValue('Add a comment:', '', adhoc.validateComment, false, function(val){
-									n.value = val ? val : null;
-								});
-							}, 10);
-						});
-						break;
+					// Get the child roles this node can fill
+					var neededChildren = adhoc.nodeWhichChildren[prnt.nodeType][adhoc.nodeWhichIndices[prnt.which][1]];
+					if(prnt.childType == adhoc.nodeChildType.INDEX) neededChildren = adhoc.nodeWhichChildren[0][1];
+					var roleOptions = [];
+					var roleOptionNames = [];
+					var someOk = false;
+					// Loop over the types of children the parent needs
+					for(var i=0; i<neededChildren.length; ++i){
+						var role = neededChildren[i];
+						// Skip if the child's type is not allowed
+						if(adhoc.nodeChildTypeInfo[role.childType].nodeTypes.indexOf(type) < 0) continue;
+						// Skip if the child's sub-type is not allowed
+						if(adhoc.nodeChildTypeInfo[role.childType].nodeNotWhich.indexOf(which) >= 0) continue;
+						// The child type is allowed for at least one role
+						someOk = true;
+						// Skip if the parent has already maxed the child's type
+						if(role.max!=null && adhoc.countChildrenOfType(prnt, role.childType, true) >= role.max) continue;
 
-					case adhoc.nodeWhich.ACTION_CALL:
-						// Prompt for an action name
-						adhoc.promptValue('Enter an action name:', '', adhoc.validateActionName, false, function(val, rem, hid){
-							adhoc.deactivateAllTools();
-							adhoc.createNode(null, prnt, repl, type, which, childType, rem, val, null, hid);
-						}, adhoc.actionSearch, 'Not found in loaded projects');
-						break;
-
-					case adhoc.nodeWhich.VARIABLE_ASIGN:
-					case adhoc.nodeWhich.VARIABLE_EVAL:
-						// Prompt for a variable name
-						adhoc.promptValue('Enter a variable name:', '', adhoc.validateIdentifier, false, function(val, rem, hid){
-							adhoc.deactivateAllTools();
-							adhoc.createNode(null, prnt, repl, type, which, childType, null, val, null, hid);
-						}, adhoc.genScopeSearch(prnt, false), 'New variable');
-						break;
-
-					case adhoc.nodeWhich.LITERAL_BOOL:
-						// Prompt for a boolean value
-						adhoc.promptFlag('Select a boolean value:', ['true', 'false'], function(val){
-							adhoc.deactivateAllTools();
-							adhoc.createNode(null, prnt, repl, type, which, childType, null, null, !val);
-						});
-						break;
-
-					case adhoc.nodeWhich.LITERAL_INT:
-						// Prompt for an integer value
-						adhoc.promptValue('Enter an integer:', '', adhoc.validateInt, true, function(val){
-							adhoc.deactivateAllTools();
-							adhoc.createNode(null, prnt, repl, type, which, childType, null, null, parseInt(val));
-						});
-						break;
-
-					case adhoc.nodeWhich.LITERAL_FLOAT:
-						// Prompt for a float value
-						adhoc.promptValue('Enter a float:', '', adhoc.validateFloat, true, function(val){
-							adhoc.deactivateAllTools();
-							adhoc.createNode(null, prnt, repl, type, which, childType, null, null, parseFloat(val));
-						});
-						break;
-
-					case adhoc.nodeWhich.LITERAL_STRNG:
-						// Prompt for a string value
-						adhoc.promptValue('Enter a string:', '', adhoc.validateString, false, function(val){
-							adhoc.deactivateAllTools();
-							adhoc.createNode(null, prnt, repl, type, which, childType, null, null, val);
-						});
-						break;
-
-					case adhoc.nodeWhich.LITERAL_ARRAY:
-					case adhoc.nodeWhich.LITERAL_HASH:
-						// Create the array/hash first
-						adhoc.deactivateAllTools();
-						var newArray = adhoc.createNode(null, prnt, repl, type, which, childType);
-						// Then prompt for a child data type
-						adhoc.promptSelect('Choose dataType held:', [
-							{
-								value: adhoc.nodeDataTypes.BOOL
-								,display: 'Bool'
-							},{
-								value: adhoc.nodeDataTypes.INT
-								,display: 'Int'
-							},{
-								value: adhoc.nodeDataTypes.FLOAT
-								,display: 'Float'
-							},{
-								value: adhoc.nodeDataTypes.STRING
-								,display: 'String'
-							},{
-								value: adhoc.nodeDataTypes.ARRAY
-								,display: 'Array'
-							},{
-								value: adhoc.nodeDataTypes.HASH
-								,display: 'Hash'
-							},{
-								value: adhoc.nodeDataTypes.STRUCT
-								,display: 'Struct'
-							},{
-								value: adhoc.nodeDataTypes.ACTION
-								,display: 'Action'
-							},{
-								value: adhoc.nodeDataTypes.MIXED
-								,display: 'Mixed - <i>(some languages only)</i>'
-								,default: 1
-							}
-						], function(val, disp){
-							if(val != adhoc.nodeDataTypes.VOID)
-								newArray.childDataType = val;
-						});
-						break;
-
-					case adhoc.nodeWhich.LITERAL_STRCT:
-						adhoc.deactivateAllTools();
-						adhoc.message('Warning', 'This type of literal is not yet implemented'); break;
-						adhoc.createNode(null, prnt, repl, type, which, childType);
-						break;
-
-					default:
-						adhoc.deactivateAllTools();
-						adhoc.createNode(null, prnt, repl, type, which, childType);
+						// If we make it here, the child type is viable
+						roleOptions.push(role.childType);
+						roleOptionNames.push(adhoc.nodeChildTypeInfo[role.childType].label);
 					}
-				}
 
-				// If we're dealing with a replacement, so take that role
-				if(repl){
-					createNodeWithType(repl.childType);
-					return;
-				}
+					// Report errors if there are no roles available
+					if(!roleOptions.length){
+						var parentName = adhoc.nodeWhichNames[adhoc.nodeWhichIndices[prnt.which][0]][adhoc.nodeWhichIndices[prnt.which][1]][0];
+						var childName = adhoc.nodeWhichNames[type][adhoc.nodeWhichIndices[which][1]][0];
+						adhoc.error(someOk
+							? "The parent node cannot directly hold any more children of this type."
+							: "A '"+parentName+"' node cannot hold a '"+childName+"' node directly."
+						);
 
-				// Get the child roles this node can fill
-				var neededChildren = adhoc.nodeWhichChildren[prnt.nodeType][adhoc.nodeWhichIndices[prnt.which][1]];
-				if(prnt.childType == adhoc.nodeChildType.INDEX) neededChildren = adhoc.nodeWhichChildren[0][1];
-				var roleOptions = [];
-				var roleOptionNames = [];
-				var someOk = false;
-				// Loop over the types of children the parent needs
-				for(var i=0; i<neededChildren.length; ++i){
-					var role = neededChildren[i];
-					// Skip if the child's type is not allowed
-					if(adhoc.nodeChildTypeInfo[role.childType].nodeTypes.indexOf(type) < 0) continue;
-					// Skip if the child's sub-type is not allowed
-					if(adhoc.nodeChildTypeInfo[role.childType].nodeNotWhich.indexOf(which) >= 0) continue;
-					// The child type is allowed for at least one role
-					someOk = true;
-					// Skip if the parent has already maxed the child's type
-					if(role.max!=null && adhoc.countChildrenOfType(prnt, role.childType, true) >= role.max) continue;
+					// If the parent is a variable assignment, but is acting as 'STORAGE', then fail
+					}else if(prnt.which==adhoc.nodeWhich.VARIABLE_ASIGN && prnt.childType==adhoc.nodeChildType.STORAGE){
+						adhoc.error("You cannot directly assign a value to a variable that belongs to an assignment node.");
 
-					// If we make it here, the child type is viable
-					roleOptions.push(role.childType);
-					roleOptionNames.push(adhoc.nodeChildTypeInfo[role.childType].label);
-				}
+					// If no errors, but only one option, then just use that
+					}else if(roleOptions.length == 1){
+						createNodeWithType(roleOptions[0]);
 
-				// Report errors if there are no roles available
-				if(!roleOptions.length){
-					var parentName = adhoc.nodeWhichNames[adhoc.nodeWhichIndices[prnt.which][0]][adhoc.nodeWhichIndices[prnt.which][1]][0];
-					var childName = adhoc.nodeWhichNames[type][adhoc.nodeWhichIndices[which][1]][0];
-					adhoc.error(someOk
-						? "The parent node cannot directly hold any more children of this type."
-						: "A '"+parentName+"' node cannot hold a '"+childName+"' node directly."
-					);
-
-				// If the parent is a variable assignment, but is acting as 'STORAGE', then fail
-				}else if(prnt.which==adhoc.nodeWhich.VARIABLE_ASIGN && prnt.childType==adhoc.nodeChildType.STORAGE){
-					adhoc.error("You cannot directly assign a value to a variable that belongs to an assignment node.");
-
-				// If no errors, but only one option, then just use that
-				}else if(roleOptions.length == 1){
-					createNodeWithType(roleOptions[0]);
-
-				// If multiple roles available, prompt for which role will be filled
-				}else{
-					adhoc.promptFlag('Select a role for the new node:', roleOptionNames, function(val){
-						createNodeWithType(roleOptions[val]);
-					});
+					// If multiple roles available, prompt for which role will be filled
+					}else{
+						adhoc.promptFlag('Select a role for the new node:', roleOptionNames, function(val){
+							createNodeWithType(roleOptions[val]);
+						});
+					}
+				// Handle tag-type tools
+				}else if(activeTools[0].getAttribute('data-toolClass') == 'tag'){
+					var tagInfo = activeTools[0].getAttribute('data-target').split('-');
+					if(tagInfo[1] == 'add'){
+						adhoc.applyPropagationalTag(tagInfo[2], tagInfo[3], clickedNode);
+					}else if(tagInfo[1] == 'remove'){
+						adhoc.removePropagationalTag(tagInfo[2], tagInfo[3], clickedNode);
+					}
+					adhoc.deactivateAllTools();
+					adhoc.closeAllMenus();
 				}
 
 			// If a node is clicked with no tool active, figure out what to do
@@ -3491,12 +3697,15 @@ Event.observe(window, 'load', function(){
 					adhoc.selectedNode = clickedNode;
 				}
 
+
 			// Empty space was clicked, deselect the selected node
 			}else if(adhoc.selectedNode){
 				if($('lb_input_acList')) $('lb_input_acList').hide();
 				adhoc.selectedNode.selected = false;
 				adhoc.selectedNode = null;
 			}
+
+			// Render after any canvas click
 			adhoc.refreshRender();
 		};
 		// Handle mouse move
