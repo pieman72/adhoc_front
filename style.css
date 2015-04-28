@@ -686,11 +686,15 @@ span.nxj_button.nxj_cssButton.disabled.saving:after {
 #regButton {
 	}
 .betaBox {
-	bottom:10px;
+	background:#000000;
+	border:1px solid #FF1010;
+	border-radius:16px;
+	bottom:90px;
 	color:#FF1010;
 	display:none;
 	font-size:20px;
-	left:15px;
+	left:10px;
+	padding:1px 7px;
 	position:absolute;
 	z-index:1000;
 	}

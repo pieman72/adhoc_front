@@ -3676,9 +3676,9 @@ Event.observe(window, 'load', function(){
 				}else if(activeTools[0].getAttribute('data-toolClass') == 'tag'){
 					var tagInfo = activeTools[0].getAttribute('data-target').split('-');
 					if(tagInfo[1] == 'add'){
-						adhoc.applyPropagationalTag(tagInfo[2], tagInfo[3], clickedNode);
+						adhoc.applyPropagationalTag(tagInfo[2], tagInfo[3].replace('_', ' '), clickedNode);
 					}else if(tagInfo[1] == 'remove'){
-						adhoc.removePropagationalTag(tagInfo[2], tagInfo[3], clickedNode);
+						adhoc.removePropagationalTag(tagInfo[2], tagInfo[3].replace('_', ' '), clickedNode);
 					}
 					adhoc.deactivateAllTools();
 					adhoc.closeAllMenus();
@@ -5636,6 +5636,7 @@ Event.observe(window, 'load', function(){
 			,tempNode.referenceId
 			,remap ? true : false
 		);
+		newNode.folded = true;
 		if(tempNode.dataType){
 			newNode.dataType = tempNode.dataType;
 			newNode.childDataType = tempNode.childDataType;
@@ -6621,7 +6622,7 @@ Event.observe(window, 'load', function(){
 				$('zoomPrcent').update(100);
 				adhoc.resetHistory();
 				adhoc.refreshRender();
-				adhoc.snapToNode(adhoc.rootNode, true);
+				adhoc.snapToNode(adhoc.rootNode);
 			}
 			,onFailure: function(t){
 				adhoc.error(t.responseText);
