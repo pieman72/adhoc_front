@@ -1143,14 +1143,17 @@ Event.observe(window, 'load', function(){
 	adhoc.systemTags = {
 		'validated': {
 			propagation: adhoc.propagations.ANCESTORS_IF_SIBLINGS
+			,propagateRefs: true
 			,color: '#009000'
 			,symbol: 'V'
 		},'error': {
 			propagation: adhoc.propagations.ANCESTORS
+			,propagateRefs: false
 			,color: '#FF0000'
 			,symbol: 'E'
 //		},'': {
 //			propagation: adhoc.propagations.
+//			,propagateRefs:
 //			,color: '#'
 //			,symbol: ''
 		}
@@ -1158,22 +1161,27 @@ Event.observe(window, 'load', function(){
 	adhoc.testingTags = {
 		'tested': {
 			propagation: adhoc.propagations.ANCESTORS_IF_SIBLINGS
+			,propagateRefs: false
 			,color: '#00B020'
 			,symbol: 'T'
 		},'TODO': {
 			propagation: adhoc.propagations.NONE
+			,propagateRefs: false
 			,color: '#3080FF'
 			,symbol: 'D'
 		},'needs review': {
 			propagation: adhoc.propagations.DESCENDENTS
+			,propagateRefs: false
 			,color: '#604020'
 			,symbol: 'R'
 		},'possible problem': {
 			propagation: adhoc.propagations.CHILDREN
+			,propagateRefs: true
 			,color: '#CCCC00'
 			,symbol: 'P'
 //		},'': {
 //			propagation: adhoc.propagations.
+//			,propagateRefs:
 //			,color: '#'
 //			,symbol: ''
 		}
@@ -5208,6 +5216,12 @@ Event.observe(window, 'load', function(){
 	}
 	// Pans the canvas to the specified node
 	adhoc.snapToNode = function(n, leftAlign){
+		var prnt = n.parent;
+		while(prnt){
+			prnt.folded = false;
+			prnt = prnt.parent;
+		}
+		adhoc.refreshRender();
 		if(leftAlign){
 			adhoc.display_x = (n.x - n.width/2.0 - 10)*adhoc.display_scale;
 		}else{
@@ -6193,8 +6207,10 @@ Event.observe(window, 'load', function(){
 // TODO: record tag in history
 
 		// Add the tag if not already present
+		var alreadyPresent = true;
 		if(adhoc.allTags[n.id][c].indexOf(t) < 0){
 			adhoc.allTags[n.id][c].push(t);
+			alreadyPresent = false;
 		}
 
 		// Apply propagation rules
@@ -6253,6 +6269,17 @@ Event.observe(window, 'load', function(){
 		default:
 			break;
 		}
+
+		// If referenced and prop rules allow, apply to references
+		if(!alreadyPresent
+			&& (c == 'system'
+				? adhoc.systemTags[t].propagateRefs
+				: adhoc.testingTags[t].propagateRefs
+			)){
+			for(var i=0; n.references&&i<n.references.length; ++i){
+				adhoc.applyPropagationalTag(c, t, adhoc.allNodes[n.references[i]], false);
+			}
+		}
 	}
 	// Remove a tag from a node and apply propagation rules
 	adhoc.removePropagationalTag = function(c, t, n, p){
@@ -6262,9 +6289,11 @@ Event.observe(window, 'load', function(){
 // TODO: record tag removal in history
 
 		// Remove the tag if already present
+		var alreadyGone = true;
 		var index;
 		if(adhoc.allTags[n.id] && (index = adhoc.allTags[n.id][c].indexOf(t)) >= 0){
 			adhoc.allTags[n.id][c].splice(index, 1);
+			alreadyGone = false;
 		}
 
 		// Apply propagation rules
@@ -6322,6 +6351,17 @@ Event.observe(window, 'load', function(){
 
 		default:
 			break;
+		}
+
+		// If referenced and prop rules allow, apply to references
+		if(!alreadyGone
+			&& (c == 'system'
+				? adhoc.systemTags[t].propagateRefs
+				: adhoc.testingTags[t].propagateRefs
+			)){
+			for(var i=0; n.references&&i<n.references.length; ++i){
+				adhoc.removePropagationalTag(c, t, adhoc.allNodes[n.references[i]], false);
+			}
 		}
 	}
 	// Apply multiple tags to nodes by id
