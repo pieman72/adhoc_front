@@ -3445,8 +3445,12 @@ Event.observe(window, 'load', function(){
 				return;
 			}
 
+			// Restore any detached nodes
+			if(adhoc.movingNodeTimeout) clearTimeout(adhoc.movingNodeTimeout);
+			if(adhoc.movingNode) return  adhoc.reattachNode(click);
+
 			// Handle touch
-			if(e.touches && e.touches.length) e = e.touches[0];
+			if(e.type == 'touchend') return;
 
 			// Get the scaled location of the click
 			var offset = adhoc.canvas.positionedOffset();
@@ -3455,10 +3459,6 @@ Event.observe(window, 'load', function(){
 				,y: (Event.pointerY(e) - offset.top + adhoc.display_y) / adhoc.display_scale
 			};
 			var clickedNode = adhoc.getClickedNode(adhoc.rootNode, click);
-
-			// Restore any detached nodes
-			if(adhoc.movingNodeTimeout) clearTimeout(adhoc.movingNodeTimeout);
-			if(adhoc.movingNode) return  adhoc.reattachNode(click);
 
 			// If a tool is active and a node was clicked, figure out what to do with it
 			var activeTools = $$('#toolbox .active');
@@ -3704,7 +3704,6 @@ Event.observe(window, 'load', function(){
 					clickedNode.selected = true;
 					adhoc.selectedNode = clickedNode;
 				}
-
 
 			// Empty space was clicked, deselect the selected node
 			}else if(adhoc.selectedNode){
